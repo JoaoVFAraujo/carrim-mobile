@@ -1,0 +1,15 @@
+<ion-header>
+  <ion-toolbar><ion-title>Histórico</ion-title></ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <main class="tw:mx-auto tw:max-w-lg tw:py-6">
+    <h1 class="tw:text-2xl tw:font-semibold">Histórico</h1>
+    <app-empty-state
+      [icon]="emptyIcon"
+      title="Nenhuma compra finalizada ainda"
+      description="Quando você finalizar uma compra, poderá consultar os itens e o total por aqui."
+    >
+      <ion-button routerLink="/tabs/home" fill="outline">Ir para o início</ion-button>
+    </app-empty-state>
+  </main>
+</ion-content>

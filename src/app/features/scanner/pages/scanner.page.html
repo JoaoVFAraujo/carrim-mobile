@@ -1,0 +1,15 @@
+<ion-header>
+  <ion-toolbar><ion-title>Escanear</ion-title></ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <main class="tw:mx-auto tw:max-w-lg tw:py-6">
+    <h1 class="tw:text-2xl tw:font-semibold">Escanear</h1>
+    <app-empty-state
+      [icon]="emptyIcon"
+      title="Nenhuma compra em andamento"
+      description="Comece uma compra para escanear produtos e acompanhar os preços no carrinho."
+    >
+      <ion-button routerLink="/tabs/home" fill="outline">Ir para o início</ion-button>
+    </app-empty-state>
+  </main>
+</ion-content>

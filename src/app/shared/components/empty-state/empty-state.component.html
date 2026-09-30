@@ -1,0 +1,6 @@
+<section class="tw:flex tw:flex-col tw:items-center tw:px-4 tw:py-12 tw:text-center">
+  <ion-icon [icon]="icon()" color="primary" aria-hidden="true" class="tw:text-6xl" />
+  <h2 class="tw:mt-6 tw:text-xl tw:font-semibold">{{ title() }}</h2>
+  <p class="tw:mt-3 tw:max-w-sm tw:text-base tw:leading-relaxed">{{ description() }}</p>
+  <div class="tw:mt-6"><ng-content /></div>
+</section>

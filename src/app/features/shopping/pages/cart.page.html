@@ -1,0 +1,15 @@
+<ion-header>
+  <ion-toolbar><ion-title>Carrinho</ion-title></ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <main class="tw:mx-auto tw:max-w-lg tw:py-6">
+    <h1 class="tw:text-2xl tw:font-semibold">Carrinho</h1>
+    <app-empty-state
+      [icon]="emptyIcon"
+      title="Seu carrinho está vazio"
+      description="Comece uma compra para adicionar produtos e acompanhar o total antes de chegar ao caixa."
+    >
+      <ion-button routerLink="/tabs/home" fill="outline">Ir para o início</ion-button>
+    </app-empty-state>
+  </main>
+</ion-content>

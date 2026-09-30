@@ -1,0 +1,10 @@
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { IonApp, IonRouterOutlet } from '@ionic/angular';
+
+@Component({
+  selector: 'app-root',
+  imports: [IonApp, IonRouterOutlet],
+  templateUrl: './app.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class App {}
