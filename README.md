@@ -159,5 +159,3 @@ Adicionar novamente um produto com o mesmo nome (após remover espaços nas extr
 Adições concorrentes são processadas em sequência e consultam a quantidade persistida. O incremento e a operação UPDATE da fila são gravados na mesma transação. Não há migração nem alteração retroativa de compras encerradas.
 
 Validação: 38 testes, lint, Prettier, build, SQLite real e sincronização Android. No navegador, uma linha de uma unidade recebeu mais duas do scanner: quantidade 3 e total R$ 50,97, preservados após recarregar. SQLite verificou isolamento por configuração, quantidade máxima e rollback quando a fila falha. Continua pendente a execução em aparelho Android; o aviso de tamanho do bundle permanece.
-
-O usuário autorizou o fluxo contínuo de branch a partir da main, validação, commit/push, PR para main com comentário `@codex review`, correções e merge antes da próxima atividade. Essa autorização vale para o desenvolvimento do Carrim nesta conversa; banco remoto continua fora desta etapa.
