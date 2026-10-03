@@ -68,6 +68,8 @@ export class CartPage {
   quantity = '1';
   measurementType: 'UNIT' | 'WEIGHT' = 'UNIT';
   weight = '';
+  pricingType: 'REGULAR' | 'BUNDLE' = 'REGULAR';
+  bundleQuantity = '3';
   readonly subtotal = itemSubtotalCents;
 
   ionViewWillEnter(): void {
@@ -80,6 +82,8 @@ export class CartPage {
     this.price = item ? (item.unitPriceCents / 100).toFixed(2).replace('.', ',') : '';
     this.quantity = String(item?.quantity ?? 1);
     this.measurementType = item?.measurementType ?? 'UNIT';
+    this.pricingType = item?.pricingType ?? 'REGULAR';
+    this.bundleQuantity = String(item?.bundleQuantity ?? 3);
     this.weight = item?.weightGrams ? (item.weightGrams / 1000).toFixed(3).replace('.', ',') : '';
     this.formError.set('');
     this.modalOpen.set(true);
@@ -95,6 +99,14 @@ export class CartPage {
           this.name,
           parseItemPrice(this.price),
           parseWeightGrams(this.weight),
+          this.editingId,
+        );
+      } else if (this.pricingType === 'BUNDLE') {
+        await this.store.saveBundleItem(
+          this.name,
+          parseItemQuantity(this.bundleQuantity),
+          parseItemPrice(this.price),
+          parseItemQuantity(this.quantity),
           this.editingId,
         );
       } else {

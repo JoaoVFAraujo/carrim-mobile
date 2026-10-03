@@ -21,7 +21,7 @@ describe('repeated products', () => {
       const values = item.values;
       if (item.statement.startsWith('UPDATE')) {
         saved = saved.map((previous) =>
-          previous.id === values[6]
+          previous.id === values[8]
             ? {
                 ...previous,
                 name: values[0],
@@ -29,6 +29,8 @@ describe('repeated products', () => {
                 quantity: values[2],
                 measurementType: values[4],
                 weightGrams: values[5],
+                pricingType: values[6],
+                bundleQuantity: values[7],
               }
             : previous,
         );
@@ -42,6 +44,8 @@ describe('repeated products', () => {
           barcode: values[7],
           measurementType: values[8],
           weightGrams: values[9],
+          pricingType: values[10],
+          bundleQuantity: values[11],
         });
       }
     });
@@ -54,7 +58,9 @@ describe('repeated products', () => {
               item.name === values[1] &&
               item.unitPriceCents === values[2] &&
               item.barcode === values[3] &&
-              item.measurementType === values[4],
+              item.measurementType === values[4] &&
+              item.pricingType === values[5] &&
+              item.bundleQuantity === values[6],
           )
           .slice(0, 1);
       if (sql.includes("WHERE s.status = 'ACTIVE'")) return [session];
@@ -79,6 +85,34 @@ describe('repeated products', () => {
     expect(operation.values[2]).toBe(store.items()[0].id);
     expect(operation.values[3]).toBe('UPDATE');
     expect(JSON.parse(operation.values[4]).quantity).toBe(5);
+  });
+
+  it('combines compatible bundles while keeping regular units and other offers separate', async () => {
+    const { store, transaction } = setup();
+    await store.saveBundleItem('Milk', 3, 1000, 6);
+    await store.saveItem('Milk', 400, 1);
+    expect(store.totalCents()).toBe(2400);
+    await store.saveBundleItem('Milk', 3, 1000, 3);
+    expect(store.items()).toHaveLength(2);
+    expect(store.items()[0].quantity).toBe(9);
+    expect(store.totalCents()).toBe(3400);
+    expect(JSON.parse(transaction.mock.calls[2][0].at(-1).values[4])).toMatchObject({
+      pricingType: 'BUNDLE',
+      bundleQuantity: 3,
+      bundlePriceCents: 1000,
+      quantity: 9,
+    });
+    await store.saveBundleItem('Milk', 2, 1000, 2);
+    expect(store.items()).toHaveLength(3);
+    await store.saveBundleItem('Milk', 3, 1000, 3, store.items()[0].id);
+    expect(store.items()[0].quantity).toBe(3);
+  });
+  it('rejects incomplete bundles and invalid group sizes without writing', async () => {
+    const { store, transaction } = setup();
+    for (const group of [1, 0, 1.5, 10000])
+      await expect(store.saveBundleItem('Milk', group, 1000, 6)).rejects.toThrow('promoção');
+    await expect(store.saveBundleItem('Milk', 3, 1000, 4)).rejects.toThrow('múltipla');
+    expect(transaction).not.toHaveBeenCalled();
   });
 
   it('adds grams for compatible weights, isolates unit items and replaces weight on edit', async () => {

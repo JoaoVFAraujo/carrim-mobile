@@ -6,6 +6,30 @@ import {
 } from './shopping-item';
 
 describe('manual shopping item', () => {
+  it('uses the exact bundle price instead of multiplying the rounded equivalent unit price', () => {
+    expect(
+      itemSubtotalCents({
+        id: 'i',
+        sessionId: 's',
+        name: 'Milk',
+        unitPriceCents: 1000,
+        quantity: 6,
+        pricingType: 'BUNDLE',
+        bundleQuantity: 3,
+      }),
+    ).toBe(2000);
+    expect(
+      itemSubtotalCents({
+        id: 'i',
+        sessionId: 's',
+        name: 'Milk',
+        unitPriceCents: 1,
+        quantity: 9999,
+        pricingType: 'BUNDLE',
+        bundleQuantity: 9999,
+      }),
+    ).toBe(1);
+  });
   it('converts kilograms to integer grams without floating point multiplication', () => {
     expect(parseWeightGrams('0,824')).toBe(824);
     expect(parseWeightGrams('1.5')).toBe(1500);

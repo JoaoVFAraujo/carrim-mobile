@@ -17,7 +17,7 @@ export class ProductCatalogService {
   async lastPrice(barcode: string, supermarketId: string): Promise<LastProductPrice | null> {
     const prices = await this.database.query<LastProductPrice>(
       `SELECT unit_price_cents AS unitPriceCents, recorded_at_ms AS recordedAt FROM price_history
-       WHERE barcode = ? AND supermarket_id = ? AND measurement_type = 'UNIT'
+       WHERE barcode = ? AND supermarket_id = ? AND measurement_type = 'UNIT' AND pricing_type = 'REGULAR'
        ORDER BY recorded_at_ms DESC, id DESC LIMIT 1`,
       [parseBarcode(barcode), supermarketId],
     );

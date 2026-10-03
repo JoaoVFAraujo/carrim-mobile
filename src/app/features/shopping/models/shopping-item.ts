@@ -2,15 +2,19 @@ export interface ShoppingItem {
   id: string;
   sessionId: string;
   name: string;
-  /** Price per unit for UNIT; price per kg for WEIGHT. */
+  /** Price of the pricing unit: one unit, one kg, or one bundle. */
   unitPriceCents: number;
   quantity: number;
   barcode?: string | null;
   measurementType?: 'UNIT' | 'WEIGHT';
   weightGrams?: number | null;
+  pricingType?: 'REGULAR' | 'BUNDLE';
+  bundleQuantity?: number | null;
 }
 
 export function itemSubtotalCents(item: ShoppingItem): number {
+  if (item.pricingType === 'BUNDLE')
+    return item.unitPriceCents * (item.quantity / item.bundleQuantity!);
   // For WEIGHT the pricing unit is one kg; quantity is always 1.
   return item.measurementType === 'WEIGHT'
     ? Math.floor((item.unitPriceCents * item.weightGrams! + 500) / 1000)
