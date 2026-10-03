@@ -20,6 +20,7 @@ import {
 import { cartOutline } from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ShoppingSessionStore } from '../services/shopping-session.store';
+import { parseCheckoutTotal } from '../models/shopping-session';
 import {
   ShoppingItem,
   parseItemPrice,
@@ -133,13 +134,35 @@ export class CartPage {
     if (this.saving() || this.confirming || !this.store.items().length) return;
     this.confirming = true;
     try {
-      const alert = await this.alerts.create({
+      let checkoutTotalCents: number | null = null;
+      const alert: HTMLIonAlertElement = await this.alerts.create({
         header: 'Finalizar compra?',
         message:
-          'A compra será salva neste aparelho e ficará disponível no Histórico. Seus itens não poderão mais ser alterados.',
+          'A compra será salva neste aparelho e ficará disponível no Histórico. Seus itens não poderão mais ser alterados. O total do caixa é opcional e serve apenas para comparação.',
+        inputs: [
+          {
+            name: 'checkoutTotal',
+            type: 'text',
+            placeholder: 'Total do caixa (opcional)',
+            attributes: { inputmode: 'decimal', 'aria-label': 'Total do caixa (opcional)' },
+          },
+        ],
         buttons: [
           { text: 'Continuar comprando', role: 'cancel' },
-          { text: 'Finalizar', role: 'confirm' },
+          {
+            text: 'Finalizar',
+            role: 'confirm',
+            handler: (data: { checkoutTotal?: string }) => {
+              try {
+                checkoutTotalCents = parseCheckoutTotal(data.checkoutTotal ?? '');
+                return true;
+              } catch (error) {
+                alert.message =
+                  error instanceof Error ? error.message : 'Informe um total do caixa válido.';
+                return false;
+              }
+            },
+          },
         ],
       });
       await alert.present();
@@ -148,7 +171,7 @@ export class CartPage {
       this.saving.set(true);
       this.actionError.set('');
       try {
-        await this.store.complete();
+        await this.store.complete(checkoutTotalCents);
       } catch {
         this.actionError.set('Não foi possível finalizar a compra. Tente novamente.');
         return;

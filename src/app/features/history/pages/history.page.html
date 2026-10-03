@@ -24,6 +24,14 @@
           <strong class="tw:text-2xl">{{
             shopping.totalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
           }}</strong>
+          @if (shopping.checkoutTotalCents !== null) {
+            <p class="tw:text-sm tw:text-gray-600">
+              Caixa:
+              {{
+                shopping.checkoutTotalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+              }}
+            </p>
+          }
           <ion-button
             expand="block"
             fill="clear"
@@ -65,9 +73,35 @@
         <div class="tw:mx-auto tw:max-w-lg">
           <h1 class="tw:mt-0 tw:text-2xl tw:font-semibold">{{ shopping.supermarketName }}</h1>
           <p>{{ shopping.finishedAt | date: 'dd/MM/yyyy HH:mm' }}</p>
+          <p>Total calculado pelo app</p>
           <strong class="tw:text-3xl">{{
             shopping.totalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
           }}</strong>
+          @if (shopping.checkoutTotalCents !== null) {
+            <div class="tw:mt-4 tw:rounded-2xl tw:bg-green-50 tw:p-4">
+              <p>
+                Total do caixa:
+                {{
+                  shopping.checkoutTotalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                }}
+              </p>
+              @if (shopping.checkoutTotalCents === shopping.totalCents) {
+                <p class="tw:font-semibold">Valores conferem</p>
+              } @else {
+                <p class="tw:font-semibold">
+                  Diferença (caixa − app):
+                  {{ shopping.checkoutTotalCents > shopping.totalCents ? '+' : ''
+                  }}{{
+                    (shopping.checkoutTotalCents - shopping.totalCents) / 100
+                      | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  }}
+                </p>
+              }
+              <p class="tw:text-sm tw:text-gray-600">
+                Comparação informativa. Os itens mantêm os valores registrados na compra.
+              </p>
+            </div>
+          }
           @if (shopping.budgetCents !== null) {
             <p>
               Limite definido:

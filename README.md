@@ -179,3 +179,11 @@ A migration 7 acrescenta tipo de preço e quantidade do grupo aos itens e observ
 Histórico conserva promoção e subtotal exato; o último preço sugerido pelo scanner consulta somente registros regulares por unidade, evitando apresentar preço do grupo como preço unitário. Promoções são cadastradas ou editadas pelo Carrinho.
 
 Validação: 48 testes, lint, Prettier, build e SQLite real. O navegador recusou quatro unidades em grupo de três, preservou duas linhas (seis unidades promocionais por R$ 20,00 e uma avulsa por R$ 4,00) após recarregar e confirmou finalização com total de R$ 24,00 no Histórico. Aparelho Android permanece pendente; o aviso de tamanho do bundle continua.
+
+## SHOP-006 — Total do caixa — 03/10/2026
+
+A confirmação de finalização oferece Total do caixa opcional. Vazio significa não informado; zero é um valor válido. O campo aceita até duas casas decimais, salva centavos inteiros e recusa valores negativos ou acima de R$ 1.000.000,00 antes de finalizar. Uma diferença não impede a conclusão.
+
+A migration 8 preserva compras existentes com total do caixa nulo. O valor é gravado junto com finalização, preços e fila local; falhas fazem rollback e tentativas repetidas não substituem o primeiro valor salvo. O total calculado continua vindo dos itens. Histórico apresenta total do caixa e diferença assinada (caixa menos app), ou Valores conferem quando a diferença é zero. Nenhum preço ou quantidade é ajustado automaticamente.
+
+Validação: 52 testes, lint, formatação, build, SQLite real e sincronização Android. SQLite confirmou migração, constraints, distinção entre zero e omissão, rollback, reabertura e repetição sem sobrescrever. O navegador recusou entrada negativa, finalizou R$ 24,00 calculados com R$ 25,75 no caixa e confirmou diferença +R$ 1,75 preservando o item. APK/aparelho permanecem pendentes; o aviso de tamanho inicial do bundle continua.
