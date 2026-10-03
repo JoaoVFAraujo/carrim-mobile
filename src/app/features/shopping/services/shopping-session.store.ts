@@ -16,6 +16,7 @@ export class ShoppingSessionStore {
   readonly items = signal<ShoppingItem[]>([]);
   readonly history = signal<CompletedShopping[]>([]);
   private completing?: Promise<void>;
+  private itemWrites: Promise<void> = Promise.resolve();
 
   complete(): Promise<void> {
     if (this.completing) return this.completing;
@@ -90,7 +91,25 @@ export class ShoppingSessionStore {
     return budget ? Math.round((this.totalCents() * 100) / budget) : 0;
   });
 
-  async saveItem(
+  saveItem(
+    name: string,
+    unitPriceCents: number,
+    quantity: number,
+    itemId?: string,
+    barcode?: string,
+  ): Promise<void> {
+    const sessionId = this.active()?.id;
+    const operation = this.itemWrites.then(() => {
+      if (this.active()?.id !== sessionId)
+        throw new Error('Comece uma compra antes de adicionar produtos.');
+      return this.persistItem(name, unitPriceCents, quantity, itemId, barcode);
+    });
+    // Serialize additions so two confirmations see the quantity saved by the previous one.
+    this.itemWrites = operation.catch(() => undefined);
+    return operation;
+  }
+
+  private async persistItem(
     name: string,
     unitPriceCents: number,
     quantity: number,
@@ -107,7 +126,6 @@ export class ShoppingSessionStore {
       throw new Error('Informe uma quantidade entre 1 e 9999.');
     if (itemId && !this.items().some((item) => item.id === itemId))
       throw new Error('Produto não encontrado.');
-    const id = itemId ?? crypto.randomUUID();
     const now = Date.now();
     const code =
       barcode === undefined
@@ -135,11 +153,23 @@ export class ShoppingSessionStore {
         ),
       );
     }
-    const statement = itemId
+    const matching = itemId
+      ? []
+      : await this.database.query<ShoppingItem>(
+          `SELECT id, quantity FROM shopping_items
+            WHERE session_id = ? AND name = ? AND unit_price_cents = ? AND barcode IS ?
+            ORDER BY created_at_ms, id LIMIT 1`,
+          [session.id, trimmed, unitPriceCents, code],
+        );
+    const existingId = itemId ?? matching[0]?.id;
+    const savedQuantity = quantity + (matching[0]?.quantity ?? 0);
+    if (savedQuantity > 9999) throw new Error('Informe uma quantidade total de até 9999.');
+    const id = existingId ?? crypto.randomUUID();
+    const statement = existingId
       ? {
           statement:
             'UPDATE shopping_items SET name = ?, unit_price_cents = ?, quantity = ?, updated_at_ms = ? WHERE id = ? AND session_id = ?',
-          values: [trimmed, unitPriceCents, quantity, now, id, session.id],
+          values: [trimmed, unitPriceCents, savedQuantity, now, id, session.id],
         }
       : {
           statement:
@@ -156,11 +186,11 @@ export class ShoppingSessionStore {
           sessionId: session.id,
           name: trimmed,
           unitPriceCents,
-          quantity,
+          quantity: savedQuantity,
           ...(code !== null ? { barcode: code } : {}),
         },
         now,
-        itemId ? 'UPDATE' : 'CREATE',
+        existingId ? 'UPDATE' : 'CREATE',
       ),
     ]);
     // A committed item must not be offered for a duplicate retry if only the read fails.

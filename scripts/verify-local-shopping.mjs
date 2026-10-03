@@ -92,6 +92,39 @@ db.run(productSql, ['unused-id', code, 'Coffee updated', 4, 4]);
 assert.equal(scalar('SELECT COUNT(*) FROM products'), 1);
 assert.equal(scalar('SELECT id FROM products'), 'p');
 
+// Group only the same session/name/price/barcode configuration using application SQL.
+const matchingSql = [...store.matchAll(/`([^`]+)`/g)]
+  .map((match) => match[1])
+  .find((sql) => sql.includes('WHERE session_id = ? AND name = ?'));
+const updateItemSql = strings.find((sql) => sql.startsWith('UPDATE shopping_items'));
+assert.ok(matchingSql && updateItemSql);
+const repeated = db.prepare(matchingSql, ['s', 'Coffee', 1749, code]);
+assert.ok(repeated.step());
+assert.deepEqual(repeated.getAsObject(), { id: 'i', quantity: 2 });
+repeated.free();
+for (const configuration of [
+  ['s', 'Coffee', 1800, code],
+  ['s', 'Coffee', 1749, null],
+  ['s', 'Tea', 1749, code],
+  ['old', 'Coffee', 1749, code],
+]) {
+  const distinct = db.prepare(matchingSql, configuration);
+  assert.equal(distinct.step(), false);
+  distinct.free();
+}
+db.run('BEGIN');
+db.run(updateItemSql, ['Coffee', 1749, 5, 4, 'i', 's']);
+assert.throws(() => db.run(queueSql, ['i-item-op', 'SHOPPING_ITEM', 'i', 'UPDATE', '{}', 4, 4]));
+db.run('ROLLBACK');
+assert.equal(scalar("SELECT quantity FROM shopping_items WHERE id = 'i'"), 2);
+db.run('BEGIN');
+db.run(updateItemSql, ['Coffee', 1749, 5, 4, 'i', 's']);
+db.run(queueSql, ['repeat-item-op', 'SHOPPING_ITEM', 'i', 'UPDATE', '{"quantity":5}', 4, 4]);
+db.run('COMMIT');
+assert.equal(scalar("SELECT COUNT(*) FROM shopping_items WHERE session_id = 's'"), 1);
+assert.equal(scalar("SELECT quantity * unit_price_cents FROM shopping_items WHERE id = 'i'"), 8745);
+assert.throws(() => db.run(updateItemSql, ['Coffee', 1749, 10000, 4, 'i', 's']));
+
 function complete(id, operation, fail = false) {
   db.run('BEGIN');
   try {
@@ -147,5 +180,5 @@ assert.throws(() => db.run("UPDATE shopping_items SET session_id = 's' WHERE id 
 db.run("DELETE FROM shopping_items WHERE id = 'next-item'");
 db.close();
 console.log(
-  'SQLite verified: migrations v1-v5, preservation, atomic catalog/item/outbox, rollback, completion replay, immutable history, leading zeros, market price isolation and reopen.',
+  'SQLite verified: migrations v1-v5, preservation, atomic catalog/item/outbox, repeated product grouping, rollback, completion replay, immutable history, leading zeros, market price isolation and reopen.',
 );

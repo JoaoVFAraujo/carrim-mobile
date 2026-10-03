@@ -151,3 +151,13 @@ A base visual da main reúne as quatro abas, cabeçalhos integrados ao fundo cla
 Validação: 34 testes unitários, lint, formatação, build, `verify:sqlite` e sincronização dos plugins Android passaram. O script SQLite usa um banco isolado em memória e as migrations/SQL da implementação para verificar preservação de dados, rollback, fila, preços por mercado, reabertura e imutabilidade de compras finalizadas. A revisão no navegador em larguras de 390 e 320 pixels confirmou cadastro por código, finalização, reconhecimento na compra seguinte, exigência de preço atual e persistência após recarregar. O build apresenta aviso de tamanho inicial acima de 1 MB; o limite de erro não foi excedido. A leitura física, permissões do sistema e compilação de APK permanecem pendentes: nenhum aparelho/SDK Android foi encontrado nesta sessão.
 
 Esta entrega foi autorizada para publicação direta na main. Para próximas atividades, partir desta base em branches `codex/<atividade>`; publicação e merge continuam exigindo autorização, e PRs para main devem receber `@codex review` conforme AGENTS.md.
+
+## CART-005 — Produtos repetidos — 03/10/2026
+
+Adicionar novamente um produto com o mesmo nome (após remover espaços nas extremidades), preço e código incrementa a quantidade da linha existente. Produtos manuais são agrupados entre si; linhas com outro preço, nome ou código permanecem separadas. A edição continua substituindo a quantidade. Se a soma ultrapassar 9999, a adição é recusada antes de gravar.
+
+Adições concorrentes são processadas em sequência e consultam a quantidade persistida. O incremento e a operação UPDATE da fila são gravados na mesma transação. Não há migração nem alteração retroativa de compras encerradas.
+
+Validação: 38 testes, lint, Prettier, build, SQLite real e sincronização Android. No navegador, uma linha de uma unidade recebeu mais duas do scanner: quantidade 3 e total R$ 50,97, preservados após recarregar. SQLite verificou isolamento por configuração, quantidade máxima e rollback quando a fila falha. Continua pendente a execução em aparelho Android; o aviso de tamanho do bundle permanece.
+
+O usuário autorizou o fluxo contínuo de branch a partir da main, validação, commit/push, PR para main com comentário `@codex review`, correções e merge antes da próxima atividade. Essa autorização vale para o desenvolvimento do Carrim nesta conversa; banco remoto continua fora desta etapa.
