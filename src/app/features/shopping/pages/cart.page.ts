@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -11,6 +11,9 @@ import {
   IonModal,
   IonInput,
   AlertController,
+  ToastController,
+  IonProgressBar,
+  IonFooter,
 } from '@ionic/angular';
 import { cartOutline } from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -25,6 +28,8 @@ import { ShoppingItem, parseItemPrice, parseItemQuantity } from '../models/shopp
     IonTitle,
     IonToolbar,
     IonButton,
+    IonProgressBar,
+    IonFooter,
     IonModal,
     IonInput,
     FormsModule,
@@ -39,6 +44,9 @@ export class CartPage {
   readonly emptyIcon = cartOutline;
   readonly store = inject(ShoppingSessionStore);
   private readonly alerts = inject(AlertController);
+  private readonly router = inject(Router);
+  private readonly toasts = inject(ToastController);
+  private confirming = false;
   readonly modalOpen = signal(false);
   readonly saving = signal(false);
   readonly formError = signal('');
@@ -81,6 +89,48 @@ export class CartPage {
       );
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  async confirmComplete(): Promise<void> {
+    if (this.saving() || this.confirming || !this.store.items().length) return;
+    this.confirming = true;
+    try {
+      const alert = await this.alerts.create({
+        header: 'Finalizar compra?',
+        message:
+          'A compra será salva neste aparelho e ficará disponível no Histórico. Seus itens não poderão mais ser alterados.',
+        buttons: [
+          { text: 'Continuar comprando', role: 'cancel' },
+          { text: 'Finalizar', role: 'confirm' },
+        ],
+      });
+      await alert.present();
+      const result = await alert.onDidDismiss();
+      if (result.role !== 'confirm' || this.saving()) return;
+      this.saving.set(true);
+      this.actionError.set('');
+      try {
+        await this.store.complete();
+      } catch {
+        this.actionError.set('Não foi possível finalizar a compra. Tente novamente.');
+        return;
+      } finally {
+        this.saving.set(false);
+      }
+      try {
+        await this.router.navigateByUrl('/tabs/history');
+        const toast = await this.toasts.create({
+          message: 'Compra finalizada e salva neste aparelho.',
+          duration: 3000,
+          position: 'top',
+        });
+        await toast.present();
+      } catch {
+        this.actionError.set('Compra salva. Abra o Histórico para consultar os itens.');
+      }
+    } finally {
+      this.confirming = false;
     }
   }
 

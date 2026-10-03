@@ -4,6 +4,7 @@ export interface ShoppingItem {
   name: string;
   unitPriceCents: number;
   quantity: number;
+  barcode?: string | null;
 }
 
 export function parseItemPrice(value: string): number {

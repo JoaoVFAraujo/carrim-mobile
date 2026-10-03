@@ -1,15 +1,104 @@
 <ion-header class="ion-no-border">
-  <ion-toolbar><ion-title>Histórico</ion-title></ion-toolbar>
+  <ion-toolbar>
+    <ion-title role="heading" aria-level="1" class="tw:text-3xl tw:font-semibold"
+      >Histórico</ion-title
+    >
+  </ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
   <main class="tw:mx-auto tw:max-w-lg tw:pt-2 tw:pb-6">
-    <h1 class="tw:mt-0 tw:text-3xl tw:font-semibold">Histórico</h1>
-    <app-empty-state
-      [icon]="emptyIcon"
-      title="Nenhuma compra finalizada ainda"
-      description="Quando você finalizar uma compra, poderá consultar os itens e o total por aqui."
-    >
-      <ion-button routerLink="/tabs/home" fill="outline">Ir para o início</ion-button>
-    </app-empty-state>
+    <p class="tw:text-gray-600">Cada compra, guardada aqui.</p>
+    @if (store.loading()) {
+      <p role="status">Abrindo suas compras…</p>
+    } @else if (store.error()) {
+      <p role="alert">{{ store.error() }}</p>
+      <ion-button (click)="store.load()">Tentar novamente</ion-button>
+    } @else {
+      @for (shopping of store.history(); track shopping.id) {
+        <article class="tw:mb-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-5">
+          <h2 class="tw:mt-0 tw:text-xl tw:font-semibold">{{ shopping.supermarketName }}</h2>
+          <p>
+            {{ shopping.finishedAt | date: 'dd/MM/yyyy HH:mm' }} · {{ shopping.itemCount }}
+            {{ shopping.itemCount === 1 ? 'produto' : 'produtos' }}
+          </p>
+          <strong class="tw:text-2xl">{{
+            shopping.totalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+          }}</strong>
+          <ion-button
+            expand="block"
+            fill="clear"
+            (click)="open(shopping)"
+            [attr.aria-label]="
+              'Ver detalhes da compra em ' +
+              shopping.supermarketName +
+              ' de ' +
+              (shopping.finishedAt | date: 'dd/MM/yyyy HH:mm')
+            "
+            >Ver detalhes</ion-button
+          >
+        </article>
+      } @empty {
+        <app-empty-state
+          [icon]="emptyIcon"
+          title="Nenhuma compra finalizada ainda"
+          description="Quando você finalizar uma compra, poderá consultar os itens e o total por aqui."
+        >
+          <ion-button routerLink="/tabs/home" fill="outline">Ir para o início</ion-button>
+        </app-empty-state>
+      }
+      @if (store.history().length) {
+        <p class="tw:text-center tw:text-sm tw:text-gray-600">Compras salvas neste aparelho.</p>
+      }
+    }
   </main>
 </ion-content>
+<ion-modal [isOpen]="selected() !== null" (didDismiss)="close()">
+  <ng-template>
+    <ion-header class="ion-no-border">
+      <ion-toolbar>
+        <ion-title>Detalhes da compra</ion-title>
+        <ion-buttons slot="end"><ion-button (click)="close()">Fechar</ion-button></ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      @if (selected(); as shopping) {
+        <div class="tw:mx-auto tw:max-w-lg">
+          <h1 class="tw:mt-0 tw:text-2xl tw:font-semibold">{{ shopping.supermarketName }}</h1>
+          <p>{{ shopping.finishedAt | date: 'dd/MM/yyyy HH:mm' }}</p>
+          <strong class="tw:text-3xl">{{
+            shopping.totalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+          }}</strong>
+          @if (shopping.budgetCents !== null) {
+            <p>
+              Limite definido:
+              {{ shopping.budgetCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+            </p>
+          }
+          @if (loadingDetails()) {
+            <p role="status">Abrindo itens…</p>
+          } @else if (detailError()) {
+            <p role="alert">{{ detailError() }}</p>
+            <ion-button (click)="open(shopping)">Tentar novamente</ion-button>
+          } @else {
+            @for (item of items(); track item.id) {
+              <article class="tw:mt-4 tw:border-b tw:border-gray-200 tw:pb-4">
+                <h2 class="tw:text-lg">{{ item.name }}</h2>
+                <p>
+                  {{ item.quantity }} ×
+                  {{ item.unitPriceCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+                </p>
+                <strong>{{
+                  (item.quantity * item.unitPriceCents) / 100
+                    | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                }}</strong>
+              </article>
+            }
+          }
+          <ion-button expand="block" fill="clear" class="tw:mt-6" (click)="close()"
+            >Fechar</ion-button
+          >
+        </div>
+      }
+    </ion-content>
+  </ng-template>
+</ion-modal>

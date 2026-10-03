@@ -2,9 +2,9 @@
 
 Aplicativo do Carrim para acompanhar compras de supermercado. Este repositório e `JoaoVFAraujo/carrim-api` formam o mesmo produto.
 
-## Estado: 0.0.1 — Foundation
+## Estado: 0.0.1 — Fluxo local de compras
 
-Base Angular/Ionic standalone, página inicial, navegação com carregamento sob demanda, Tailwind, lint, formatação, testes e configuração Capacitor Android. SQLite e criação/recuperação da compra ativa estão implementados. Adição de produtos, scanner, finalização, autenticação e sincronização remota ficam para as próximas entregas.
+Base Angular/Ionic standalone, navegação com carregamento sob demanda, Tailwind e Capacitor Android. SQLite suporta compra ativa, produtos manuais ou por código, orçamento, finalização, Histórico somente leitura e compras recentes no Início. O scanner MLKit está integrado; sua execução com câmera em aparelho Android permanece pendente. Produtos por peso, autenticação e sincronização remota ficam para próximas entregas.
 
 ## Stack e pré-requisitos
 
@@ -25,6 +25,7 @@ npm start
 npm run lint
 npm run format:check
 npm test
+npm run verify:sqlite
 npm run build
 ```
 
@@ -64,13 +65,13 @@ Signals controlam o estado da compra ativa, supermercados, carregamento e erros.
 
 ## Segurança
 
-Nenhum segredo ou token deve entrar no bundle. Tokens não serão armazenados em localStorage. Arquivos `.env` reais são ignorados. O app usa SQLite local para supermercados e compra ativa. Não faz chamadas à API nem solicita câmera; a fila local ainda não envia operações ao servidor.
+Nenhum segredo ou token deve entrar no bundle. Tokens não serão armazenados em localStorage. Arquivos `.env` reais são ignorados. O app usa SQLite local para supermercados, catálogo, compras e preços. A câmera é solicitada somente ao tocar em Abrir câmera no aplicativo nativo. Não faz chamadas à API; a fila local ainda não envia operações ao servidor.
 
 ## Referência e evolução
 
 O documento mestre está em [carrim-api/docs/carrim-documento-base-v12.md](https://github.com/JoaoVFAraujo/carrim-api/blob/main/docs/carrim-documento-base-v12.md). Neste Windows, consulte `C:\workspace\backend\mercado\docs\carrim-documento-base-v12.md`. O link remoto estará disponível após a publicação autorizada dos arquivos.
 
-As decisões são revisáveis. A navegação com quatro abas e estados vazios está implementada; a infraestrutura SQLite e a primeira compra local estão disponíveis; a próxima entrega é adicionar produtos manualmente. CI, commit, push, PR e deploy exigem autorização própria.
+As decisões são revisáveis. As quatro abas compartilham uma base visual clara, cabeçalhos integrados, cartões e ações Ionic. O fluxo local de compra está disponível. As seções datadas abaixo registram a evolução; limitações antigas podem ter sido resolvidas nas entregas seguintes. CI, commit, push, PR e deploy exigem autorização própria.
 
 ## Validação local — 30/09/2026
 
@@ -118,3 +119,35 @@ Carrinho permite adicionar, editar e remover produtos com nome, preço por unida
 A migration 2 adiciona shopping_items sem apagar as sessões existentes. Alterações de itens e operações locais da fila são gravadas na mesma transação. A sincronização remota continua desativada. Produtos vendidos por peso e quantidades fracionadas ainda não são suportados.
 
 Validação: testes de preços, quantidades, totais, orçamento e falha de persistência; lint e build. SQLite real verificou migração de v1 para v2, preservação da sessão, exportação/reabertura e constraints. Revisão visual interativa e execução em aparelho Android continuam pendentes. Próxima entrega: finalizar compra e consultar o histórico.
+
+## Finalização e histórico — 03/10/2026
+
+Finalizar compra exige ao menos um item e confirmação. Após salvar, o app abre Histórico; a sessão deixa de ser ativa e outra compra pode ser iniciada. Histórico exibe supermercado, data, total, número de produtos e detalhes somente para consulta. Início mostra as três compras finalizadas mais recentes.
+
+A migration 3 cria price_history com preço por unidade, nome manual, quantidade, mercado e data; a gravação acontece na mesma transação da finalização e da fila local. Esses registros ainda não identificam um produto global por código de barras. Triggers impedem inserir, alterar ou remover itens de uma sessão encerrada. A migração preserva os dados existentes.
+
+Validação em SQLite real: migrations v1–v3, reabertura com histórico e preços, bloqueio de edição e criação de uma nova compra ativa. Testes também cobrem compra vazia, falha na finalização e atualização do estado após sucesso. Execução em aparelho e revisão visual interativa continuam pendentes. Scanner e sincronização remota ainda não foram implementados.
+
+Regra de PR: consulte AGENTS.md; todo PR para main deve receber comentário com @codex review.
+
+## Revisão de finalização e Histórico — 03/10/2026
+
+Confirmações repetidas são bloqueadas e chamadas concorrentes de finalização compartilham uma única operação. A fila só recebe COMPLETE quando a sessão realmente muda de estado; repetir a transação não duplica preços ou operações. Uma falha de leitura após salvar limpa o carrinho encerrado e permite tentar carregar o Histórico novamente, sem informar incorretamente que a finalização falhou. Navegação e feedback também distinguem compra salva de falha de gravação.
+
+A migration 4 impede mover um item ativo para uma sessão encerrada. Ela também atualiza bancos que já executaram a migration 3, preservando compras e preços. Histórico tem título único, identificação acessível dos botões de detalhes e fechamento no cabeçalho do modal. A confirmação e o toast informam que a compra é salva neste aparelho.
+
+Validação da revisão: 19 testes passaram; lint, Prettier, build e `cap sync android` passaram. A sincronização atualizou assets e plugins; não compilou nem executou um APK. SQLite real verificou migrations v1–v4, rollback, repetição sem duplicação, totais em centavos, exportação/reabertura, atualização de banco v3 com compra concluída e bloqueio de alteração dos itens encerrados.
+
+Revisão interativa no navegador em largura de celular verificou criação, adição/edição, cancelamento de remoção e finalização, conclusão acima do limite, Histórico, detalhes somente leitura, compras recentes, persistência após recarregar e criação de outra compra sem limite. Os dados de teste pertencem à origem `http://127.0.0.1:4300`, separada de `http://localhost:4300`. A execução em aparelho Android permanece pendente. Total do caixa/diferença opcionais ainda não foram implementados.
+
+## Scanner e base visual — 03/10/2026
+
+As cinco atividades SCAN-001–005 receberam implementação: integração do [MLKit para Capacitor](https://capawesome.io/docs/sdks/capacitor/mlkit/barcode-scanning/), permissões de câmera, bloqueio de leituras simultâneas/repetidas, consulta de produto conhecido e cadastro rápido de código desconhecido. A câmera fecha ao sair da tela, cancelar ou colocar o app em segundo plano. Após confirmar ou fechar o produto, a leitura pode continuar. A alternativa manual permanece disponível.
+
+O catálogo local usa códigos numéricos EAN/UPC de 8, 12 ou 13 dígitos armazenados como texto, preservando zeros iniciais. Não há validação de dígito verificador nem unificação entre formatos equivalentes nesta etapa. No navegador a consulta funciona por digitação; a captura por câmera usa o aplicativo nativo. A migration 5 preserva as compras anteriores e vincula os novos itens e preços ao código. Produto, item e fila são gravados juntos com rollback. O último preço vem de uma compra finalizada no mesmo mercado, com data, e nunca substitui a confirmação do preço de hoje.
+
+A base visual da main reúne as quatro abas, cabeçalhos integrados ao fundo claro, verde como cor principal, cartões arredondados, progresso de orçamento e finalização fixa acima das abas. Fotos, logos de mercados, filtros de Histórico e total do caixa não fazem parte deste layout básico.
+
+Validação: 34 testes unitários, lint, formatação, build, `verify:sqlite` e sincronização dos plugins Android passaram. O script SQLite usa um banco isolado em memória e as migrations/SQL da implementação para verificar preservação de dados, rollback, fila, preços por mercado, reabertura e imutabilidade de compras finalizadas. A revisão no navegador em larguras de 390 e 320 pixels confirmou cadastro por código, finalização, reconhecimento na compra seguinte, exigência de preço atual e persistência após recarregar. O build apresenta aviso de tamanho inicial acima de 1 MB; o limite de erro não foi excedido. A leitura física, permissões do sistema e compilação de APK permanecem pendentes: nenhum aparelho/SDK Android foi encontrado nesta sessão.
+
+Esta entrega foi autorizada para publicação direta na main. Para próximas atividades, partir desta base em branches `codex/<atividade>`; publicação e merge continuam exigindo autorização, e PRs para main devem receber `@codex review` conforme AGENTS.md.

@@ -7,6 +7,9 @@ import type {
 } from '@capacitor-community/sqlite';
 import { initialSchema } from './migrations/001-initial-schema';
 import { shoppingItemsSchema } from './migrations/002-shopping-items';
+import { completedShoppingSchema } from './migrations/003-completed-shopping';
+import { itemSessionGuardSchema } from './migrations/004-item-session-guard';
+import { productCatalogSchema } from './migrations/005-product-catalog';
 
 @Injectable({ providedIn: 'root' })
 export class DatabaseService {
@@ -90,7 +93,25 @@ export class DatabaseService {
         shoppingItemsSchema.map((statement) => ({ statement, values: [] })),
         true,
       );
-    } else if (version !== 2) {
+    }
+    if (version === 1 || version === 2) {
+      await this.database.executeSet(
+        completedShoppingSchema.map((statement) => ({ statement, values: [] })),
+        true,
+      );
+    }
+    if (version === 1 || version === 2 || version === 3) {
+      await this.database.executeSet(
+        itemSessionGuardSchema.map((statement) => ({ statement, values: [] })),
+        true,
+      );
+    }
+    if ([1, 2, 3, 4].includes(version)) {
+      await this.database.executeSet(
+        productCatalogSchema.map((statement) => ({ statement, values: [] })),
+        true,
+      );
+    } else if (version !== 5) {
       throw new Error('Versão do banco não suportada.');
     }
     await this.database.run('INSERT OR IGNORE INTO app_metadata(key, value) VALUES (?, ?)', [

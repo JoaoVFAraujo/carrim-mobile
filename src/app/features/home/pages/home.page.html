@@ -1,5 +1,7 @@
 <ion-header class="ion-no-border">
-  <ion-toolbar><ion-title>Carrim</ion-title></ion-toolbar>
+  <ion-toolbar
+    ><ion-title class="tw:text-3xl tw:font-bold tw:text-green-900">Carrim</ion-title></ion-toolbar
+  >
 </ion-header>
 <ion-content class="ion-padding">
   <main class="tw:mx-auto tw:max-w-lg tw:pt-2 tw:pb-6">
@@ -24,7 +26,10 @@
           <div class="tw:mt-1 tw:text-4xl tw:font-semibold">
             {{ store.totalCents() / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
           </div>
-          <p class="tw:mt-2">{{ store.items().length }} produtos no carrinho.</p>
+          <p class="tw:mt-2">
+            {{ store.items().length }} {{ store.items().length === 1 ? 'produto' : 'produtos' }} no
+            carrinho.
+          </p>
           @if (shopping.budgetCents !== null) {
             <div class="tw:mt-6 tw:grid tw:grid-cols-2 tw:gap-4">
               <div>
@@ -45,6 +50,15 @@
             </div>
           } @else {
             <p class="tw:mt-4">Sem limite de gastos definido.</p>
+          }
+          @if (shopping.budgetCents !== null) {
+            <ion-progress-bar
+              class="tw:mt-5 tw:rounded-full"
+              color="light"
+              [value]="store.budgetProgress()"
+              aria-label="Uso do limite de gastos"
+            />
+            <p class="tw:mt-2">{{ store.budgetPercent() }}% do limite</p>
           }
           <ion-button class="tw:mt-6" expand="block" color="light" routerLink="/tabs/cart"
             >Continuar compra</ion-button
@@ -67,7 +81,20 @@
       <h2 id="recent-shopping-title" class="tw:mt-0 tw:text-lg tw:font-semibold">
         Últimas compras
       </h2>
-      <p class="tw:mt-2">Suas compras finalizadas aparecerão aqui.</p>
+      @for (shopping of store.history().slice(0, 3); track shopping.id) {
+        <article class="tw:mt-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-4">
+          <h3 class="tw:mt-0 tw:font-semibold">{{ shopping.supermarketName }}</h3>
+          <p class="tw:text-sm tw:text-gray-600">
+            {{ shopping.finishedAt | date: 'dd/MM/yyyy' }} · {{ shopping.itemCount }}
+            {{ shopping.itemCount === 1 ? 'produto' : 'produtos' }}
+          </p>
+          <strong>{{
+            shopping.totalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+          }}</strong>
+        </article>
+      } @empty {
+        <p class="tw:mt-2">Suas compras finalizadas aparecerão aqui.</p>
+      }
       <ion-button fill="clear" routerLink="/tabs/history">Ver histórico</ion-button>
     </section>
   </main>

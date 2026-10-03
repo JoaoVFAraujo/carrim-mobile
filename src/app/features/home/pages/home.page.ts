@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
@@ -15,6 +15,7 @@ import {
   IonSelect,
   IonSelectOption,
   IonSkeletonText,
+  IonProgressBar,
 } from '@ionic/angular';
 import { basketOutline } from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -36,8 +37,10 @@ import { parseBudget } from '../../shopping/models/shopping-session';
     IonSelect,
     IonSelectOption,
     IonSkeletonText,
+    IonProgressBar,
     RouterLink,
     CurrencyPipe,
+    DatePipe,
     FormsModule,
     EmptyStateComponent,
   ],

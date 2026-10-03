@@ -16,6 +16,7 @@ describe('Tab navigation', () => {
           useValue: {
             active: signal(null),
             supermarkets: signal([]),
+            history: signal([]),
             loading: signal(false),
             error: signal(''),
             load: async () => undefined,
