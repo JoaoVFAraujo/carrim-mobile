@@ -64,17 +64,18 @@ describe('cart completion confirmation', () => {
 describe('cart weight form', () => {
   function setup() {
     const saveWeightItem = vi.fn().mockResolvedValue(undefined);
+    const saveBundleItem = vi.fn().mockResolvedValue(undefined);
     const saveItem = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         CartPage,
-        { provide: ShoppingSessionStore, useValue: { saveWeightItem, saveItem } },
+        { provide: ShoppingSessionStore, useValue: { saveWeightItem, saveItem, saveBundleItem } },
         { provide: AlertController, useValue: {} },
         { provide: ToastController, useValue: {} },
         { provide: Router, useValue: {} },
       ],
     });
-    return { page: TestBed.inject(CartPage), saveWeightItem, saveItem };
+    return { page: TestBed.inject(CartPage), saveWeightItem, saveItem, saveBundleItem };
   }
   it('edits a weight item using kg input and saves integer grams with its identity', async () => {
     const { page, saveWeightItem, saveItem } = setup();
@@ -107,5 +108,24 @@ describe('cart weight form', () => {
     expect(saveWeightItem).not.toHaveBeenCalled();
     expect(page.formError()).toContain('peso');
     expect(page.modalOpen()).toBe(true);
+  });
+  it('edits a bundle keeping group price separate from its total quantity', async () => {
+    const { page, saveBundleItem, saveItem } = setup();
+    page.openItem({
+      id: 'milk',
+      sessionId: 's',
+      name: 'Milk',
+      unitPriceCents: 1000,
+      quantity: 6,
+      pricingType: 'BUNDLE',
+      bundleQuantity: 3,
+    });
+    expect(page.pricingType).toBe('BUNDLE');
+    expect(page.bundleQuantity).toBe('3');
+    expect(page.price).toBe('10,00');
+    page.quantity = '9';
+    await page.save();
+    expect(saveBundleItem).toHaveBeenCalledWith('Milk', 3, 1000, 9, 'milk');
+    expect(saveItem).not.toHaveBeenCalled();
   });
 });

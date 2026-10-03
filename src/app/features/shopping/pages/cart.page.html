@@ -60,7 +60,9 @@
         <article class="tw:mt-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-4">
           <h2 class="tw:mt-0 tw:text-lg tw:font-semibold">{{ item.name }}</h2>
           <p>
-            @if (item.measurementType === 'WEIGHT') {
+            @if (item.pricingType === 'BUNDLE') {
+              {{ item.quantity }} unidades · {{ item.bundleQuantity }} por
+            } @else if (item.measurementType === 'WEIGHT') {
               {{ item.weightGrams! / 1000 | number: '1.3-3' : 'pt-BR' }} kg ×
             } @else {
               {{ item.quantity }} ×
@@ -70,6 +72,16 @@
               /kg
             }
           </p>
+          @if (item.pricingType === 'BUNDLE') {
+            <p class="tw:text-sm tw:text-gray-600">
+              Equivale a aproximadamente
+              {{
+                item.unitPriceCents / item.bundleQuantity! / 100
+                  | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+              }}
+              por unidade.
+            </p>
+          }
           <strong>{{
             subtotal(item) / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
           }}</strong>
@@ -162,8 +174,40 @@
           <ion-select-option value="UNIT">Unidade</ion-select-option>
           <ion-select-option value="WEIGHT">Peso</ion-select-option>
         </ion-select>
+        @if (measurementType === 'UNIT') {
+          <ion-select
+            label="Preço"
+            labelPlacement="stacked"
+            interface="popover"
+            name="pricing"
+            [(ngModel)]="pricingType"
+            [disabled]="saving()"
+          >
+            <ion-select-option value="REGULAR">Por unidade</ion-select-option>
+            <ion-select-option value="BUNDLE">Promoção por quantidade</ion-select-option>
+          </ion-select>
+          @if (pricingType === 'BUNDLE') {
+            <ion-input
+              label="Unidades na promoção"
+              labelPlacement="stacked"
+              fill="outline"
+              inputmode="numeric"
+              name="bundleQuantity"
+              [(ngModel)]="bundleQuantity"
+              [maxlength]="4"
+              [disabled]="saving()"
+              helperText="Ex.: 3 unidades por R$ 10,00."
+            />
+          }
+        }
         <ion-input
-          [label]="measurementType === 'WEIGHT' ? 'Preço por kg' : 'Preço por unidade'"
+          [label]="
+            measurementType === 'WEIGHT'
+              ? 'Preço por kg'
+              : pricingType === 'BUNDLE'
+                ? 'Preço da promoção'
+                : 'Preço por unidade'
+          "
           labelPlacement="stacked"
           fill="outline"
           placeholder="Ex.: 12,99"
@@ -188,7 +232,7 @@
           />
         } @else {
           <ion-input
-            label="Quantidade"
+            [label]="pricingType === 'BUNDLE' ? 'Quantidade total de unidades' : 'Quantidade'"
             labelPlacement="stacked"
             fill="outline"
             inputmode="numeric"
@@ -197,6 +241,12 @@
             [maxlength]="4"
             [disabled]="saving()"
           />
+          @if (pricingType === 'BUNDLE') {
+            <p class="tw:text-sm tw:text-gray-600">
+              Use múltiplos de {{ bundleQuantity }}. Unidades fora da promoção entram em outra linha
+              por unidade.
+            </p>
+          }
         }
         @if (formError()) {
           <p role="alert" class="tw:text-red-800">{{ formError() }}</p>

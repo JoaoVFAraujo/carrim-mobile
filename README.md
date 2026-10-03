@@ -4,7 +4,7 @@ Aplicativo do Carrim para acompanhar compras de supermercado. Este repositório 
 
 ## Estado: 0.0.1 — Fluxo local de compras
 
-Base Angular/Ionic standalone, navegação com carregamento sob demanda, Tailwind e Capacitor Android. SQLite suporta compra ativa, produtos manuais por unidade ou peso, produtos por código, orçamento, finalização, Histórico somente leitura e compras recentes no Início. O scanner MLKit está integrado; sua execução com câmera em aparelho Android permanece pendente. Promoções, autenticação e sincronização remota ficam para próximas entregas.
+Base Angular/Ionic standalone, navegação com carregamento sob demanda, Tailwind e Capacitor Android. SQLite suporta compra ativa, produtos manuais por unidade ou peso, promoções por quantidade, produtos por código, orçamento, finalização, Histórico somente leitura e compras recentes no Início. O scanner MLKit está integrado; sua execução com câmera em aparelho Android permanece pendente. Autenticação e sincronização remota ficam para próximas entregas.
 
 ## Stack e pré-requisitos
 
@@ -169,3 +169,13 @@ A migration 6 adiciona medida e gramas aos itens e observações de preço, pres
 Adições de peso com mesma configuração somam gramas e recalculam o subtotal da linha; unidade e peso ficam separados. Editar substitui o peso e permite alterar o tipo. Histórico conserva o peso, preço de referência e subtotal, somente para consulta. Finalização grava a observação de preço com medida e gramas na mesma transação.
 
 Validação: 44 testes, lint, Prettier, build, SQLite real e sincronização Android. SQLite confirmou a migração v5–v6 preservando compras antigas, rejeição de gramas fracionárias e combinações inválidas, total histórico arredondado, isolamento de preços UNIT/KG, rollback e reabertura. O navegador verificou cadastro de 824 g, edição para 500 g, persistência e finalização com detalhes no Histórico. O teste de navegação agora desativa animações e descarta o fixture/roteador, evitando erro intermitente do worker ao encerrar componentes Ionic. Aparelho Android permanece pendente; o aviso de tamanho do bundle continua.
+
+## PRICE-003/004 — Promoções por quantidade — 03/10/2026
+
+Produtos por unidade podem usar uma promoção como 3 por R$ 10,00. O preço informado corresponde ao grupo completo; a quantidade total deve ser múltipla do grupo. Seis unidades custam R$ 20,00, sem arredondar primeiro um preço por unidade. A equivalência por unidade é apenas informativa e identificada como aproximada. Unidades avulsas entram em outra linha com preço regular.
+
+A migration 7 acrescenta tipo de preço e quantidade do grupo aos itens e observações, preservando registros antigos como REGULAR. `unit_price_cents`/`unitPriceCents` representa o preço da unidade de referência: unidade, kg ou grupo promocional. A fila de promoções envia explicitamente `pricingType`, `bundleQuantity`, `bundlePriceCents` e quantidade. SQLite e estado recusam grupos incompletos, grupos menores que duas unidades e combinação com peso. Configurações diferentes ficam separadas; promoções iguais somam quantidades. Edição substitui os valores.
+
+Histórico conserva promoção e subtotal exato; o último preço sugerido pelo scanner consulta somente registros regulares por unidade, evitando apresentar preço do grupo como preço unitário. Promoções são cadastradas ou editadas pelo Carrinho.
+
+Validação: 48 testes, lint, Prettier, build e SQLite real. O navegador recusou quatro unidades em grupo de três, preservou duas linhas (seis unidades promocionais por R$ 20,00 e uma avulsa por R$ 4,00) após recarregar e confirmou finalização com total de R$ 24,00 no Histórico. Aparelho Android permanece pendente; o aviso de tamanho do bundle continua.

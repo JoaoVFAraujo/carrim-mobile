@@ -11,6 +11,7 @@ import { completedShoppingSchema } from './migrations/003-completed-shopping';
 import { itemSessionGuardSchema } from './migrations/004-item-session-guard';
 import { productCatalogSchema } from './migrations/005-product-catalog';
 import { weightItemsSchema } from './migrations/006-weight-items';
+import { bundleItemsSchema } from './migrations/007-bundle-items';
 
 @Injectable({ providedIn: 'root' })
 export class DatabaseService {
@@ -118,7 +119,13 @@ export class DatabaseService {
         weightItemsSchema.map((statement) => ({ statement, values: [] })),
         true,
       );
-    } else if (version !== 6) {
+    }
+    if ([1, 2, 3, 4, 5, 6].includes(version)) {
+      await this.database.executeSet(
+        bundleItemsSchema.map((statement) => ({ statement, values: [] })),
+        true,
+      );
+    } else if (version !== 7) {
       throw new Error('Versão do banco não suportada.');
     }
     await this.database.run('INSERT OR IGNORE INTO app_metadata(key, value) VALUES (?, ?)', [
