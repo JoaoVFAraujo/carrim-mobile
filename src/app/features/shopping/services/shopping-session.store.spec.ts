@@ -2,6 +2,103 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { DatabaseService } from '../../../core/database/database.service';
 import { ShoppingSessionStore } from './shopping-session.store';
+import { ShoppingItem } from '../models/shopping-item';
+
+describe('repeated products', () => {
+  function setup() {
+    const session = {
+      id: 's',
+      supermarketId: 'm',
+      supermarketName: 'Market',
+      budgetCents: null,
+      startedAt: 0,
+    };
+    let saved: ShoppingItem[] = [];
+    const transaction = vi.fn().mockImplementation(async (statements) => {
+      const item = statements.find((entry: { statement: string }) =>
+        /^(INSERT INTO|UPDATE) shopping_items/.test(entry.statement),
+      );
+      const values = item.values;
+      if (item.statement.startsWith('UPDATE')) {
+        saved = saved.map((previous) =>
+          previous.id === values[4]
+            ? { ...previous, name: values[0], unitPriceCents: values[1], quantity: values[2] }
+            : previous,
+        );
+      } else {
+        saved.push({
+          id: values[0],
+          sessionId: values[1],
+          name: values[2],
+          unitPriceCents: values[3],
+          quantity: values[4],
+          barcode: values[7],
+        });
+      }
+    });
+    const query = vi.fn().mockImplementation(async (sql: string, values: unknown[]) => {
+      if (sql.includes('WHERE session_id = ? AND name = ?'))
+        return saved
+          .filter(
+            (item) =>
+              item.sessionId === values[0] &&
+              item.name === values[1] &&
+              item.unitPriceCents === values[2] &&
+              item.barcode === values[3],
+          )
+          .slice(0, 1);
+      if (sql.includes("WHERE s.status = 'ACTIVE'")) return [session];
+      if (sql.includes('FROM shopping_items WHERE session_id')) return saved;
+      return [];
+    });
+    TestBed.configureTestingModule({
+      providers: [{ provide: DatabaseService, useValue: { transaction, query } }],
+    });
+    const store = TestBed.inject(ShoppingSessionStore);
+    store.active.set(session);
+    return { store, transaction };
+  }
+
+  it('combines concurrent additions and queues an update with the final quantity', async () => {
+    const { store, transaction } = setup();
+    await Promise.all([store.saveItem(' Coffee ', 1749, 2), store.saveItem('Coffee', 1749, 3)]);
+    expect(store.items()).toHaveLength(1);
+    expect(store.items()[0].quantity).toBe(5);
+    expect(store.totalCents()).toBe(8745);
+    const operation = transaction.mock.calls[1][0].at(-1);
+    expect(operation.values[2]).toBe(store.items()[0].id);
+    expect(operation.values[3]).toBe('UPDATE');
+    expect(JSON.parse(operation.values[4]).quantity).toBe(5);
+  });
+
+  it('keeps different prices, names and barcode identities on separate lines', async () => {
+    const { store } = setup();
+    await store.saveItem('Coffee', 1749, 1);
+    await store.saveItem('Coffee', 1800, 1);
+    await store.saveItem('Tea', 1749, 1);
+    await store.saveItem('Coffee', 1749, 1, undefined, '0789600112233');
+    await store.saveItem('Coffee', 1749, 2, undefined, '0789600112233');
+    expect(store.items()).toHaveLength(4);
+    expect(store.items()[3].quantity).toBe(3);
+  });
+
+  it('editing replaces quantity instead of incrementing it', async () => {
+    const { store } = setup();
+    await store.saveItem('Coffee', 1749, 3);
+    await store.saveItem('Coffee', 1749, 2, store.items()[0].id);
+    expect(store.items()[0].quantity).toBe(2);
+  });
+
+  it('rejects overflow without writing and allows later additions after a failure', async () => {
+    const { store, transaction } = setup();
+    await store.saveItem('Coffee', 1749, 9999);
+    await expect(store.saveItem('Coffee', 1749, 1)).rejects.toThrow('quantidade total');
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(store.items()[0].quantity).toBe(9999);
+    await store.saveItem('Tea', 999, 1);
+    expect(store.items()).toHaveLength(2);
+  });
+});
 
 describe('ShoppingSessionStore', () => {
   it('saves a new market, session and both outbox operations together', async () => {
@@ -53,7 +150,7 @@ describe('shopping totals and item persistence', () => {
           provide: DatabaseService,
           useValue: {
             transaction,
-            query: vi.fn().mockRejectedValue(new Error('read failed')),
+            query: vi.fn().mockResolvedValueOnce([]).mockRejectedValue(new Error('read failed')),
           },
         },
       ],
@@ -149,7 +246,12 @@ describe('shopping totals and item persistence', () => {
   it('keeps items unchanged if their database write fails', async () => {
     const transaction = vi.fn().mockRejectedValue(new Error('disk full'));
     TestBed.configureTestingModule({
-      providers: [{ provide: DatabaseService, useValue: { transaction } }],
+      providers: [
+        {
+          provide: DatabaseService,
+          useValue: { transaction, query: vi.fn().mockResolvedValue([]) },
+        },
+      ],
     });
     const store = TestBed.inject(ShoppingSessionStore);
     store.active.set({
