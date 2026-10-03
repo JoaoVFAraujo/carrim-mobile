@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   IonButton,
@@ -14,11 +14,19 @@ import {
   ToastController,
   IonProgressBar,
   IonFooter,
+  IonSelect,
+  IonSelectOption,
 } from '@ionic/angular';
 import { cartOutline } from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ShoppingSessionStore } from '../services/shopping-session.store';
-import { ShoppingItem, parseItemPrice, parseItemQuantity } from '../models/shopping-item';
+import {
+  ShoppingItem,
+  parseItemPrice,
+  parseItemQuantity,
+  parseWeightGrams,
+  itemSubtotalCents,
+} from '../models/shopping-item';
 
 @Component({
   selector: 'app-cart',
@@ -35,6 +43,9 @@ import { ShoppingItem, parseItemPrice, parseItemQuantity } from '../models/shopp
     FormsModule,
     RouterLink,
     CurrencyPipe,
+    DecimalPipe,
+    IonSelect,
+    IonSelectOption,
     EmptyStateComponent,
   ],
   templateUrl: './cart.page.html',
@@ -55,6 +66,9 @@ export class CartPage {
   name = '';
   price = '';
   quantity = '1';
+  measurementType: 'UNIT' | 'WEIGHT' = 'UNIT';
+  weight = '';
+  readonly subtotal = itemSubtotalCents;
 
   ionViewWillEnter(): void {
     void this.store.load();
@@ -65,6 +79,8 @@ export class CartPage {
     this.name = item?.name ?? '';
     this.price = item ? (item.unitPriceCents / 100).toFixed(2).replace('.', ',') : '';
     this.quantity = String(item?.quantity ?? 1);
+    this.measurementType = item?.measurementType ?? 'UNIT';
+    this.weight = item?.weightGrams ? (item.weightGrams / 1000).toFixed(3).replace('.', ',') : '';
     this.formError.set('');
     this.modalOpen.set(true);
   }
@@ -74,12 +90,21 @@ export class CartPage {
     this.saving.set(true);
     this.formError.set('');
     try {
-      await this.store.saveItem(
-        this.name,
-        parseItemPrice(this.price),
-        parseItemQuantity(this.quantity),
-        this.editingId,
-      );
+      if (this.measurementType === 'WEIGHT') {
+        await this.store.saveWeightItem(
+          this.name,
+          parseItemPrice(this.price),
+          parseWeightGrams(this.weight),
+          this.editingId,
+        );
+      } else {
+        await this.store.saveItem(
+          this.name,
+          parseItemPrice(this.price),
+          parseItemQuantity(this.quantity),
+          this.editingId,
+        );
+      }
       this.modalOpen.set(false);
     } catch (error) {
       this.formError.set(

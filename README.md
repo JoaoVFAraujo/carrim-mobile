@@ -4,7 +4,7 @@ Aplicativo do Carrim para acompanhar compras de supermercado. Este repositório 
 
 ## Estado: 0.0.1 — Fluxo local de compras
 
-Base Angular/Ionic standalone, navegação com carregamento sob demanda, Tailwind e Capacitor Android. SQLite suporta compra ativa, produtos manuais ou por código, orçamento, finalização, Histórico somente leitura e compras recentes no Início. O scanner MLKit está integrado; sua execução com câmera em aparelho Android permanece pendente. Produtos por peso, autenticação e sincronização remota ficam para próximas entregas.
+Base Angular/Ionic standalone, navegação com carregamento sob demanda, Tailwind e Capacitor Android. SQLite suporta compra ativa, produtos manuais por unidade ou peso, produtos por código, orçamento, finalização, Histórico somente leitura e compras recentes no Início. O scanner MLKit está integrado; sua execução com câmera em aparelho Android permanece pendente. Promoções, autenticação e sincronização remota ficam para próximas entregas.
 
 ## Stack e pré-requisitos
 
@@ -159,3 +159,13 @@ Adicionar novamente um produto com o mesmo nome (após remover espaços nas extr
 Adições concorrentes são processadas em sequência e consultam a quantidade persistida. O incremento e a operação UPDATE da fila são gravados na mesma transação. Não há migração nem alteração retroativa de compras encerradas.
 
 Validação: 38 testes, lint, Prettier, build, SQLite real e sincronização Android. No navegador, uma linha de uma unidade recebeu mais duas do scanner: quantidade 3 e total R$ 50,97, preservados após recarregar. SQLite verificou isolamento por configuração, quantidade máxima e rollback quando a fila falha. Continua pendente a execução em aparelho Android; o aviso de tamanho do bundle permanece.
+
+## PRICE-002 — Produtos por peso — 03/10/2026
+
+O formulário manual permite selecionar Unidade ou Peso. Peso recebe preço por kg e kg com até três casas decimais; persiste de 1 a 9999999 gramas inteiras. O subtotal arredonda para o centavo mais próximo, com meio centavo para cima, usando cálculo inteiro. Ex.: 824 g a R$ 6,99/kg = R$ 5,76; 500 g = R$ 3,50. O orçamento soma os subtotais arredondados de cada linha.
+
+A migration 6 adiciona medida e gramas aos itens e observações de preço, preservando compras antigas como UNIT. Para manter o schema existente sem reconstruir tabelas, `unit_price_cents`/`unitPriceCents` representa o preço da unidade de referência: uma unidade em UNIT, um kg em WEIGHT. Em WEIGHT, a quantidade técnica é 1 e o peso determina o subtotal; a fila envia explicitamente `measurementType`, `pricePerKgCents` e `weightGrams`. Scanner continua adicionando por unidade e consulta apenas observações UNIT, sem confundir preços por kg.
+
+Adições de peso com mesma configuração somam gramas e recalculam o subtotal da linha; unidade e peso ficam separados. Editar substitui o peso e permite alterar o tipo. Histórico conserva o peso, preço de referência e subtotal, somente para consulta. Finalização grava a observação de preço com medida e gramas na mesma transação.
+
+Validação: 44 testes, lint, Prettier, build, SQLite real e sincronização Android. SQLite confirmou a migração v5–v6 preservando compras antigas, rejeição de gramas fracionárias e combinações inválidas, total histórico arredondado, isolamento de preços UNIT/KG, rollback e reabertura. O navegador verificou cadastro de 824 g, edição para 500 g, persistência e finalização com detalhes no Histórico. O teste de navegação agora desativa animações e descarta o fixture/roteador, evitando erro intermitente do worker ao encerrar componentes Ionic. Aparelho Android permanece pendente; o aviso de tamanho do bundle continua.

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import {
   IonButton,
   IonButtons,
@@ -14,7 +14,7 @@ import { receiptOutline } from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ShoppingSessionStore } from '../../shopping/services/shopping-session.store';
 import { CompletedShopping } from '../../shopping/models/completed-shopping';
-import { ShoppingItem } from '../../shopping/models/shopping-item';
+import { ShoppingItem, itemSubtotalCents } from '../../shopping/models/shopping-item';
 
 @Component({
   selector: 'app-history',
@@ -29,12 +29,14 @@ import { ShoppingItem } from '../../shopping/models/shopping-item';
     RouterLink,
     CurrencyPipe,
     DatePipe,
+    DecimalPipe,
     EmptyStateComponent,
   ],
   templateUrl: './history.page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HistoryPage {
+  readonly subtotal = itemSubtotalCents;
   readonly emptyIcon = receiptOutline;
   readonly store = inject(ShoppingSessionStore);
   readonly selected = signal<CompletedShopping | null>(null);

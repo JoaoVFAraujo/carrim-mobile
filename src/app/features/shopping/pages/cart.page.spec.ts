@@ -60,3 +60,52 @@ describe('cart completion confirmation', () => {
     expect(page.saving()).toBe(false);
   });
 });
+
+describe('cart weight form', () => {
+  function setup() {
+    const saveWeightItem = vi.fn().mockResolvedValue(undefined);
+    const saveItem = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        CartPage,
+        { provide: ShoppingSessionStore, useValue: { saveWeightItem, saveItem } },
+        { provide: AlertController, useValue: {} },
+        { provide: ToastController, useValue: {} },
+        { provide: Router, useValue: {} },
+      ],
+    });
+    return { page: TestBed.inject(CartPage), saveWeightItem, saveItem };
+  }
+  it('edits a weight item using kg input and saves integer grams with its identity', async () => {
+    const { page, saveWeightItem, saveItem } = setup();
+    page.openItem({
+      id: 'banana',
+      sessionId: 's',
+      name: 'Banana',
+      unitPriceCents: 699,
+      quantity: 1,
+      measurementType: 'WEIGHT',
+      weightGrams: 824,
+    });
+    expect(page.measurementType).toBe('WEIGHT');
+    expect(page.weight).toBe('0,824');
+    expect(page.price).toBe('6,99');
+    page.weight = '0,500';
+    await page.save();
+    expect(saveWeightItem).toHaveBeenCalledWith('Banana', 699, 500, 'banana');
+    expect(saveItem).not.toHaveBeenCalled();
+    expect(page.modalOpen()).toBe(false);
+  });
+  it('keeps invalid weight visible without writing', async () => {
+    const { page, saveWeightItem } = setup();
+    page.openItem();
+    page.measurementType = 'WEIGHT';
+    page.name = 'Banana';
+    page.price = '6,99';
+    page.weight = '0,0001';
+    await page.save();
+    expect(saveWeightItem).not.toHaveBeenCalled();
+    expect(page.formError()).toContain('peso');
+    expect(page.modalOpen()).toBe(true);
+  });
+});

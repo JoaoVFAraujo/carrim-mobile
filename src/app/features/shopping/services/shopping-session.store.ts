@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { DatabaseService } from '../../../core/database/database.service';
 import { ActiveShoppingSession, Supermarket } from '../models/shopping-session';
-import { ShoppingItem } from '../models/shopping-item';
+import { ShoppingItem, itemSubtotalCents } from '../models/shopping-item';
 import { CompletedShopping } from '../models/completed-shopping';
 import { CatalogProduct, parseBarcode } from '../../scanner/models/catalog-product';
 
@@ -40,8 +40,8 @@ export class ShoppingSessionStore {
     );
     await this.database.transaction([
       {
-        statement: `INSERT INTO price_history(id, session_id, item_id, supermarket_id, product_name, unit_price_cents, quantity, recorded_at_ms, barcode)
-          SELECT i.id, i.session_id, i.id, s.supermarket_id, i.name, i.unit_price_cents, i.quantity, ?, i.barcode
+        statement: `INSERT INTO price_history(id, session_id, item_id, supermarket_id, product_name, unit_price_cents, quantity, recorded_at_ms, barcode, measurement_type, weight_grams)
+          SELECT i.id, i.session_id, i.id, s.supermarket_id, i.name, i.unit_price_cents, i.quantity, ?, i.barcode, i.measurement_type, i.weight_grams
           FROM shopping_items i JOIN shopping_sessions s ON s.id = i.session_id
           WHERE s.id = ? AND s.status = 'ACTIVE'`,
         values: [now, session.id],
@@ -69,14 +69,15 @@ export class ShoppingSessionStore {
 
   async completedItems(sessionId: string): Promise<ShoppingItem[]> {
     return this.database.query<ShoppingItem>(
-      `SELECT i.id, i.session_id AS sessionId, i.name, i.unit_price_cents AS unitPriceCents, i.quantity, i.barcode
+      `SELECT i.id, i.session_id AS sessionId, i.name, i.unit_price_cents AS unitPriceCents, i.quantity, i.barcode,
+        i.measurement_type AS measurementType, i.weight_grams AS weightGrams
         FROM shopping_items i JOIN shopping_sessions s ON s.id = i.session_id
         WHERE s.id = ? AND s.status = 'COMPLETED' ORDER BY i.created_at_ms, i.id`,
       [sessionId],
     );
   }
   readonly totalCents = computed(() =>
-    this.items().reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0),
+    this.items().reduce((sum, item) => sum + itemSubtotalCents(item), 0),
   );
   readonly remainingCents = computed(() => {
     const budget = this.active()?.budgetCents;
@@ -98,11 +99,31 @@ export class ShoppingSessionStore {
     itemId?: string,
     barcode?: string,
   ): Promise<void> {
+    return this.enqueueItem(name, unitPriceCents, quantity, itemId, barcode);
+  }
+
+  saveWeightItem(
+    name: string,
+    pricePerKgCents: number,
+    weightGrams: number,
+    itemId?: string,
+  ): Promise<void> {
+    return this.enqueueItem(name, pricePerKgCents, 1, itemId, undefined, weightGrams);
+  }
+
+  private enqueueItem(
+    name: string,
+    unitPriceCents: number,
+    quantity: number,
+    itemId?: string,
+    barcode?: string,
+    weightGrams?: number,
+  ): Promise<void> {
     const sessionId = this.active()?.id;
     const operation = this.itemWrites.then(() => {
       if (this.active()?.id !== sessionId)
         throw new Error('Comece uma compra antes de adicionar produtos.');
-      return this.persistItem(name, unitPriceCents, quantity, itemId, barcode);
+      return this.persistItem(name, unitPriceCents, quantity, itemId, barcode, weightGrams);
     });
     // Serialize additions so two confirmations see the quantity saved by the previous one.
     this.itemWrites = operation.catch(() => undefined);
@@ -115,6 +136,7 @@ export class ShoppingSessionStore {
     quantity: number,
     itemId?: string,
     barcode?: string,
+    weightGrams?: number,
   ): Promise<void> {
     const session = this.active();
     if (!session) throw new Error('Comece uma compra antes de adicionar produtos.');
@@ -124,6 +146,12 @@ export class ShoppingSessionStore {
       throw new Error('Informe um preço válido.');
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 9999)
       throw new Error('Informe uma quantidade entre 1 e 9999.');
+    if (
+      weightGrams !== undefined &&
+      (!Number.isInteger(weightGrams) || weightGrams < 1 || weightGrams > 9999999)
+    )
+      throw new Error('Informe um peso entre 0,001 e 9999,999 kg.');
+    const measurementType = weightGrams === undefined ? 'UNIT' : 'WEIGHT';
     if (itemId && !this.items().some((item) => item.id === itemId))
       throw new Error('Produto não encontrado.');
     const now = Date.now();
@@ -156,25 +184,51 @@ export class ShoppingSessionStore {
     const matching = itemId
       ? []
       : await this.database.query<ShoppingItem>(
-          `SELECT id, quantity FROM shopping_items
+          `SELECT id, quantity, weight_grams AS weightGrams FROM shopping_items
             WHERE session_id = ? AND name = ? AND unit_price_cents = ? AND barcode IS ?
+            AND measurement_type = ?
             ORDER BY created_at_ms, id LIMIT 1`,
-          [session.id, trimmed, unitPriceCents, code],
+          [session.id, trimmed, unitPriceCents, code, measurementType],
         );
     const existingId = itemId ?? matching[0]?.id;
-    const savedQuantity = quantity + (matching[0]?.quantity ?? 0);
+    const savedQuantity =
+      measurementType === 'WEIGHT' ? 1 : quantity + (matching[0]?.quantity ?? 0);
+    const savedWeight =
+      weightGrams === undefined ? null : weightGrams + (matching[0]?.weightGrams ?? 0);
     if (savedQuantity > 9999) throw new Error('Informe uma quantidade total de até 9999.');
+    if (savedWeight !== null && savedWeight > 9999999)
+      throw new Error('Informe um peso total de até 9999,999 kg.');
     const id = existingId ?? crypto.randomUUID();
     const statement = existingId
       ? {
           statement:
-            'UPDATE shopping_items SET name = ?, unit_price_cents = ?, quantity = ?, updated_at_ms = ? WHERE id = ? AND session_id = ?',
-          values: [trimmed, unitPriceCents, savedQuantity, now, id, session.id],
+            'UPDATE shopping_items SET name = ?, unit_price_cents = ?, quantity = ?, updated_at_ms = ?, measurement_type = ?, weight_grams = ? WHERE id = ? AND session_id = ?',
+          values: [
+            trimmed,
+            unitPriceCents,
+            savedQuantity,
+            now,
+            measurementType,
+            savedWeight,
+            id,
+            session.id,
+          ],
         }
       : {
           statement:
-            'INSERT INTO shopping_items(id, session_id, name, unit_price_cents, quantity, created_at_ms, updated_at_ms, barcode) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          values: [id, session.id, trimmed, unitPriceCents, quantity, now, now, code],
+            'INSERT INTO shopping_items(id, session_id, name, unit_price_cents, quantity, created_at_ms, updated_at_ms, barcode, measurement_type, weight_grams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          values: [
+            id,
+            session.id,
+            trimmed,
+            unitPriceCents,
+            quantity,
+            now,
+            now,
+            code,
+            measurementType,
+            savedWeight,
+          ],
         };
     await this.database.transaction([
       ...statements,
@@ -185,8 +239,10 @@ export class ShoppingSessionStore {
         {
           sessionId: session.id,
           name: trimmed,
-          unitPriceCents,
-          quantity: savedQuantity,
+          measurementType,
+          ...(measurementType === 'WEIGHT'
+            ? { pricePerKgCents: unitPriceCents, weightGrams: savedWeight }
+            : { unitPriceCents, quantity: savedQuantity }),
           ...(code !== null ? { barcode: code } : {}),
         },
         now,
@@ -294,13 +350,15 @@ export class ShoppingSessionStore {
     );
     const items = active[0]
       ? await this.database.query<ShoppingItem>(
-          'SELECT id, session_id AS sessionId, name, unit_price_cents AS unitPriceCents, quantity, barcode FROM shopping_items WHERE session_id = ? ORDER BY created_at_ms, id',
+          'SELECT id, session_id AS sessionId, name, unit_price_cents AS unitPriceCents, quantity, barcode, measurement_type AS measurementType, weight_grams AS weightGrams FROM shopping_items WHERE session_id = ? ORDER BY created_at_ms, id',
           [active[0].id],
         )
       : [];
     const history = await this.database.query<CompletedShopping>(
       `SELECT s.id, m.name AS supermarketName, s.budget_cents AS budgetCents,
-        s.finished_at_ms AS finishedAt, COALESCE(SUM(i.unit_price_cents * i.quantity), 0) AS totalCents,
+        s.finished_at_ms AS finishedAt, COALESCE(SUM(CASE WHEN i.measurement_type = 'WEIGHT'
+          THEN (i.unit_price_cents * i.weight_grams + 500) / 1000
+          ELSE i.unit_price_cents * i.quantity END), 0) AS totalCents,
         COUNT(i.id) AS itemCount FROM shopping_sessions s JOIN supermarkets m ON m.id = s.supermarket_id
         LEFT JOIN shopping_items i ON i.session_id = s.id WHERE s.status = 'COMPLETED'
         GROUP BY s.id ORDER BY s.finished_at_ms DESC, s.id`,
