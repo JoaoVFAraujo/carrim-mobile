@@ -6,6 +6,7 @@ import type {
   capSQLiteSet,
 } from '@capacitor-community/sqlite';
 import { initialSchema } from './migrations/001-initial-schema';
+import { shoppingItemsSchema } from './migrations/002-shopping-items';
 
 @Injectable({ providedIn: 'root' })
 export class DatabaseService {
@@ -83,7 +84,15 @@ export class DatabaseService {
     const versions = await this.database.query(
       'SELECT MAX(version) AS version FROM schema_migrations',
     );
-    if (versions.values?.[0]?.version !== 1) throw new Error('Versão do banco não suportada.');
+    const version = versions.values?.[0]?.version;
+    if (version === 1) {
+      await this.database.executeSet(
+        shoppingItemsSchema.map((statement) => ({ statement, values: [] })),
+        true,
+      );
+    } else if (version !== 2) {
+      throw new Error('Versão do banco não suportada.');
+    }
     await this.database.run('INSERT OR IGNORE INTO app_metadata(key, value) VALUES (?, ?)', [
       'installation_id',
       crypto.randomUUID(),

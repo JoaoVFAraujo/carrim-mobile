@@ -110,3 +110,11 @@ O tema claro tem cabeçalhos integrados ao fundo. As camadas CSS mantêm Ionic c
 Validações desta entrega: sete testes unitários, lint, formatação e build; criação com limite de R$ 200,09 e recuperação após recarregar no navegador; verificação com SQLite real de schema, restrição de compra ativa, rollback e exportação/reabertura. A validação em aparelho Android continua necessária.
 
 Servidor de revisão nesta sessão: http://localhost:4300 (4200 estava ocupado por outro projeto).
+
+## Produtos manuais e orçamento — 03/10/2026
+
+Carrinho permite adicionar, editar e remover produtos com nome, preço por unidade e quantidade inteira (1–9999). A remoção exige confirmação. Valores são calculados em centavos; Início e Carrinho exibem total, saldo e limite ultrapassado.
+
+A migration 2 adiciona shopping_items sem apagar as sessões existentes. Alterações de itens e operações locais da fila são gravadas na mesma transação. A sincronização remota continua desativada. Produtos vendidos por peso e quantidades fracionadas ainda não são suportados.
+
+Validação: testes de preços, quantidades, totais, orçamento e falha de persistência; lint e build. SQLite real verificou migração de v1 para v2, preservação da sessão, exportação/reabertura e constraints. Revisão visual interativa e execução em aparelho Android continuam pendentes. Próxima entrega: finalizar compra e consultar o histórico.

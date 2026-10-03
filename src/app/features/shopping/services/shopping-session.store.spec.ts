@@ -43,3 +43,46 @@ describe('ShoppingSessionStore', () => {
     expect(store.active()).toBeNull();
   });
 });
+
+describe('shopping totals and item persistence', () => {
+  it('calculates exact totals and reports an exceeded budget', () => {
+    TestBed.configureTestingModule({ providers: [{ provide: DatabaseService, useValue: {} }] });
+    const store = TestBed.inject(ShoppingSessionStore);
+    store.active.set({
+      id: 's',
+      supermarketId: 'm',
+      supermarketName: 'Market',
+      budgetCents: 1000,
+      startedAt: 0,
+    });
+    store.items.set([
+      { id: 'a', sessionId: 's', name: 'A', unitPriceCents: 199, quantity: 3 },
+      { id: 'b', sessionId: 's', name: 'B', unitPriceCents: 450, quantity: 1 },
+    ]);
+    expect(store.totalCents()).toBe(1047);
+    expect(store.remainingCents()).toBe(-47);
+    store.active.set({ ...store.active()!, budgetCents: null });
+    expect(store.remainingCents()).toBeNull();
+  });
+
+  it('keeps items unchanged if their database write fails', async () => {
+    const transaction = vi.fn().mockRejectedValue(new Error('disk full'));
+    TestBed.configureTestingModule({
+      providers: [{ provide: DatabaseService, useValue: { transaction } }],
+    });
+    const store = TestBed.inject(ShoppingSessionStore);
+    store.active.set({
+      id: 's',
+      supermarketId: 'm',
+      supermarketName: 'Market',
+      budgetCents: null,
+      startedAt: 0,
+    });
+    await expect(store.saveItem('Rice', 1999, 2)).rejects.toThrow('disk full');
+    expect(store.items()).toEqual([]);
+    const statements = transaction.mock.calls[0][0];
+    expect(statements).toHaveLength(2);
+    expect(statements[1].values[3]).toBe('CREATE');
+    expect(statements[0].values.slice(1, 5)).toEqual(['s', 'Rice', 1999, 2]);
+  });
+});

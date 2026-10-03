@@ -22,9 +22,9 @@
           </div>
           <p class="tw:mt-6">Total da compra</p>
           <div class="tw:mt-1 tw:text-4xl tw:font-semibold">
-            {{ 0 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+            {{ store.totalCents() / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
           </div>
-          <p class="tw:mt-2">Nenhum produto adicionado ainda.</p>
+          <p class="tw:mt-2">{{ store.items().length }} produtos no carrinho.</p>
           @if (shopping.budgetCents !== null) {
             <div class="tw:mt-6 tw:grid tw:grid-cols-2 tw:gap-4">
               <div>
@@ -34,9 +34,12 @@
                 }}</strong>
               </div>
               <div>
-                <p>Restante</p>
+                <p>{{ store.remainingCents()! < 0 ? 'Limite ultrapassado' : 'Restante' }}</p>
                 <strong>{{
-                  shopping.budgetCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  (store.remainingCents()! < 0
+                    ? -store.remainingCents()!
+                    : store.remainingCents()!) / 100
+                    | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
                 }}</strong>
               </div>
             </div>

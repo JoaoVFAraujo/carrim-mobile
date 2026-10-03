@@ -3,31 +3,78 @@
 </ion-header>
 <ion-content class="ion-padding">
   <main class="tw:mx-auto tw:max-w-lg tw:pt-2 tw:pb-6">
-    <h1 class="tw:mt-0 tw:text-3xl tw:font-semibold">Carrinho</h1>
     @if (store.loading()) {
       <p role="status">Abrindo sua compra…</p>
     } @else if (store.error()) {
       <p role="alert">{{ store.error() }}</p>
       <ion-button (click)="store.load()">Tentar novamente</ion-button>
     } @else if (store.active(); as shopping) {
-      <p class="tw:mt-2">{{ shopping.supermarketName }}</p>
-      <section class="tw:mt-6 tw:rounded-3xl tw:bg-green-100 tw:p-6">
+      <h1 class="tw:mt-0 tw:text-3xl tw:font-semibold">{{ shopping.supermarketName }}</h1>
+      <section class="tw:mt-6 tw:rounded-3xl tw:bg-green-100 tw:p-6" aria-label="Resumo da compra">
         <p class="tw:mt-0">Total da compra</p>
         <strong class="tw:text-4xl">{{
-          0 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+          store.totalCents() / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
         }}</strong>
         @if (shopping.budgetCents !== null) {
           <p>
             Limite:
             {{ shopping.budgetCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
           </p>
+          @if (store.remainingCents()! < 0) {
+            <p role="status" class="tw:font-semibold tw:text-red-800">
+              Limite ultrapassado em
+              {{ -store.remainingCents()! / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+            </p>
+          } @else {
+            <p>
+              Restante:
+              {{ store.remainingCents()! / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+            </p>
+          }
         }
       </section>
-      <app-empty-state
-        [icon]="emptyIcon"
-        title="Seu carrinho está vazio"
-        description="Sua compra está salva. Adicionar produtos será o próximo passo desta versão."
-      />
+      <ion-button expand="block" class="tw:mt-6" [disabled]="saving()" (click)="openItem()"
+        >Adicionar produto</ion-button
+      >
+      @if (actionError()) {
+        <p role="alert">{{ actionError() }}</p>
+      }
+      @for (item of store.items(); track item.id) {
+        <article class="tw:mt-4 tw:rounded-2xl tw:bg-white tw:p-4">
+          <h2 class="tw:mt-0 tw:text-lg tw:font-semibold">{{ item.name }}</h2>
+          <p>
+            {{ item.quantity }} ×
+            {{ item.unitPriceCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+          </p>
+          <strong>{{
+            (item.unitPriceCents * item.quantity) / 100
+              | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+          }}</strong>
+          <div>
+            <ion-button
+              fill="clear"
+              [disabled]="saving()"
+              (click)="openItem(item)"
+              [attr.aria-label]="'Editar ' + item.name"
+              >Editar</ion-button
+            >
+            <ion-button
+              fill="clear"
+              color="danger"
+              [disabled]="saving()"
+              (click)="confirmRemove(item)"
+              [attr.aria-label]="'Remover ' + item.name"
+              >Remover</ion-button
+            >
+          </div>
+        </article>
+      } @empty {
+        <app-empty-state
+          [icon]="emptyIcon"
+          title="Seu carrinho está vazio"
+          description="Adicione o primeiro produto para acompanhar o total."
+        />
+      }
     } @else {
       <app-empty-state
         [icon]="emptyIcon"
@@ -39,3 +86,62 @@
     }
   </main>
 </ion-content>
+<ion-modal [isOpen]="modalOpen()" [canDismiss]="!saving()" (didDismiss)="modalOpen.set(false)">
+  <ng-template>
+    <ion-header class="ion-no-border"
+      ><ion-toolbar
+        ><ion-title>{{
+          editingId ? 'Editar produto' : 'Adicionar produto'
+        }}</ion-title></ion-toolbar
+      ></ion-header
+    >
+    <ion-content class="ion-padding">
+      <form class="tw:mx-auto tw:max-w-lg tw:space-y-6" (ngSubmit)="save()">
+        <ion-input
+          label="Nome do produto"
+          labelPlacement="stacked"
+          fill="outline"
+          name="name"
+          [(ngModel)]="name"
+          [maxlength]="120"
+          [disabled]="saving()"
+        />
+        <ion-input
+          label="Preço por unidade"
+          labelPlacement="stacked"
+          fill="outline"
+          placeholder="Ex.: 12,99"
+          inputmode="decimal"
+          name="price"
+          [(ngModel)]="price"
+          [maxlength]="12"
+          [disabled]="saving()"
+        />
+        <ion-input
+          label="Quantidade"
+          labelPlacement="stacked"
+          fill="outline"
+          inputmode="numeric"
+          name="quantity"
+          [(ngModel)]="quantity"
+          [maxlength]="4"
+          [disabled]="saving()"
+        />
+        @if (formError()) {
+          <p role="alert" class="tw:text-red-800">{{ formError() }}</p>
+        }
+        <ion-button type="submit" expand="block" [disabled]="saving()">{{
+          saving() ? 'Salvando…' : 'Salvar produto'
+        }}</ion-button>
+        <ion-button
+          type="button"
+          expand="block"
+          fill="clear"
+          [disabled]="saving()"
+          (click)="modalOpen.set(false)"
+          >Cancelar</ion-button
+        >
+      </form>
+    </ion-content>
+  </ng-template>
+</ion-modal>
