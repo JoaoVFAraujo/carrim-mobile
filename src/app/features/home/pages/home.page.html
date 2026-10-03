@@ -1,24 +1,142 @@
-<ion-header>
+<ion-header class="ion-no-border">
   <ion-toolbar><ion-title>Carrim</ion-title></ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
-  <main class="tw:mx-auto tw:max-w-lg tw:py-6">
-    <p class="tw:text-sm tw:font-medium tw:text-green-800">COMPRAS COM MAIS CLAREZA</p>
-    <h1 class="tw:mt-3 tw:text-3xl tw:font-semibold">Suas compras, com mais clareza.</h1>
-    <p class="tw:mt-4 tw:text-lg tw:leading-relaxed">
-      Acompanhe o que vai para o carrinho e saiba quanto está gastando.
-    </p>
-    <app-empty-state
-      [icon]="basketIcon"
-      title="Pronto para fazer suas compras?"
-      description="Você ainda não tem uma compra em andamento. Seu próximo carrinho começa aqui."
+  <main class="tw:mx-auto tw:max-w-lg tw:pt-2 tw:pb-6">
+    <p class="tw:mt-0 tw:text-sm tw:font-medium tw:text-green-800">COMPRE COM TRANQUILIDADE</p>
+    <h1 class="tw:mt-2 tw:text-3xl tw:font-semibold">Suas compras, sob controle.</h1>
+    <p class="tw:mt-3 tw:leading-relaxed">Saiba quanto está gastando antes de chegar ao caixa.</p>
+    @if (store.loading()) {
+      <ion-skeleton-text [animated]="true" class="tw:h-48 tw:rounded-3xl" />
+    } @else if (store.error()) {
+      <section role="alert" class="tw:py-8">
+        <p>{{ store.error() }}</p>
+        <ion-button (click)="store.load()">Tentar novamente</ion-button>
+      </section>
+    } @else if (store.active(); as shopping) {
+      <ion-card class="tw:mx-0 tw:mt-6 tw:rounded-3xl" color="primary">
+        <ion-card-content>
+          <p>Compra em andamento</p>
+          <div role="heading" aria-level="2" class="tw:mt-2 tw:text-2xl tw:font-semibold">
+            {{ shopping.supermarketName }}
+          </div>
+          <p class="tw:mt-6">Total da compra</p>
+          <div class="tw:mt-1 tw:text-4xl tw:font-semibold">
+            {{ 0 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+          </div>
+          <p class="tw:mt-2">Nenhum produto adicionado ainda.</p>
+          @if (shopping.budgetCents !== null) {
+            <div class="tw:mt-6 tw:grid tw:grid-cols-2 tw:gap-4">
+              <div>
+                <p>Limite</p>
+                <strong>{{
+                  shopping.budgetCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                }}</strong>
+              </div>
+              <div>
+                <p>Restante</p>
+                <strong>{{
+                  shopping.budgetCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                }}</strong>
+              </div>
+            </div>
+          } @else {
+            <p class="tw:mt-4">Sem limite de gastos definido.</p>
+          }
+          <ion-button class="tw:mt-6" expand="block" color="light" routerLink="/tabs/cart"
+            >Continuar compra</ion-button
+          >
+        </ion-card-content>
+      </ion-card>
+    } @else {
+      <app-empty-state
+        [icon]="basketIcon"
+        title="Pronto para fazer suas compras?"
+        description="Escolha o supermercado, defina um limite se quiser e comece com tranquilidade."
+      >
+        <ion-button (click)="openNewShopping()">Nova compra</ion-button>
+      </app-empty-state>
+    }
+    <section
+      class="tw:mt-6 tw:border-t tw:border-gray-200 tw:pt-6"
+      aria-labelledby="recent-shopping-title"
     >
-      <ion-button routerLink="/tabs/cart">Ver carrinho</ion-button>
-    </app-empty-state>
-    <section class="tw:border-t tw:border-gray-200 tw:pt-6" aria-labelledby="recent-shopping-title">
-      <h2 id="recent-shopping-title" class="tw:text-lg tw:font-semibold">Últimas compras</h2>
+      <h2 id="recent-shopping-title" class="tw:mt-0 tw:text-lg tw:font-semibold">
+        Últimas compras
+      </h2>
       <p class="tw:mt-2">Suas compras finalizadas aparecerão aqui.</p>
       <ion-button fill="clear" routerLink="/tabs/history">Ver histórico</ion-button>
     </section>
   </main>
 </ion-content>
+<ion-modal
+  [isOpen]="modalOpen()"
+  [canDismiss]="!saving()"
+  [initialBreakpoint]="1"
+  [breakpoints]="[0, 1]"
+  (didDismiss)="modalOpen.set(false)"
+>
+  <ng-template>
+    <ion-header class="ion-no-border">
+      <ion-toolbar><ion-title>Nova compra</ion-title></ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      <form class="tw:mx-auto tw:max-w-lg tw:space-y-6" (ngSubmit)="startShopping()">
+        <p class="tw:mt-0">Onde você vai comprar hoje?</p>
+        @if (store.supermarkets().length) {
+          <ion-select
+            label="Supermercado"
+            labelPlacement="stacked"
+            interface="action-sheet"
+            [(ngModel)]="supermarketId"
+            name="supermarket"
+            [disabled]="saving()"
+          >
+            @for (market of store.supermarkets(); track market.id) {
+              <ion-select-option [value]="market.id">{{ market.name }}</ion-select-option>
+            }
+            <ion-select-option value="">Cadastrar outro supermercado</ion-select-option>
+          </ion-select>
+        }
+        @if (!supermarketId) {
+          <ion-input
+            label="Nome do supermercado"
+            labelPlacement="stacked"
+            fill="outline"
+            placeholder="Ex.: São Luiz"
+            [(ngModel)]="supermarketName"
+            name="marketName"
+            [maxlength]="120"
+            [disabled]="saving()"
+          />
+        }
+        <ion-input
+          label="Limite de gastos (opcional)"
+          labelPlacement="stacked"
+          fill="outline"
+          placeholder="Ex.: 200,00"
+          inputmode="decimal"
+          [(ngModel)]="budget"
+          name="budget"
+          [maxlength]="12"
+          [disabled]="saving()"
+          helperText="Você pode começar sem definir um limite."
+        />
+        @if (formError()) {
+          <p role="alert" class="tw:text-red-800">{{ formError() }}</p>
+        }
+        <ion-button type="submit" expand="block" [disabled]="saving()">
+          {{ saving() ? 'Salvando…' : 'Começar compra' }}
+        </ion-button>
+        <ion-button
+          type="button"
+          fill="clear"
+          expand="block"
+          [disabled]="saving()"
+          (click)="modalOpen.set(false)"
+          >Agora não</ion-button
+        >
+      </form>
+    </ion-content>
+  </ng-template>
+</ion-modal>

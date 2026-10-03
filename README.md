@@ -4,7 +4,7 @@ Aplicativo do Carrim para acompanhar compras de supermercado. Este repositório 
 
 ## Estado: 0.0.1 — Foundation
 
-Base Angular/Ionic standalone, página inicial, navegação com carregamento sob demanda, Tailwind, lint, formatação, testes e configuração Capacitor Android. O fluxo de compra, SQLite, scanner, autenticação e sincronização ainda não estão implementados.
+Base Angular/Ionic standalone, página inicial, navegação com carregamento sob demanda, Tailwind, lint, formatação, testes e configuração Capacitor Android. SQLite e criação/recuperação da compra ativa estão implementados. Adição de produtos, scanner, finalização, autenticação e sincronização remota ficam para as próximas entregas.
 
 ## Stack e pré-requisitos
 
@@ -54,21 +54,23 @@ O bundle identifier iOS também será `br.com.carrim`. A plataforma iOS ainda n�
 - `src/app/features/home/pages`: primeira página, com HTML separado.
 - `src/app/theme`: variáveis de tema Ionic.
 - `src/styles.css`: CSS Ionic e Tailwind.
-- `core` e `shared` serão criados quando houver código que justifique seu uso.
+- `src/app/core/database`: conexão SQLite e migrations.
+- `src/app/features/shopping`: modelos e estado da compra ativa.
+- `src/app/shared/components`: estados vazios reutilizáveis.
 
 Prioridade: Ionic/Angular → Tailwind → CSS manual. As classes Tailwind usam prefixo `tw:`. O Preflight do Tailwind não é importado, preservando os resets do Ionic. Não recriar componentes Ionic com CSS quando existir uma API nativa adequada.
 
-Signals serão a primeira opção para estado; nesta base ainda não existe estado de negócio. Os imports standalone do Ionic 9 vêm de `@ionic/angular`.
+Signals controlam o estado da compra ativa, supermercados, carregamento e erros. Os imports standalone do Ionic 9 vêm de `@ionic/angular`.
 
 ## Segurança
 
-Nenhum segredo ou token deve entrar no bundle. Tokens não serão armazenados em localStorage. Arquivos `.env` reais são ignorados. A fundação não faz chamadas à API nem usa banco, plugins de câmera ou armazenamento.
+Nenhum segredo ou token deve entrar no bundle. Tokens não serão armazenados em localStorage. Arquivos `.env` reais são ignorados. O app usa SQLite local para supermercados e compra ativa. Não faz chamadas à API nem solicita câmera; a fila local ainda não envia operações ao servidor.
 
 ## Referência e evolução
 
 O documento mestre está em [carrim-api/docs/carrim-documento-base-v12.md](https://github.com/JoaoVFAraujo/carrim-api/blob/main/docs/carrim-documento-base-v12.md). Neste Windows, consulte `C:\workspace\backend\mercado\docs\carrim-documento-base-v12.md`. O link remoto estará disponível após a publicação autorizada dos arquivos.
 
-As decisões são revisáveis. A navegação com quatro abas e estados vazios está implementada; a próxima entrega prevista é a infraestrutura SQLite. CI, commit, push, PR e deploy exigem autorização própria.
+As decisões são revisáveis. A navegação com quatro abas e estados vazios está implementada; a infraestrutura SQLite e a primeira compra local estão disponíveis; a próxima entrega é adicionar produtos manualmente. CI, commit, push, PR e deploy exigem autorização própria.
 
 ## Validação local — 30/09/2026
 
@@ -87,8 +89,24 @@ Rotas para teste no navegador:
 - `/tabs/cart`: carrinho vazio.
 - `/tabs/history`: nenhuma compra finalizada.
 
-A raiz e rotas desconhecidas redirecionam para `/tabs/home`. Os botões disponíveis apenas navegam entre páginas; criação de compra, SQLite, scanner, autenticação e sincronização ficam para as próximas etapas. O Ionic controla safe areas e comportamento por plataforma; a validação em dispositivo real permanece pendente.
+A raiz e rotas desconhecidas redirecionam para `/tabs/home`. Além da navegação, Nova compra permite cadastrar ou selecionar supermercado e persistir a sessão no SQLite. Scanner, autenticação e sincronização remota ficam para as próximas etapas. O Ionic controla safe areas e comportamento por plataforma; a validação em dispositivo real permanece pendente.
 
 Validação desta entrega no Windows: lint, Prettier, build e três testes passaram, incluindo navegação pelas quatro páginas e redirecionamentos. A inspeção visual em navegador não foi executada pelo assistente, pois a ferramenta de controle de navegador não está disponível nesta sessão.
 
 A sincronização Android desta entrega foi tentada, mas o CLI falhou antes de sincronizar com ERR_SYSTEM_ERROR em uv_os_get_passwd (ENOMEM). Os assets nativos ainda precisam ser atualizados executando npx cap sync android no terminal do usuário.
+
+## Primeira compra local — 30/09/2026
+
+O Início agora permite abrir Nova compra, selecionar um mercado existente ou cadastrar outro e informar limite opcional. A compra ativa e seu supermercado persistem no SQLite; criação e operações da futura sincronização são gravadas juntas. O banco impede duas compras ativas.
+
+O resumo e o Carrinho ainda têm total zero porque produtos não foram implementados. Scanner, finalização, cancelamento e histórico preenchido ficam para as próximas entregas. Não há comunicação com o backend nem sincronização remota.
+
+A migration 1 cria somente supermercados, sessões, fila e metadados já utilizados. Catálogo e histórico serão adicionados com migrations futuras. Essa divisão adapta o documento mestre ao desenvolvimento incremental.
+
+Android usa SQLite nativo via @capacitor-community/sqlite 8.1.1. O navegador de desenvolvimento usa jeep-sqlite 2.8.0 e IndexedDB; sql.js está fixado em 1.11.0 para compatibilidade com o WebAssembly embutido no jeep-sqlite. O Angular copia o WASM para assets no build. Os dados do navegador pertencem à origem (host e porta); usar outra porta cria outro conjunto local.
+
+O tema claro tem cabeçalhos integrados ao fundo. As camadas CSS mantêm Ionic como base e Tailwind como utilities. Não há fotos/logos fictícios nem login obrigatório.
+
+Validações desta entrega: sete testes unitários, lint, formatação e build; criação com limite de R$ 200,09 e recuperação após recarregar no navegador; verificação com SQLite real de schema, restrição de compra ativa, rollback e exportação/reabertura. A validação em aparelho Android continua necessária.
+
+Servidor de revisão nesta sessão: http://localhost:4300 (4200 estava ocupado por outro projeto).

@@ -56,3 +56,6 @@ Thumbs.db
 *.keystore
 google-services.json
 GoogleService-Info.plist
+
+# Angular cache and local verification artifacts
+.angular/

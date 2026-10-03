@@ -1,13 +1,17 @@
-<ion-header>
+<ion-header class="ion-no-border">
   <ion-toolbar><ion-title>Escanear</ion-title></ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
-  <main class="tw:mx-auto tw:max-w-lg tw:py-6">
-    <h1 class="tw:text-2xl tw:font-semibold">Escanear</h1>
+  <main class="tw:mx-auto tw:max-w-lg tw:pt-2 tw:pb-6">
+    <h1 class="tw:mt-0 tw:text-3xl tw:font-semibold">Escanear</h1>
     <app-empty-state
       [icon]="emptyIcon"
-      title="Nenhuma compra em andamento"
-      description="Comece uma compra para escanear produtos e acompanhar os preços no carrinho."
+      [title]="store.active() ? 'Scanner em preparação' : 'Nenhuma compra em andamento'"
+      [description]="
+        store.active()
+          ? 'Sua compra está salva. A leitura de códigos de barras entra em uma próxima entrega.'
+          : 'Comece uma compra para escanear produtos e acompanhar os preços no carrinho.'
+      "
     >
       <ion-button routerLink="/tabs/home" fill="outline">Ir para o início</ion-button>
     </app-empty-state>

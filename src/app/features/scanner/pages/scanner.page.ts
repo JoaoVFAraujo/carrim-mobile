@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ShoppingSessionStore } from '../../shopping/services/shopping-session.store';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IonButton, IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
 import { barcodeOutline } from 'ionicons/icons';
@@ -20,4 +21,5 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 })
 export class ScannerPage {
   readonly emptyIcon = barcodeOutline;
+  readonly store = inject(ShoppingSessionStore);
 }

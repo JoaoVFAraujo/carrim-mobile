@@ -1,3 +1,5 @@
+import { signal } from '@angular/core';
+import { ShoppingSessionStore } from './features/shopping/services/shopping-session.store';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { App } from './app';
@@ -7,7 +9,19 @@ describe('Tab navigation', () => {
   it('keeps all four tabs available through empty pages and direct URLs', async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: appConfig.providers,
+      providers: [
+        ...appConfig.providers,
+        {
+          provide: ShoppingSessionStore,
+          useValue: {
+            active: signal(null),
+            supermarkets: signal([]),
+            loading: signal(false),
+            error: signal(''),
+            load: async () => undefined,
+          },
+        },
+      ],
     }).compileComponents();
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();

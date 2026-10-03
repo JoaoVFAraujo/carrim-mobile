@@ -1,15 +1,41 @@
-<ion-header>
+<ion-header class="ion-no-border">
   <ion-toolbar><ion-title>Carrinho</ion-title></ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
-  <main class="tw:mx-auto tw:max-w-lg tw:py-6">
-    <h1 class="tw:text-2xl tw:font-semibold">Carrinho</h1>
-    <app-empty-state
-      [icon]="emptyIcon"
-      title="Seu carrinho está vazio"
-      description="Comece uma compra para adicionar produtos e acompanhar o total antes de chegar ao caixa."
-    >
-      <ion-button routerLink="/tabs/home" fill="outline">Ir para o início</ion-button>
-    </app-empty-state>
+  <main class="tw:mx-auto tw:max-w-lg tw:pt-2 tw:pb-6">
+    <h1 class="tw:mt-0 tw:text-3xl tw:font-semibold">Carrinho</h1>
+    @if (store.loading()) {
+      <p role="status">Abrindo sua compra…</p>
+    } @else if (store.error()) {
+      <p role="alert">{{ store.error() }}</p>
+      <ion-button (click)="store.load()">Tentar novamente</ion-button>
+    } @else if (store.active(); as shopping) {
+      <p class="tw:mt-2">{{ shopping.supermarketName }}</p>
+      <section class="tw:mt-6 tw:rounded-3xl tw:bg-green-100 tw:p-6">
+        <p class="tw:mt-0">Total da compra</p>
+        <strong class="tw:text-4xl">{{
+          0 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+        }}</strong>
+        @if (shopping.budgetCents !== null) {
+          <p>
+            Limite:
+            {{ shopping.budgetCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+          </p>
+        }
+      </section>
+      <app-empty-state
+        [icon]="emptyIcon"
+        title="Seu carrinho está vazio"
+        description="Sua compra está salva. Adicionar produtos será o próximo passo desta versão."
+      />
+    } @else {
+      <app-empty-state
+        [icon]="emptyIcon"
+        title="Seu carrinho está vazio"
+        description="Comece uma compra para adicionar produtos e acompanhar o total antes de chegar ao caixa."
+      >
+        <ion-button routerLink="/tabs/home" fill="outline">Ir para o início</ion-button>
+      </app-empty-state>
+    }
   </main>
 </ion-content>

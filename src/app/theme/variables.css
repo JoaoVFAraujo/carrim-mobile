@@ -5,4 +5,14 @@
   --ion-color-primary-contrast-rgb: 255, 255, 255;
   --ion-color-primary-shade: #205e46;
   --ion-color-primary-tint: #3a7a62;
+  --ion-background-color: #f7f8f4;
+  --ion-text-color: #17251f;
+  --ion-toolbar-background: var(--ion-background-color);
+  --ion-toolbar-color: var(--ion-text-color);
+  --ion-card-background: #ffffff;
+  --ion-tab-bar-background: #f7f8f4;
+}
+
+ion-modal {
+  --border-radius: 24px 24px 0 0;
 }
