@@ -8,6 +8,7 @@ import { itemSessionGuardSchema } from '../src/app/core/database/migrations/004-
 import { productCatalogSchema } from '../src/app/core/database/migrations/005-product-catalog.ts';
 import { weightItemsSchema } from '../src/app/core/database/migrations/006-weight-items.ts';
 import { bundleItemsSchema } from '../src/app/core/database/migrations/007-bundle-items.ts';
+import { checkoutTotalSchema } from '../src/app/core/database/migrations/008-checkout-total.ts';
 
 // A fresh, in-memory database: this verification never touches the user's app data.
 const SQL = await initSqlJs();
@@ -50,6 +51,14 @@ assert.equal(scalar("SELECT measurement_type FROM shopping_items WHERE id = 'old
 apply(bundleItemsSchema);
 assert.equal(scalar('SELECT MAX(version) FROM schema_migrations'), 7);
 assert.equal(scalar("SELECT pricing_type FROM shopping_items WHERE id = 'old-item'"), 'REGULAR');
+apply(checkoutTotalSchema);
+assert.equal(scalar('SELECT MAX(version) FROM schema_migrations'), 8);
+assert.equal(scalar("SELECT checkout_total_cents FROM shopping_sessions WHERE id = 'old'"), null);
+for (const invalid of [-1, 0.5, 100000001]) {
+  assert.throws(() =>
+    db.run('UPDATE shopping_sessions SET checkout_total_cents = ? WHERE id = ?', [invalid, 'old']),
+  );
+}
 
 // Execute the actual application SQL, so checks cover changes to its persistence statements.
 const store = await readFile(
@@ -185,11 +194,11 @@ const incompatibleOffer = db.prepare(matchingSql, ['s', 'Milk', 1000, code, 'UNI
 assert.equal(incompatibleOffer.step(), false);
 incompatibleOffer.free();
 
-function complete(id, operation, fail = false) {
+function complete(id, operation, fail = false, checkout = null) {
   db.run('BEGIN');
   try {
     db.run(pricesSql, [5, id]);
-    db.run(completeSql, [5, id]);
+    db.run(completeSql, [5, checkout, id]);
     if (fail) db.run('INSERT INTO missing_table VALUES (1)');
     db.run(completeQueueSql, [operation, 'SHOPPING_SESSION', id, 'COMPLETE', '{}', 5, 5]);
     db.run('COMMIT');
@@ -198,11 +207,13 @@ function complete(id, operation, fail = false) {
     throw error;
   }
 }
-assert.throws(() => complete('s', 'failed-completion', true));
+assert.throws(() => complete('s', 'failed-completion', true, 11900));
 assert.equal(scalar("SELECT status FROM shopping_sessions WHERE id = 's'"), 'ACTIVE');
 assert.equal(scalar('SELECT COUNT(*) FROM price_history'), 1);
-complete('s', 'complete');
-complete('s', 'repeat');
+assert.equal(scalar("SELECT checkout_total_cents FROM shopping_sessions WHERE id = 's'"), null);
+complete('s', 'complete', false, 11900);
+complete('s', 'repeat', false, 0);
+assert.equal(scalar("SELECT checkout_total_cents FROM shopping_sessions WHERE id = 's'"), 11900);
 assert.equal(scalar("SELECT COUNT(*) FROM sync_queue WHERE operation = 'COMPLETE'"), 1);
 assert.equal(scalar('SELECT COUNT(*) FROM price_history'), 5);
 assert.equal(scalar("SELECT weight_grams FROM price_history WHERE item_id = 'banana'"), 824);
@@ -215,6 +226,11 @@ const historySql = [...store.matchAll(/`([^`]+)`/g)]
 const shoppingHistory = db.prepare(historySql);
 assert.ok(shoppingHistory.step());
 assert.equal(shoppingHistory.getAsObject().totalCents, 11721);
+assert.equal(shoppingHistory.getAsObject().checkoutTotalCents, 11900);
+assert.equal(
+  shoppingHistory.getAsObject().checkoutTotalCents - shoppingHistory.getAsObject().totalCents,
+  179,
+);
 shoppingHistory.free();
 assert.equal(scalar("SELECT barcode FROM price_history WHERE item_id = 'i'"), code);
 assert.equal(scalar("SELECT product_name FROM price_history WHERE item_id = 'i'"), 'Coffee');
@@ -225,6 +241,7 @@ const bytes = db.export();
 db.close();
 db = new SQL.Database(bytes);
 db.run('PRAGMA foreign_keys = ON');
+assert.equal(scalar("SELECT checkout_total_cents FROM shopping_sessions WHERE id = 's'"), 11900);
 assert.equal(scalar('SELECT COUNT(*) FROM products'), 1);
 assert.equal(scalar('SELECT COUNT(*) FROM price_history'), 5);
 const catalog = await readFile(
@@ -249,7 +266,10 @@ assert.equal(scalar("SELECT status FROM shopping_sessions WHERE id = 'next'"), '
 insertRegularItem(['next-item', 'next', 'Coffee', 1800, 1, 6, 6, code, 'UNIT', null]);
 assert.throws(() => db.run("UPDATE shopping_items SET session_id = 's' WHERE id = 'next-item'"));
 db.run("DELETE FROM shopping_items WHERE id = 'next-item'");
+insertRegularItem(['free', 'next', 'Free item', 1, 1, 6, 6, null, 'UNIT', null]);
+complete('next', 'zero-checkout', false, 0);
+assert.equal(scalar("SELECT checkout_total_cents FROM shopping_sessions WHERE id = 'next'"), 0);
 db.close();
 console.log(
-  'SQLite verified: migrations v1-v7, preservation, atomic catalog/item/outbox, repeated product grouping, weight and bundle constraints, exact mixed history, rollback, completion replay, immutable history, leading zeros, price configuration isolation and reopen.',
+  'SQLite verified: migrations v1-v8, preservation, atomic catalog/item/outbox, repeated product grouping, weight and bundle constraints, exact mixed history, optional checkout including zero, rollback, completion replay, immutable history, leading zeros, price configuration isolation and reopen.',
 );

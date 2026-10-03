@@ -51,6 +51,21 @@ describe('cart completion confirmation', () => {
     expect(page.saving()).toBe(false);
   });
 
+  it('keeps invalid checkout input in the alert and forwards exact cents only after confirmation', async () => {
+    const { page, create, complete, alert } = setup();
+    let dismiss!: (value: { role: string }) => void;
+    alert.onDidDismiss.mockImplementation(() => new Promise((resolve) => (dismiss = resolve)));
+    const pending = page.confirmComplete();
+    await vi.waitFor(() => expect(alert.onDidDismiss).toHaveBeenCalled());
+    const handler = create.mock.calls[0][0].buttons[1].handler;
+    expect(handler({ checkoutTotal: '-1' })).toBe(false);
+    expect(complete).not.toHaveBeenCalled();
+    expect(handler({ checkoutTotal: '24,09' })).toBe(true);
+    dismiss({ role: 'confirm' });
+    await pending;
+    expect(complete).toHaveBeenCalledWith(2409);
+  });
+
   it('reports a saved purchase correctly if navigation fails', async () => {
     const { page, complete, navigateByUrl } = setup();
     navigateByUrl.mockRejectedValue(new Error('navigation failed'));

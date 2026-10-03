@@ -346,9 +346,22 @@ describe('shopping totals and item persistence', () => {
 });
 
 describe('shopping completion', () => {
+  it('rejects invalid checkout cents before writing', async () => {
+    const transaction = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [{ provide: DatabaseService, useValue: { transaction } }],
+    });
+    const store = TestBed.inject(ShoppingSessionStore);
+    for (const cents of [-1, 0.5, NaN, Infinity, 100000001]) {
+      await expect(store.complete(cents)).rejects.toThrow('total do caixa');
+    }
+    expect(transaction).not.toHaveBeenCalled();
+  });
   it('shares concurrent completion attempts instead of writing twice', async () => {
     let finish!: () => void;
-    const transaction = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
+    const transaction = vi
+      .fn()
+      .mockImplementation(() => new Promise<void>((resolve) => (finish = resolve)));
     TestBed.configureTestingModule({
       providers: [
         {
@@ -366,10 +379,12 @@ describe('shopping completion', () => {
       startedAt: 0,
     });
     store.items.set([{ id: 'i', sessionId: 's', name: 'Rice', unitPriceCents: 199, quantity: 2 }]);
-    const first = store.complete();
-    const second = store.complete();
+    const first = store.complete(413);
+    const second = store.complete(999);
     expect(second).toBe(first);
     expect(transaction).toHaveBeenCalledTimes(1);
+    expect(transaction.mock.calls[0][0][1].values[1]).toBe(413);
+    expect(JSON.parse(transaction.mock.calls[0][0][2].values[4]).checkoutTotalCents).toBe(413);
     finish();
     await Promise.all([first, second]);
   });
@@ -433,7 +448,7 @@ describe('shopping completion', () => {
       startedAt: 0,
     });
     store.items.set([{ id: 'i', sessionId: 's', name: 'Rice', unitPriceCents: 199, quantity: 2 }]);
-    await expect(store.complete()).rejects.toThrow('disk full');
+    await expect(store.complete(413)).rejects.toThrow('disk full');
     expect(store.active()?.id).toBe('s');
     expect(store.totalCents()).toBe(398);
     const statements = transaction.mock.calls[0][0];
@@ -450,6 +465,7 @@ describe('shopping completion', () => {
         budgetCents: null,
         finishedAt: 1,
         totalCents: 398,
+        checkoutTotalCents: null,
         itemCount: 1,
       },
     ];

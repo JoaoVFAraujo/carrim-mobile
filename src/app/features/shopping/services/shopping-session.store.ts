@@ -18,15 +18,23 @@ export class ShoppingSessionStore {
   private completing?: Promise<void>;
   private itemWrites: Promise<void> = Promise.resolve();
 
-  complete(): Promise<void> {
+  complete(checkoutTotalCents: number | null = null): Promise<void> {
     if (this.completing) return this.completing;
-    this.completing = this.persistCompletion().finally(() => {
+    this.completing = this.persistCompletion(checkoutTotalCents).finally(() => {
       this.completing = undefined;
     });
     return this.completing;
   }
 
-  private async persistCompletion(): Promise<void> {
+  private async persistCompletion(checkoutTotalCents: number | null): Promise<void> {
+    if (
+      checkoutTotalCents !== null &&
+      (!Number.isSafeInteger(checkoutTotalCents) ||
+        checkoutTotalCents < 0 ||
+        checkoutTotalCents > 100000000)
+    ) {
+      throw new Error('Informe um total do caixa válido.');
+    }
     const session = this.active();
     if (!session || !this.items().length)
       throw new Error('Adicione pelo menos um produto antes de finalizar.');
@@ -34,7 +42,7 @@ export class ShoppingSessionStore {
     const completion = this.outbox(
       'SHOPPING_SESSION',
       session.id,
-      { finishedAt: new Date(now).toISOString() },
+      { finishedAt: new Date(now).toISOString(), checkoutTotalCents },
       now,
       'COMPLETE',
     );
@@ -47,10 +55,10 @@ export class ShoppingSessionStore {
         values: [now, session.id],
       },
       {
-        statement: `UPDATE shopping_sessions SET status = 'COMPLETED', finished_at_ms = ?
+        statement: `UPDATE shopping_sessions SET status = 'COMPLETED', finished_at_ms = ?, checkout_total_cents = ?
            WHERE id = ? AND status = 'ACTIVE'
            AND EXISTS (SELECT 1 FROM shopping_items WHERE session_id = shopping_sessions.id)`,
-        values: [now, session.id],
+        values: [now, checkoutTotalCents, session.id],
       },
       {
         // Only enqueue when the preceding update actually completed this session.
@@ -414,6 +422,7 @@ export class ShoppingSessionStore {
       : [];
     const history = await this.database.query<CompletedShopping>(
       `SELECT s.id, m.name AS supermarketName, s.budget_cents AS budgetCents,
+        s.checkout_total_cents AS checkoutTotalCents,
         s.finished_at_ms AS finishedAt, COALESCE(SUM(CASE WHEN i.pricing_type = 'BUNDLE'
           THEN i.unit_price_cents * (i.quantity / i.bundle_quantity)
           WHEN i.measurement_type = 'WEIGHT'
