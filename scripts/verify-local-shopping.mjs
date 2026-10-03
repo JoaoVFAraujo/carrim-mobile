@@ -6,6 +6,7 @@ import { shoppingItemsSchema } from '../src/app/core/database/migrations/002-sho
 import { completedShoppingSchema } from '../src/app/core/database/migrations/003-completed-shopping.ts';
 import { itemSessionGuardSchema } from '../src/app/core/database/migrations/004-item-session-guard.ts';
 import { productCatalogSchema } from '../src/app/core/database/migrations/005-product-catalog.ts';
+import { weightItemsSchema } from '../src/app/core/database/migrations/006-weight-items.ts';
 
 // A fresh, in-memory database: this verification never touches the user's app data.
 const SQL = await initSqlJs();
@@ -42,6 +43,9 @@ assert.equal(scalar('SELECT MAX(version) FROM schema_migrations'), 5);
 assert.equal(scalar('SELECT COUNT(*) FROM shopping_items'), 1);
 assert.equal(scalar('SELECT COUNT(*) FROM price_history'), 1);
 assert.equal(scalar("SELECT barcode FROM shopping_items WHERE id = 'old-item'"), null);
+apply(weightItemsSchema);
+assert.equal(scalar('SELECT MAX(version) FROM schema_migrations'), 6);
+assert.equal(scalar("SELECT measurement_type FROM shopping_items WHERE id = 'old-item'"), 'UNIT');
 
 // Execute the actual application SQL, so checks cover changes to its persistence statements.
 const store = await readFile(
@@ -69,7 +73,18 @@ function addProduct(itemId, fail = false) {
   try {
     db.run(productSql, ['p', code, 'Coffee', 3, 3]);
     db.run(queueSql, [itemId + '-product-op', 'PRODUCT', 'p', 'CREATE', '{}', 3, 3]);
-    db.run(itemSql, [itemId, fail ? 'missing-session' : 's', 'Coffee', 1749, 2, 3, 3, code]);
+    db.run(itemSql, [
+      itemId,
+      fail ? 'missing-session' : 's',
+      'Coffee',
+      1749,
+      2,
+      3,
+      3,
+      code,
+      'UNIT',
+      null,
+    ]);
     db.run(queueSql, [itemId + '-item-op', 'SHOPPING_ITEM', itemId, 'CREATE', '{}', 3, 3]);
     db.run('COMMIT');
   } catch (error) {
@@ -98,32 +113,40 @@ const matchingSql = [...store.matchAll(/`([^`]+)`/g)]
   .find((sql) => sql.includes('WHERE session_id = ? AND name = ?'));
 const updateItemSql = strings.find((sql) => sql.startsWith('UPDATE shopping_items'));
 assert.ok(matchingSql && updateItemSql);
-const repeated = db.prepare(matchingSql, ['s', 'Coffee', 1749, code]);
+const repeated = db.prepare(matchingSql, ['s', 'Coffee', 1749, code, 'UNIT']);
 assert.ok(repeated.step());
-assert.deepEqual(repeated.getAsObject(), { id: 'i', quantity: 2 });
+assert.deepEqual(repeated.getAsObject(), { id: 'i', quantity: 2, weightGrams: null });
 repeated.free();
 for (const configuration of [
-  ['s', 'Coffee', 1800, code],
-  ['s', 'Coffee', 1749, null],
-  ['s', 'Tea', 1749, code],
-  ['old', 'Coffee', 1749, code],
+  ['s', 'Coffee', 1800, code, 'UNIT'],
+  ['s', 'Coffee', 1749, null, 'UNIT'],
+  ['s', 'Tea', 1749, code, 'UNIT'],
+  ['old', 'Coffee', 1749, code, 'UNIT'],
+  ['s', 'Coffee', 1749, code, 'WEIGHT'],
 ]) {
   const distinct = db.prepare(matchingSql, configuration);
   assert.equal(distinct.step(), false);
   distinct.free();
 }
 db.run('BEGIN');
-db.run(updateItemSql, ['Coffee', 1749, 5, 4, 'i', 's']);
+db.run(updateItemSql, ['Coffee', 1749, 5, 4, 'UNIT', null, 'i', 's']);
 assert.throws(() => db.run(queueSql, ['i-item-op', 'SHOPPING_ITEM', 'i', 'UPDATE', '{}', 4, 4]));
 db.run('ROLLBACK');
 assert.equal(scalar("SELECT quantity FROM shopping_items WHERE id = 'i'"), 2);
 db.run('BEGIN');
-db.run(updateItemSql, ['Coffee', 1749, 5, 4, 'i', 's']);
+db.run(updateItemSql, ['Coffee', 1749, 5, 4, 'UNIT', null, 'i', 's']);
 db.run(queueSql, ['repeat-item-op', 'SHOPPING_ITEM', 'i', 'UPDATE', '{"quantity":5}', 4, 4]);
 db.run('COMMIT');
 assert.equal(scalar("SELECT COUNT(*) FROM shopping_items WHERE session_id = 's'"), 1);
 assert.equal(scalar("SELECT quantity * unit_price_cents FROM shopping_items WHERE id = 'i'"), 8745);
-assert.throws(() => db.run(updateItemSql, ['Coffee', 1749, 10000, 4, 'i', 's']));
+assert.throws(() => db.run(updateItemSql, ['Coffee', 1749, 10000, 4, 'UNIT', null, 'i', 's']));
+db.run(itemSql, ['banana', 's', 'Banana', 699, 1, 4, 4, code, 'WEIGHT', 824]);
+assert.throws(() =>
+  db.run(itemSql, ['fractional-grams', 's', 'Bad', 699, 1, 4, 4, null, 'WEIGHT', 824.5]),
+);
+assert.throws(() => db.run(itemSql, ['bad-weight', 's', 'Bad', 699, 2, 4, 4, null, 'WEIGHT', 824]));
+assert.throws(() => db.run(itemSql, ['bad-unit', 's', 'Bad', 699, 1, 4, 4, null, 'UNIT', 824]));
+assert.throws(() => db.run(updateItemSql, ['Banana', 699, 1, 4, 'WEIGHT', null, 'banana', 's']));
 
 function complete(id, operation, fail = false) {
   db.run('BEGIN');
@@ -144,7 +167,16 @@ assert.equal(scalar('SELECT COUNT(*) FROM price_history'), 1);
 complete('s', 'complete');
 complete('s', 'repeat');
 assert.equal(scalar("SELECT COUNT(*) FROM sync_queue WHERE operation = 'COMPLETE'"), 1);
-assert.equal(scalar('SELECT COUNT(*) FROM price_history'), 2);
+assert.equal(scalar('SELECT COUNT(*) FROM price_history'), 3);
+assert.equal(scalar("SELECT weight_grams FROM price_history WHERE item_id = 'banana'"), 824);
+db.run("UPDATE price_history SET recorded_at_ms = 6 WHERE item_id = 'banana'");
+const historySql = [...store.matchAll(/`([^`]+)`/g)]
+  .map((match) => match[1])
+  .find((sql) => sql.includes('AS totalCents'));
+const shoppingHistory = db.prepare(historySql);
+assert.ok(shoppingHistory.step());
+assert.equal(shoppingHistory.getAsObject().totalCents, 9321);
+shoppingHistory.free();
 assert.equal(scalar("SELECT barcode FROM price_history WHERE item_id = 'i'"), code);
 assert.equal(scalar("SELECT product_name FROM price_history WHERE item_id = 'i'"), 'Coffee');
 assert.throws(() => db.run("UPDATE shopping_items SET quantity = 4 WHERE id = 'i'"));
@@ -155,7 +187,7 @@ db.close();
 db = new SQL.Database(bytes);
 db.run('PRAGMA foreign_keys = ON');
 assert.equal(scalar('SELECT COUNT(*) FROM products'), 1);
-assert.equal(scalar('SELECT COUNT(*) FROM price_history'), 2);
+assert.equal(scalar('SELECT COUNT(*) FROM price_history'), 3);
 const catalog = await readFile(
   new URL('../src/app/features/scanner/services/product-catalog.service.ts', import.meta.url),
   'utf8',
@@ -175,10 +207,10 @@ db.run(
 );
 complete('next', 'empty');
 assert.equal(scalar("SELECT status FROM shopping_sessions WHERE id = 'next'"), 'ACTIVE');
-db.run(itemSql, ['next-item', 'next', 'Coffee', 1800, 1, 6, 6, code]);
+db.run(itemSql, ['next-item', 'next', 'Coffee', 1800, 1, 6, 6, code, 'UNIT', null]);
 assert.throws(() => db.run("UPDATE shopping_items SET session_id = 's' WHERE id = 'next-item'"));
 db.run("DELETE FROM shopping_items WHERE id = 'next-item'");
 db.close();
 console.log(
-  'SQLite verified: migrations v1-v5, preservation, atomic catalog/item/outbox, repeated product grouping, rollback, completion replay, immutable history, leading zeros, market price isolation and reopen.',
+  'SQLite verified: migrations v1-v6, preservation, atomic catalog/item/outbox, repeated product grouping, weight constraints and rounded history, rollback, completion replay, immutable history, leading zeros, market price isolation and reopen.',
 );

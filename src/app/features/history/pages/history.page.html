@@ -84,12 +84,18 @@
               <article class="tw:mt-4 tw:border-b tw:border-gray-200 tw:pb-4">
                 <h2 class="tw:text-lg">{{ item.name }}</h2>
                 <p>
-                  {{ item.quantity }} ×
+                  @if (item.measurementType === 'WEIGHT') {
+                    {{ item.weightGrams! / 1000 | number: '1.3-3' : 'pt-BR' }} kg ×
+                  } @else {
+                    {{ item.quantity }} ×
+                  }
                   {{ item.unitPriceCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+                  @if (item.measurementType === 'WEIGHT') {
+                    /kg
+                  }
                 </p>
                 <strong>{{
-                  (item.quantity * item.unitPriceCents) / 100
-                    | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  subtotal(item) / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
                 }}</strong>
               </article>
             }

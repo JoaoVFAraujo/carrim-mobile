@@ -60,12 +60,18 @@
         <article class="tw:mt-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-4">
           <h2 class="tw:mt-0 tw:text-lg tw:font-semibold">{{ item.name }}</h2>
           <p>
-            {{ item.quantity }} ×
+            @if (item.measurementType === 'WEIGHT') {
+              {{ item.weightGrams! / 1000 | number: '1.3-3' : 'pt-BR' }} kg ×
+            } @else {
+              {{ item.quantity }} ×
+            }
             {{ item.unitPriceCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+            @if (item.measurementType === 'WEIGHT') {
+              /kg
+            }
           </p>
           <strong>{{
-            (item.unitPriceCents * item.quantity) / 100
-              | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+            subtotal(item) / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
           }}</strong>
           <div>
             <ion-button
@@ -145,8 +151,19 @@
           [maxlength]="120"
           [disabled]="saving()"
         />
+        <ion-select
+          label="Vendido por"
+          labelPlacement="stacked"
+          interface="popover"
+          name="measurement"
+          [(ngModel)]="measurementType"
+          [disabled]="saving()"
+        >
+          <ion-select-option value="UNIT">Unidade</ion-select-option>
+          <ion-select-option value="WEIGHT">Peso</ion-select-option>
+        </ion-select>
         <ion-input
-          label="Preço por unidade"
+          [label]="measurementType === 'WEIGHT' ? 'Preço por kg' : 'Preço por unidade'"
           labelPlacement="stacked"
           fill="outline"
           placeholder="Ex.: 12,99"
@@ -156,16 +173,31 @@
           [maxlength]="12"
           [disabled]="saving()"
         />
-        <ion-input
-          label="Quantidade"
-          labelPlacement="stacked"
-          fill="outline"
-          inputmode="numeric"
-          name="quantity"
-          [(ngModel)]="quantity"
-          [maxlength]="4"
-          [disabled]="saving()"
-        />
+        @if (measurementType === 'WEIGHT') {
+          <ion-input
+            label="Peso (kg)"
+            labelPlacement="stacked"
+            fill="outline"
+            placeholder="Ex.: 0,824"
+            inputmode="decimal"
+            name="weight"
+            [(ngModel)]="weight"
+            [maxlength]="8"
+            [disabled]="saving()"
+            helperText="Até três casas decimais. Ex.: 0,824 kg = 824 g."
+          />
+        } @else {
+          <ion-input
+            label="Quantidade"
+            labelPlacement="stacked"
+            fill="outline"
+            inputmode="numeric"
+            name="quantity"
+            [(ngModel)]="quantity"
+            [maxlength]="4"
+            [disabled]="saving()"
+          />
+        }
         @if (formError()) {
           <p role="alert" class="tw:text-red-800">{{ formError() }}</p>
         }

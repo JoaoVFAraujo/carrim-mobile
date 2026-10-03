@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { App } from './app';
 import { appConfig } from './app.config';
+import { provideIonicAngular } from '@ionic/angular';
 
 describe('Tab navigation', () => {
   it('keeps all four tabs available through empty pages and direct URLs', async () => {
@@ -11,6 +12,7 @@ describe('Tab navigation', () => {
       imports: [App],
       providers: [
         ...appConfig.providers,
+        provideIonicAngular({ animated: false }),
         {
           provide: ShoppingSessionStore,
           useValue: {
@@ -49,5 +51,8 @@ describe('Tab navigation', () => {
     await router.navigateByUrl('/unknown');
     await fixture.whenStable();
     expect(router.url).toBe('/tabs/home');
+    router.dispose();
+    fixture.destroy();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   });
 });

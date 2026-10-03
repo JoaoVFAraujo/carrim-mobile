@@ -21,8 +21,15 @@ describe('repeated products', () => {
       const values = item.values;
       if (item.statement.startsWith('UPDATE')) {
         saved = saved.map((previous) =>
-          previous.id === values[4]
-            ? { ...previous, name: values[0], unitPriceCents: values[1], quantity: values[2] }
+          previous.id === values[6]
+            ? {
+                ...previous,
+                name: values[0],
+                unitPriceCents: values[1],
+                quantity: values[2],
+                measurementType: values[4],
+                weightGrams: values[5],
+              }
             : previous,
         );
       } else {
@@ -33,6 +40,8 @@ describe('repeated products', () => {
           unitPriceCents: values[3],
           quantity: values[4],
           barcode: values[7],
+          measurementType: values[8],
+          weightGrams: values[9],
         });
       }
     });
@@ -44,7 +53,8 @@ describe('repeated products', () => {
               item.sessionId === values[0] &&
               item.name === values[1] &&
               item.unitPriceCents === values[2] &&
-              item.barcode === values[3],
+              item.barcode === values[3] &&
+              item.measurementType === values[4],
           )
           .slice(0, 1);
       if (sql.includes("WHERE s.status = 'ACTIVE'")) return [session];
@@ -69,6 +79,37 @@ describe('repeated products', () => {
     expect(operation.values[2]).toBe(store.items()[0].id);
     expect(operation.values[3]).toBe('UPDATE');
     expect(JSON.parse(operation.values[4]).quantity).toBe(5);
+  });
+
+  it('adds grams for compatible weights, isolates unit items and replaces weight on edit', async () => {
+    const { store, transaction } = setup();
+    await store.saveItem('Banana', 699, 1);
+    await store.saveWeightItem('Banana', 699, 824);
+    expect(store.totalCents()).toBe(1275);
+    await store.saveWeightItem('Banana', 699, 176);
+    expect(store.items()).toHaveLength(2);
+    expect(store.items()[1].weightGrams).toBe(1000);
+    expect(store.totalCents()).toBe(1398);
+    const payload = JSON.parse(transaction.mock.calls[2][0].at(-1).values[4]);
+    expect(payload).toMatchObject({
+      measurementType: 'WEIGHT',
+      pricePerKgCents: 699,
+      weightGrams: 1000,
+    });
+    expect(payload.quantity).toBeUndefined();
+    await store.saveWeightItem('Banana', 699, 500, store.items()[1].id);
+    expect(store.items()[1].weightGrams).toBe(500);
+    expect(store.totalCents()).toBe(1049);
+  });
+
+  it('rejects invalid or accumulated excess weight before writing', async () => {
+    const { store, transaction } = setup();
+    for (const grams of [0, -1, 1.5, NaN, 10000000])
+      await expect(store.saveWeightItem('Banana', 699, grams)).rejects.toThrow('peso');
+    expect(transaction).not.toHaveBeenCalled();
+    await store.saveWeightItem('Banana', 699, 9999999);
+    await expect(store.saveWeightItem('Banana', 699, 1)).rejects.toThrow('peso total');
+    expect(transaction).toHaveBeenCalledTimes(1);
   });
 
   it('keeps different prices, names and barcode identities on separate lines', async () => {
@@ -195,7 +236,7 @@ describe('shopping totals and item persistence', () => {
     expect(statements).toHaveLength(4);
     expect(statements[0].values[1]).toBe('0789600112233');
     expect(statements[1].values[1]).toBe('PRODUCT');
-    expect(statements[2].values.at(-1)).toBe('0789600112233');
+    expect(statements[2].values[7]).toBe('0789600112233');
     expect(statements[3].values[1]).toBe('SHOPPING_ITEM');
   });
 
