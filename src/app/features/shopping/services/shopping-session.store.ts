@@ -111,6 +111,32 @@ export class ShoppingSessionStore {
     return this.enqueueItem(name, unitPriceCents, quantity, itemId, barcode);
   }
 
+  changeQuantity(itemId: string, direction: -1 | 1): Promise<void> {
+    const sessionId = this.active()?.id;
+    const operation = this.itemWrites.then(() => {
+      if (!sessionId || this.active()?.id !== sessionId)
+        throw new Error('Comece uma compra antes de alterar produtos.');
+      const item = this.items().find((entry) => entry.id === itemId);
+      if (!item) throw new Error('Produto não encontrado.');
+      if (item.measurementType === 'WEIGHT')
+        throw new Error('Informe o peso na edição do produto.');
+      if (direction !== -1 && direction !== 1)
+        throw new Error('Informe uma alteração de quantidade válida.');
+      const step = item.pricingType === 'BUNDLE' ? item.bundleQuantity! : 1;
+      return this.persistItem(
+        item.name,
+        item.unitPriceCents,
+        item.quantity + direction * step,
+        item.id,
+        undefined,
+        undefined,
+        item.pricingType === 'BUNDLE' ? item.bundleQuantity! : undefined,
+      );
+    });
+    this.itemWrites = operation.catch(() => undefined);
+    return operation;
+  }
+
   saveWeightItem(
     name: string,
     pricePerKgCents: number,
