@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe, DOCUMENT } from '@angular/common';
 import {
   IonButton,
   IonButtons,
@@ -9,12 +9,16 @@ import {
   IonTitle,
   IonToolbar,
   IonModal,
+  IonSegment,
+  IonSegmentButton,
+  IonLabel,
 } from '@ionic/angular';
 import { receiptOutline } from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ShoppingSessionStore } from '../../shopping/services/shopping-session.store';
 import { CompletedShopping } from '../../shopping/models/completed-shopping';
 import { ShoppingItem, itemSubtotalCents } from '../../shopping/models/shopping-item';
+import { groupHistory, HistoryPeriod } from '../models/history-groups';
 
 @Component({
   selector: 'app-history',
@@ -26,6 +30,9 @@ import { ShoppingItem, itemSubtotalCents } from '../../shopping/models/shopping-
     IonButton,
     IonButtons,
     IonModal,
+    IonSegment,
+    IonSegmentButton,
+    IonLabel,
     RouterLink,
     CurrencyPipe,
     DatePipe,
@@ -33,12 +40,17 @@ import { ShoppingItem, itemSubtotalCents } from '../../shopping/models/shopping-
     EmptyStateComponent,
   ],
   templateUrl: './history.page.html',
+  host: { '(document:visibilitychange)': 'refreshDate()' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HistoryPage {
   readonly subtotal = itemSubtotalCents;
   readonly emptyIcon = receiptOutline;
   readonly store = inject(ShoppingSessionStore);
+  private readonly document = inject(DOCUMENT);
+  readonly period = signal<HistoryPeriod>('all');
+  private readonly today = signal(new Date());
+  readonly groups = computed(() => groupHistory(this.store.history(), this.period(), this.today()));
   readonly selected = signal<CompletedShopping | null>(null);
   readonly items = signal<ShoppingItem[]>([]);
   readonly loadingDetails = signal(false);
@@ -46,7 +58,12 @@ export class HistoryPage {
   private request = 0;
 
   ionViewWillEnter(): void {
+    this.today.set(new Date());
     void this.store.load();
+  }
+
+  refreshDate(): void {
+    if (this.document.visibilityState === 'visible') this.today.set(new Date());
   }
 
   async open(shopping: CompletedShopping): Promise<void> {
