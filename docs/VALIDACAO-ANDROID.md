@@ -4,7 +4,7 @@
 
 62 testes, lint, formatação, SQLite real, build web e `cap sync android` passaram. Revisão no navegador cobriu compra, produtos por unidade/peso/promoção, finalização, total do caixa, Histórico, filtros e reutilização do catálogo. O build web mantém aviso de tamanho inicial de 1,06 MB, sem ultrapassar o limite de erro.
 
-APK, captura física, permissões do sistema e persistência nativa ainda não foram validados. Não foi encontrado SDK Android nem aparelho conectado neste ambiente. Há Java 25 e Java 8; o código Android do Capacitor usa Java 21. Sincronizar assets/plugins não confirma compilação ou execução nativa.
+APK, captura física, permissões do sistema e persistência nativa ainda não foram validados. Não foi encontrado SDK Android nem aparelho conectado neste ambiente. A conferência final encontrou JDK 21 em C:\Program Files\Java\jdk-21.0.10, além do Java 25 e Java 8; o código Android do Capacitor usa Java 21. Sincronizar assets/plugins não confirma compilação ou execução nativa.
 
 ## Preparação
 
@@ -70,7 +70,7 @@ Preencher após a execução real. Nenhuma linha pendente significa aprovação 
 | --------------------------- | --------------- | -------------------------------------------------------- |
 | Testes e ferramentas locais | Passou          | 62 testes; lint, Prettier, SQLite real, build e cap sync |
 | Navegador                   | Passou          | Fluxos interativos em larguras de celular                |
-| Compilação APK              | Pendente        | SDK/JDK 21 não disponíveis nesta sessão                  |
+| Compilação APK              | Pendente        | SDK Android não encontrado nesta sessão                  |
 | Aparelho                    | Pendente        | adb sem dispositivo conectado                            |
 | Câmera e permissões         | Pendente        | Requer execução nativa                                   |
 | SQLite nativo e atualização | Pendente        | Requer execução nativa                                   |

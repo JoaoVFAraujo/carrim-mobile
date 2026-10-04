@@ -222,4 +222,4 @@ A revisão corrigiu a comparação de nomes acentuados: normalização Unicode N
 
 ## Preparação da validação Android — 03/10/2026
 
-O [roteiro Android](docs/VALIDACAO-ANDROID.md) reúne pré-requisitos, geração/instalação de APK e verificações de câmera, permissões, funcionamento offline, SQLite nativo e atualização preservando dados. A versão atual passou em 62 testes e ferramentas locais; APK e aparelho continuam pendentes por ausência de SDK, JDK 21 e dispositivo. Esta atividade entrega a preparação, sem declarar validação nativa concluída.
+O [roteiro Android](docs/VALIDACAO-ANDROID.md) reúne pré-requisitos, geração/instalação de APK e verificações de câmera, permissões, funcionamento offline, SQLite nativo e atualização preservando dados. A versão atual passou em 62 testes e ferramentas locais; APK e aparelho continuam pendentes por ausência de SDK e dispositivo. A conferência final encontrou JDK 21 instalado. Esta atividade entrega a preparação, sem declarar validação nativa concluída.
