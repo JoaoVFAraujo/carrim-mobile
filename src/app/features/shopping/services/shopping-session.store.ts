@@ -142,8 +142,9 @@ export class ShoppingSessionStore {
     pricePerKgCents: number,
     weightGrams: number,
     itemId?: string,
+    barcode?: string,
   ): Promise<void> {
-    return this.enqueueItem(name, pricePerKgCents, 1, itemId, undefined, weightGrams);
+    return this.enqueueItem(name, pricePerKgCents, 1, itemId, barcode, weightGrams);
   }
 
   saveBundleItem(
@@ -152,13 +153,14 @@ export class ShoppingSessionStore {
     bundlePriceCents: number,
     quantity: number,
     itemId?: string,
+    barcode?: string,
   ): Promise<void> {
     return this.enqueueItem(
       name,
       bundlePriceCents,
       quantity,
       itemId,
-      undefined,
+      barcode,
       undefined,
       bundleQuantity,
     );

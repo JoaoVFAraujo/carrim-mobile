@@ -188,6 +188,66 @@
     >
     <ion-content class="ion-padding">
       <form class="tw:mx-auto tw:max-w-lg tw:space-y-6" (ngSubmit)="save()">
+        @if (!editingId) {
+          <section aria-label="Catálogo local">
+            <ion-input
+              type="search"
+              label="Buscar no catálogo local"
+              labelPlacement="stacked"
+              fill="outline"
+              placeholder="Nome ou código cadastrado"
+              [debounce]="250"
+              [disabled]="saving()"
+              (ionInput)="searchCatalog($event.detail.value ?? '')"
+            />
+            <p class="tw:text-sm tw:text-gray-600">
+              Digite ao menos dois caracteres. Até 20 resultados de produtos cadastrados por código
+              neste aparelho.
+            </p>
+            @if (catalogLoading()) {
+              <p role="status">Consultando catálogo…</p>
+            }
+            @if (catalogError()) {
+              <p role="status">{{ catalogError() }}</p>
+            }
+            <ion-list>
+              @for (product of catalogResults(); track product.id) {
+                <ion-item
+                  [button]="true"
+                  [disabled]="saving()"
+                  (click)="selectCatalogProduct(product)"
+                >
+                  <ion-label class="ion-text-wrap"
+                    >{{ product.name }}
+                    <p>{{ product.barcode }}</p></ion-label
+                  >
+                </ion-item>
+              }
+            </ion-list>
+            @if (catalogBarcode) {
+              <p class="tw:text-sm">Código {{ catalogBarcode }}</p>
+              <ion-button
+                size="small"
+                fill="clear"
+                [disabled]="saving()"
+                (click)="clearCatalogProduct()"
+                >Usar produto sem código</ion-button
+              >
+              @if (
+                measurementType === 'UNIT' && pricingType === 'REGULAR' && previousPrice();
+                as previous
+              ) {
+                <p class="tw:rounded-2xl tw:bg-green-50 tw:p-3">
+                  Último preço por unidade neste mercado:
+                  {{
+                    previous.unitPriceCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  }}
+                  · {{ previous.recordedAt | date: 'dd/MM/yyyy' }}. Confirme o preço de hoje.
+                </p>
+              }
+            }
+          </section>
+        }
         <ion-input
           label="Nome do produto"
           labelPlacement="stacked"
