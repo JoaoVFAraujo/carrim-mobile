@@ -128,7 +128,7 @@ export class ShoppingSessionStore {
         item.unitPriceCents,
         item.quantity + direction * step,
         item.id,
-        item.barcode ?? undefined,
+        undefined,
         undefined,
         item.pricingType === 'BUNDLE' ? item.bundleQuantity! : undefined,
       );

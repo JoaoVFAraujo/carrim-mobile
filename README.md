@@ -207,3 +207,5 @@ A revisão do PR acrescentou atualização da data ao retornar do segundo plano,
 Itens comuns têm controles para aumentar/diminuir uma unidade; promoções avançam um grupo inteiro e identificam esse passo. O mínimo mantém uma unidade ou um grupo, com remoção explícita e confirmação. O máximo é 9999. Produtos por peso continuam com edição em kg e ação Editar peso.
 
 Alterações são serializadas e gravadas junto com a fila local. Validação: 57 testes, lint, Prettier, SQLite real e build. Testes cobrem concorrência, grupos, limites, bloqueio de incrementos por peso e preservação da quantidade quando a gravação falha. No navegador, duas unidades de R$ 7,99 resultaram em R$ 15,98 e persistiram após recarregar. Android físico permanece pendente.
+
+A revisão isolou alterações de quantidade do catálogo: a identidade por código é preservada sem renomear produtos nem gerar operação PRODUCT. Teste com linha renomeada confirma somente UPDATE do item; validação atualizada: 58 testes, lint e build passaram.

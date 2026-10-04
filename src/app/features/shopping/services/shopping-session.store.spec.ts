@@ -75,6 +75,20 @@ describe('repeated products', () => {
     return { store, transaction };
   }
 
+  it('preserves scanner identity without rewriting the catalog on quantity changes', async () => {
+    const { store, transaction } = setup();
+    await store.saveItem('Coffee', 1749, 1, undefined, '0789600112233');
+    const id = store.items()[0].id;
+    await store.saveItem('Renamed line', 1749, 1, id);
+    await store.changeQuantity(id, 1);
+    const statements = transaction.mock.calls.at(-1)![0];
+    expect(statements).toHaveLength(2);
+    expect(statements[0].statement).toContain('UPDATE shopping_items');
+    expect(statements[1].values[1]).toBe('SHOPPING_ITEM');
+    expect(store.items()[0].barcode).toBe('0789600112233');
+    expect(store.items()[0].quantity).toBe(2);
+  });
+
   it('serializes quantity changes and steps complete promotional groups', async () => {
     const { store } = setup();
     await store.saveItem('Rice', 799, 1);
