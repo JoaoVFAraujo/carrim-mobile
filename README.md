@@ -193,3 +193,9 @@ Validação: 52 testes, lint, formatação, build, SQLite real e sincronização
 Cabeçalhos principais compartilham largura e hierarquia, mantendo o fundo integrado e as safe areas do Ionic. Início destaca a compra ativa em verde profundo, com cartões compactos de compras recentes e iniciais dos mercados. Carrinho destaca subtotal por produto e orçamento; estados vazios usam superfícies suaves e menos espaço vertical. Não há imagens ou marcas fictícias.
 
 Validação: 52 testes, lint, formatação e build. Revisão no navegador das quatro abas em larguras de celular; build mantém aviso de tamanho inicial. APK/aparelho Android continuam pendentes.
+
+## Histórico por período — 03/10/2026
+
+Histórico oferece Todas / Este mês com segmento Ionic e agrupamento mensal, do mais recente para o mais antigo. O filtro respeita os limites do mês no horário local, inclusive mudanças de ano; não modifica compras e diferencia mês vazio de histórico vazio. Detalhes e comparação com o caixa permanecem somente leitura.
+
+Validação: 54 testes (incluindo limites de mês, ordenação e preservação da lista original), lint, formatação e build. No navegador foram verificados filtro, grupo mensal e abertura de detalhes. O teste de navegação aguarda hidratação dos componentes Ionic antes de descartar a tela. Android físico permanece pendente; build mantém aviso de tamanho inicial.

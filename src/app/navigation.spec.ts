@@ -51,6 +51,15 @@ describe('Tab navigation', () => {
     await router.navigateByUrl('/unknown');
     await fixture.whenStable();
     expect(router.url).toBe('/tabs/home');
+    // Angular stability does not cover lazy hydration of Ionic custom elements.
+    await Promise.all(
+      Array.from(
+        page.querySelectorAll<HTMLElement & { componentOnReady?: () => Promise<unknown> }>(
+          'ion-router-outlet, ion-tabs, ion-tab-bar, ion-tab-button, ion-segment, ion-segment-button',
+        ),
+      ).map((element) => element.componentOnReady?.()),
+    );
+    await fixture.whenRenderingDone();
     router.dispose();
     fixture.destroy();
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));

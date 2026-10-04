@@ -8,50 +8,80 @@
 <ion-content class="ion-padding">
   <main class="tw:mx-auto tw:max-w-lg tw:pt-2 tw:pb-6">
     <p class="tw:text-gray-600">Cada compra, guardada aqui.</p>
+    <ion-segment
+      class="tw:mb-6"
+      [value]="period()"
+      (ionChange)="period.set($event.detail.value === 'month' ? 'month' : 'all')"
+      aria-label="Período das compras"
+    >
+      <ion-segment-button value="all"><ion-label>Todas</ion-label></ion-segment-button>
+      <ion-segment-button value="month"><ion-label>Este mês</ion-label></ion-segment-button>
+    </ion-segment>
     @if (store.loading()) {
       <p role="status">Abrindo suas compras…</p>
     } @else if (store.error()) {
       <p role="alert">{{ store.error() }}</p>
       <ion-button (click)="store.load()">Tentar novamente</ion-button>
     } @else {
-      @for (shopping of store.history(); track shopping.id) {
-        <article class="tw:mb-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-5">
-          <h2 class="tw:mt-0 tw:text-xl tw:font-semibold">{{ shopping.supermarketName }}</h2>
-          <p>
-            {{ shopping.finishedAt | date: 'dd/MM/yyyy HH:mm' }} · {{ shopping.itemCount }}
-            {{ shopping.itemCount === 1 ? 'produto' : 'produtos' }}
-          </p>
-          <strong class="tw:text-2xl">{{
-            shopping.totalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-          }}</strong>
-          @if (shopping.checkoutTotalCents !== null) {
-            <p class="tw:text-sm tw:text-gray-600">
-              Caixa:
-              {{
-                shopping.checkoutTotalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-              }}
-            </p>
-          }
-          <ion-button
-            expand="block"
-            fill="clear"
-            (click)="open(shopping)"
-            [attr.aria-label]="
-              'Ver detalhes da compra em ' +
-              shopping.supermarketName +
-              ' de ' +
-              (shopping.finishedAt | date: 'dd/MM/yyyy HH:mm')
-            "
-            >Ver detalhes</ion-button
+      @for (group of groups(); track group.key) {
+        <section [attr.aria-label]="group.date | date: 'MMMM yyyy' : undefined : 'pt-BR'">
+          <h2
+            class="tw:mt-6 tw:mb-3 tw:text-sm tw:font-semibold tw:uppercase tw:tracking-wide tw:text-gray-600"
           >
-        </article>
+            {{ group.date | date: 'MMMM yyyy' : undefined : 'pt-BR' }}
+          </h2>
+          @for (shopping of group.purchases; track shopping.id) {
+            <article class="tw:mb-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-5">
+              <h3 class="tw:mt-0 tw:text-xl tw:font-semibold tw:break-words">
+                {{ shopping.supermarketName }}
+              </h3>
+              <p>
+                {{ shopping.finishedAt | date: 'dd/MM/yyyy HH:mm' }} · {{ shopping.itemCount }}
+                {{ shopping.itemCount === 1 ? 'produto' : 'produtos' }}
+              </p>
+              <strong class="tw:text-2xl">{{
+                shopping.totalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+              }}</strong>
+              @if (shopping.checkoutTotalCents !== null) {
+                <p class="tw:text-sm tw:text-gray-600">
+                  Caixa:
+                  {{
+                    shopping.checkoutTotalCents / 100
+                      | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  }}
+                </p>
+              }
+              <ion-button
+                expand="block"
+                fill="clear"
+                (click)="open(shopping)"
+                [attr.aria-label]="
+                  'Ver detalhes da compra em ' +
+                  shopping.supermarketName +
+                  ' de ' +
+                  (shopping.finishedAt | date: 'dd/MM/yyyy HH:mm')
+                "
+                >Ver detalhes</ion-button
+              >
+            </article>
+          }
+        </section>
       } @empty {
         <app-empty-state
           [icon]="emptyIcon"
-          title="Nenhuma compra finalizada ainda"
-          description="Quando você finalizar uma compra, poderá consultar os itens e o total por aqui."
+          [title]="
+            period() === 'month' ? 'Nenhuma compra neste mês' : 'Nenhuma compra finalizada ainda'
+          "
+          [description]="
+            period() === 'month'
+              ? 'Veja todas as compras ou comece uma nova.'
+              : 'Quando você finalizar uma compra, poderá consultar os itens e o total por aqui.'
+          "
         >
-          <ion-button routerLink="/tabs/home" fill="outline">Ir para o início</ion-button>
+          @if (period() === 'month') {
+            <ion-button (click)="period.set('all')" fill="outline">Ver todas</ion-button>
+          }
+          <ion-button routerLink="/tabs/home" fill="clear">Ir para o início</ion-button>
         </app-empty-state>
       }
       @if (store.history().length) {
