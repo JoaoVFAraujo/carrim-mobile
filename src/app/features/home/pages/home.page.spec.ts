@@ -13,6 +13,6 @@ describe('HomePage', () => {
     fixture.detectChanges();
     const page: HTMLElement = fixture.nativeElement;
     expect(page.querySelector('ion-title')?.textContent).toContain('Carrim');
-    expect(page.querySelector('ion-content main h1')?.textContent).toContain('Suas compras');
+    expect(page.querySelector('ion-content main h1')?.textContent).toContain('Sua compra');
   });
 });
