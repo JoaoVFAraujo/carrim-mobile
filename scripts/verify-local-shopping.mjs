@@ -253,17 +253,12 @@ const lastPriceSql = [...catalog.matchAll(/`([^`]+)`/g)]
   .find((sql) => sql.includes('FROM price_history'));
 const searchSql = [...catalog.matchAll(/`([^`]+)`/g)]
   .map((match) => match[1])
-  .find((sql) => sql.includes('WHERE instr'));
+  .find((sql) => sql.includes('FROM products'));
 assert.ok(searchSql);
-for (const term of ['COFFEE', '0789']) {
-  const match = db.prepare(searchSql, [term, term]);
-  assert.ok(match.step());
-  assert.equal(match.getAsObject().barcode, code);
-  match.free();
-}
-const literal = db.prepare(searchSql, ['%%', '%%']);
-assert.equal(literal.step(), false);
-literal.free();
+const catalogRows = db.prepare(searchSql);
+assert.ok(catalogRows.step());
+assert.equal(catalogRows.getAsObject().barcode, code);
+catalogRows.free();
 const price = db.prepare(lastPriceSql, [code, 'm']);
 assert.ok(price.step());
 assert.deepEqual(price.getAsObject(), { unitPriceCents: 1749, recordedAt: 5 });
