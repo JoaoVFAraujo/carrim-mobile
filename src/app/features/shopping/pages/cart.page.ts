@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   IonButton,
@@ -16,11 +16,16 @@ import {
   IonFooter,
   IonSelect,
   IonSelectOption,
+  IonList,
+  IonItem,
+  IonLabel,
 } from '@ionic/angular';
 import { cartOutline } from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ShoppingSessionStore } from '../services/shopping-session.store';
 import { parseCheckoutTotal } from '../models/shopping-session';
+import { ProductCatalogService } from '../../scanner/services/product-catalog.service';
+import { CatalogProduct, LastProductPrice } from '../../scanner/models/catalog-product';
 import {
   ShoppingItem,
   parseItemPrice,
@@ -47,6 +52,10 @@ import {
     DecimalPipe,
     IonSelect,
     IonSelectOption,
+    IonList,
+    IonItem,
+    IonLabel,
+    DatePipe,
     EmptyStateComponent,
   ],
   templateUrl: './cart.page.html',
@@ -58,6 +67,13 @@ export class CartPage {
   private readonly alerts = inject(AlertController);
   private readonly router = inject(Router);
   private readonly toasts = inject(ToastController);
+  private readonly catalog = inject(ProductCatalogService);
+  readonly catalogResults = signal<CatalogProduct[]>([]);
+  readonly catalogLoading = signal(false);
+  readonly catalogError = signal('');
+  readonly previousPrice = signal<LastProductPrice | null>(null);
+  catalogBarcode?: string;
+  private catalogRequest = 0;
   private confirming = false;
   readonly modalOpen = signal(false);
   readonly saving = signal(false);
@@ -78,6 +94,12 @@ export class CartPage {
   }
 
   openItem(item?: ShoppingItem): void {
+    ++this.catalogRequest;
+    this.catalogResults.set([]);
+    this.catalogLoading.set(false);
+    this.catalogError.set('');
+    this.previousPrice.set(null);
+    this.catalogBarcode = undefined;
     this.editingId = item?.id;
     this.name = item?.name ?? '';
     this.price = item ? (item.unitPriceCents / 100).toFixed(2).replace('.', ',') : '';
@@ -101,6 +123,7 @@ export class CartPage {
           parseItemPrice(this.price),
           parseWeightGrams(this.weight),
           this.editingId,
+          this.catalogBarcode,
         );
       } else if (this.pricingType === 'BUNDLE') {
         await this.store.saveBundleItem(
@@ -109,6 +132,7 @@ export class CartPage {
           parseItemPrice(this.price),
           parseItemQuantity(this.quantity),
           this.editingId,
+          this.catalogBarcode,
         );
       } else {
         await this.store.saveItem(
@@ -116,6 +140,7 @@ export class CartPage {
           parseItemPrice(this.price),
           parseItemQuantity(this.quantity),
           this.editingId,
+          this.catalogBarcode,
         );
       }
       this.modalOpen.set(false);
@@ -132,6 +157,64 @@ export class CartPage {
 
   quantityStep(item: ShoppingItem): number {
     return item.pricingType === 'BUNDLE' ? item.bundleQuantity! : 1;
+  }
+
+  async searchCatalog(value: string): Promise<void> {
+    const request = ++this.catalogRequest;
+    this.catalogResults.set([]);
+    this.catalogError.set('');
+    this.catalogLoading.set(value.trim().length >= 2);
+    try {
+      const products = await this.catalog.search(value);
+      if (request === this.catalogRequest && this.modalOpen()) this.catalogResults.set(products);
+    } catch {
+      if (request === this.catalogRequest)
+        this.catalogError.set(
+          'Não foi possível consultar o catálogo. Você pode preencher o produto manualmente.',
+        );
+    } finally {
+      if (request === this.catalogRequest) this.catalogLoading.set(false);
+    }
+  }
+
+  async selectCatalogProduct(product: CatalogProduct): Promise<void> {
+    const request = ++this.catalogRequest;
+    const session = this.store.active();
+    this.catalogResults.set([]);
+    this.catalogLoading.set(false);
+    this.catalogError.set('');
+    this.previousPrice.set(null);
+    this.catalogBarcode = product.barcode;
+    this.name = product.name;
+    this.price = '';
+    this.quantity = '1';
+    this.measurementType = 'UNIT';
+    this.pricingType = 'REGULAR';
+    try {
+      const previous = session
+        ? await this.catalog.lastPrice(product.barcode, session.supermarketId)
+        : null;
+      if (
+        request === this.catalogRequest &&
+        this.modalOpen() &&
+        this.store.active()?.id === session?.id
+      )
+        this.previousPrice.set(previous);
+    } catch {
+      if (request === this.catalogRequest)
+        this.catalogError.set(
+          'Não foi possível consultar o preço anterior. Informe o preço de hoje.',
+        );
+    }
+  }
+
+  clearCatalogProduct(): void {
+    ++this.catalogRequest;
+    this.catalogBarcode = undefined;
+    this.previousPrice.set(null);
+    this.catalogResults.set([]);
+    this.catalogLoading.set(false);
+    this.catalogError.set('');
   }
 
   async changeQuantity(item: ShoppingItem, direction: -1 | 1): Promise<void> {

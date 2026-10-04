@@ -5,6 +5,7 @@ import { AlertController, ToastController } from '@ionic/angular';
 import { vi } from 'vitest';
 import { CartPage } from './cart.page';
 import { ShoppingSessionStore } from '../services/shopping-session.store';
+import { ProductCatalogService } from '../../scanner/services/product-catalog.service';
 
 describe('cart completion confirmation', () => {
   function setup() {
@@ -108,7 +109,7 @@ describe('cart weight form', () => {
     expect(page.price).toBe('6,99');
     page.weight = '0,500';
     await page.save();
-    expect(saveWeightItem).toHaveBeenCalledWith('Banana', 699, 500, 'banana');
+    expect(saveWeightItem).toHaveBeenCalledWith('Banana', 699, 500, 'banana', undefined);
     expect(saveItem).not.toHaveBeenCalled();
     expect(page.modalOpen()).toBe(false);
   });
@@ -140,7 +141,57 @@ describe('cart weight form', () => {
     expect(page.price).toBe('10,00');
     page.quantity = '9';
     await page.save();
-    expect(saveBundleItem).toHaveBeenCalledWith('Milk', 3, 1000, 9, 'milk');
+    expect(saveBundleItem).toHaveBeenCalledWith('Milk', 3, 1000, 9, 'milk', undefined);
     expect(saveItem).not.toHaveBeenCalled();
+  });
+});
+
+describe('cart catalog reuse', () => {
+  function setup() {
+    const search = vi.fn();
+    const lastPrice = vi.fn().mockResolvedValue({ unitPriceCents: 1749, recordedAt: 1 });
+    const saveItem = vi.fn().mockResolvedValue(undefined);
+    TestBed.configureTestingModule({
+      providers: [
+        CartPage,
+        { provide: ProductCatalogService, useValue: { search, lastPrice } },
+        {
+          provide: ShoppingSessionStore,
+          useValue: { active: signal({ id: 's', supermarketId: 'm' }), saveItem },
+        },
+        { provide: AlertController, useValue: {} },
+        { provide: ToastController, useValue: {} },
+        { provide: Router, useValue: {} },
+      ],
+    });
+    return { page: TestBed.inject(CartPage), search, lastPrice, saveItem };
+  }
+  it('ignores an older search after another query or form reopening', async () => {
+    const { page, search } = setup();
+    page.openItem();
+    let resolve!: (products: unknown[]) => void;
+    search
+      .mockImplementationOnce(() => new Promise((done) => (resolve = done)))
+      .mockResolvedValueOnce([]);
+    const old = page.searchCatalog('Coffee');
+    await page.searchCatalog('Milk');
+    resolve([{ id: 'p' }]);
+    await old;
+    expect(page.catalogResults()).toEqual([]);
+    expect(page.catalogLoading()).toBe(false);
+  });
+  it('requires today price and saves the selected barcode while previous price stays a reference', async () => {
+    const { page, lastPrice, saveItem } = setup();
+    page.openItem();
+    page.price = '9,99';
+    await page.selectCatalogProduct({ id: 'p', name: 'Coffee', barcode: '0789600112233' });
+    expect(lastPrice).toHaveBeenCalledWith('0789600112233', 'm');
+    expect(page.price).toBe('');
+    expect(page.previousPrice()?.unitPriceCents).toBe(1749);
+    await page.save();
+    expect(saveItem).not.toHaveBeenCalled();
+    page.price = '18,00';
+    await page.save();
+    expect(saveItem).toHaveBeenCalledWith('Coffee', 1800, 1, undefined, '0789600112233');
   });
 });

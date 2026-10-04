@@ -251,6 +251,14 @@ const catalog = await readFile(
 const lastPriceSql = [...catalog.matchAll(/`([^`]+)`/g)]
   .map((match) => match[1])
   .find((sql) => sql.includes('FROM price_history'));
+const searchSql = [...catalog.matchAll(/`([^`]+)`/g)]
+  .map((match) => match[1])
+  .find((sql) => sql.includes('FROM products'));
+assert.ok(searchSql);
+const catalogRows = db.prepare(searchSql);
+assert.ok(catalogRows.step());
+assert.equal(catalogRows.getAsObject().barcode, code);
+catalogRows.free();
 const price = db.prepare(lastPriceSql, [code, 'm']);
 assert.ok(price.step());
 assert.deepEqual(price.getAsObject(), { unitPriceCents: 1749, recordedAt: 5 });

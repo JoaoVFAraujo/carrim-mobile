@@ -209,3 +209,13 @@ Itens comuns têm controles para aumentar/diminuir uma unidade; promoções avan
 Alterações são serializadas e gravadas junto com a fila local. Validação: 57 testes, lint, Prettier, SQLite real e build. Testes cobrem concorrência, grupos, limites, bloqueio de incrementos por peso e preservação da quantidade quando a gravação falha. No navegador, duas unidades de R$ 7,99 resultaram em R$ 15,98 e persistiram após recarregar. Android físico permanece pendente.
 
 A revisão isolou alterações de quantidade do catálogo: a identidade por código é preservada sem renomear produtos nem gerar operação PRODUCT. Teste com linha renomeada confirma somente UPDATE do item; validação atualizada: 58 testes, lint e build passaram.
+
+## Reutilização do catálogo local — 03/10/2026
+
+Adicionar produto oferece busca por nome ou trecho do código, com ao menos dois caracteres e até 20 resultados. São produtos cadastrados por código neste aparelho; produtos manuais sem código continuam disponíveis pelo formulário. Selecionar preenche nome e identidade, limpa o preço e exige o preço de hoje. A referência anterior mostra somente o último preço regular por unidade de uma compra finalizada no mesmo mercado, com data; não substitui o preço atual. Peso e promoção podem manter o código, com observações separadas por configuração.
+
+Consultas atrasadas não substituem resultados atuais. Não há migração nem chamadas remotas. Validação: 61 testes, lint, Prettier, SQLite real, build e sincronização Android. SQLite verifica busca literal por nome/código e isolamento de preços. O navegador verificou cadastro por código, finalização, busca pelo nome na compra seguinte, referência R$ 17,49, rejeição de preço vazio e persistência do preço atual R$ 18,00 após recarregar. Android físico continua pendente.
+
+Fluxo das próximas entregas: branches feature/<atividade> ou fix/<correcao> a partir da main, PR com @codex review, merge commit e exclusão da branch concluída. Operações de publicação continuam sujeitas à autorização do usuário conforme AGENTS.md.
+
+A revisão corrigiu a comparação de nomes acentuados: normalização Unicode NFC e comparação em português são feitas no aplicativo antes do limite de 20 resultados. O catálogo local é consultado inteiro nesta etapa; um índice normalizado pode ser acrescentado se o volume justificar. Testes verificam CAFÉ/café, acentos compostos e AÇÚCAR. SQLite verifica a leitura do catálogo; a busca Unicode é verificada nos testes do serviço.

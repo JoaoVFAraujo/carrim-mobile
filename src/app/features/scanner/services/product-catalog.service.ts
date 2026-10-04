@@ -6,6 +6,23 @@ import { CatalogProduct, LastProductPrice, parseBarcode } from '../models/catalo
 export class ProductCatalogService {
   private readonly database = inject(DatabaseService);
 
+  async search(value: string): Promise<CatalogProduct[]> {
+    const term = value.trim();
+    if (term.length < 2 || term.length > 120) return [];
+    const products = await this.database.query<CatalogProduct>(
+      `SELECT id, barcode, name FROM products
+       ORDER BY name COLLATE NOCASE, barcode`,
+    );
+    const normalizedTerm = term.normalize('NFC').toLocaleLowerCase('pt-BR');
+    return products
+      .filter(
+        (product) =>
+          product.name.normalize('NFC').toLocaleLowerCase('pt-BR').includes(normalizedTerm) ||
+          product.barcode.includes(term),
+      )
+      .slice(0, 20);
+  }
+
   async find(barcode: string): Promise<CatalogProduct | null> {
     const products = await this.database.query<CatalogProduct>(
       'SELECT id, barcode, name FROM products WHERE barcode = ?',
