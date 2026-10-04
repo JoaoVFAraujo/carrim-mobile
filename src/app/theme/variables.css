@@ -41,3 +41,39 @@ ion-tab-bar {
   --border: 1px solid #dfe7dc;
   height: 64px;
 }
+
+/* Main page headers share the content width while Ionic manages safe areas. */
+.page-header ion-toolbar {
+  --min-height: 76px;
+}
+
+.page-header ion-title {
+  max-width: 544px;
+  margin-inline: auto;
+  padding-inline: 16px;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+}
+
+.purchase-card {
+  background: linear-gradient(135deg, #246b50, #173d2f);
+}
+
+.purchase-card ion-card-content {
+  padding: 24px;
+}
+
+ion-progress-bar {
+  height: 8px;
+}
+
+ion-tab-button {
+  --color: #626b66;
+  --color-selected: #205e46;
+}
+
+ion-input,
+ion-select {
+  --border-radius: 12px;
+}

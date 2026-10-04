@@ -1,4 +1,4 @@
-<ion-header class="ion-no-border">
+<ion-header class="ion-no-border page-header">
   <ion-toolbar
     ><ion-title class="tw:text-3xl tw:font-bold tw:text-green-900">Carrim</ion-title></ion-toolbar
   >
@@ -6,8 +6,12 @@
 <ion-content class="ion-padding">
   <main class="tw:mx-auto tw:max-w-lg tw:pt-2 tw:pb-6">
     <p class="tw:mt-0 tw:text-sm tw:font-medium tw:text-green-800">COMPRE COM TRANQUILIDADE</p>
-    <h1 class="tw:mt-2 tw:text-3xl tw:font-semibold">Suas compras, sob controle.</h1>
-    <p class="tw:mt-3 tw:leading-relaxed">Saiba quanto está gastando antes de chegar ao caixa.</p>
+    <h1 class="tw:mt-2 tw:mb-3 tw:text-3xl tw:font-bold tw:tracking-tight">
+      Sua compra, sob controle.
+    </h1>
+    <p class="tw:mt-0 tw:text-gray-600 tw:leading-relaxed">
+      Saiba quanto está gastando antes de chegar ao caixa.
+    </p>
     @if (store.loading()) {
       <ion-skeleton-text [animated]="true" class="tw:h-48 tw:rounded-3xl" />
     } @else if (store.error()) {
@@ -16,14 +20,14 @@
         <ion-button (click)="store.load()">Tentar novamente</ion-button>
       </section>
     } @else if (store.active(); as shopping) {
-      <ion-card class="tw:mx-0 tw:mt-6 tw:rounded-3xl" color="primary">
+      <ion-card class="purchase-card tw:mx-0 tw:mt-6 tw:rounded-3xl" color="primary">
         <ion-card-content>
           <p>Compra em andamento</p>
           <div role="heading" aria-level="2" class="tw:mt-2 tw:text-2xl tw:font-semibold">
             {{ shopping.supermarketName }}
           </div>
           <p class="tw:mt-6">Total da compra</p>
-          <div class="tw:mt-1 tw:text-4xl tw:font-semibold">
+          <div class="tw:mt-1 tw:text-4xl tw:font-bold tw:tracking-tight tw:break-words">
             {{ store.totalCents() / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
           </div>
           <p class="tw:mt-2">
@@ -74,21 +78,25 @@
         <ion-button (click)="openNewShopping()">Nova compra</ion-button>
       </app-empty-state>
     }
-    <section
-      class="tw:mt-6 tw:border-t tw:border-gray-200 tw:pt-6"
-      aria-labelledby="recent-shopping-title"
-    >
-      <h2 id="recent-shopping-title" class="tw:mt-0 tw:text-lg tw:font-semibold">
-        Últimas compras
-      </h2>
+    <section class="tw:mt-8" aria-labelledby="recent-shopping-title">
+      <h2 id="recent-shopping-title" class="tw:mt-0 tw:text-2xl tw:font-bold">Últimas compras</h2>
       @for (shopping of store.history().slice(0, 3); track shopping.id) {
-        <article class="tw:mt-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-4">
-          <h3 class="tw:mt-0 tw:font-semibold">{{ shopping.supermarketName }}</h3>
-          <p class="tw:text-sm tw:text-gray-600">
-            {{ shopping.finishedAt | date: 'dd/MM/yyyy' }} · {{ shopping.itemCount }}
-            {{ shopping.itemCount === 1 ? 'produto' : 'produtos' }}
-          </p>
-          <strong>{{
+        <article
+          class="tw:mt-3 tw:flex tw:flex-wrap tw:items-center tw:gap-3 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-4 tw:shadow-sm"
+        >
+          <span
+            aria-hidden="true"
+            class="tw:flex tw:h-11 tw:w-11 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-[#e7f0e6] tw:font-bold tw:text-green-900"
+            >{{ shopping.supermarketName.slice(0, 1) }}</span
+          >
+          <div class="tw:min-w-0 tw:flex-1">
+            <h3 class="tw:my-0 tw:font-semibold tw:break-words">{{ shopping.supermarketName }}</h3>
+            <p class="tw:text-sm tw:text-gray-600">
+              {{ shopping.finishedAt | date: 'dd/MM/yyyy' }} · {{ shopping.itemCount }}
+              {{ shopping.itemCount === 1 ? 'produto' : 'produtos' }}
+            </p>
+          </div>
+          <strong class="tw:text-green-900">{{
             shopping.totalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
           }}</strong>
         </article>

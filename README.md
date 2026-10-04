@@ -187,3 +187,9 @@ A confirmação de finalização oferece Total do caixa opcional. Vazio signific
 A migration 8 preserva compras existentes com total do caixa nulo. O valor é gravado junto com finalização, preços e fila local; falhas fazem rollback e tentativas repetidas não substituem o primeiro valor salvo. O total calculado continua vindo dos itens. Histórico apresenta total do caixa e diferença assinada (caixa menos app), ou Valores conferem quando a diferença é zero. Nenhum preço ou quantidade é ajustado automaticamente.
 
 Validação: 52 testes, lint, formatação, build, SQLite real e sincronização Android. SQLite confirmou migração, constraints, distinção entre zero e omissão, rollback, reabertura e repetição sem sobrescrever. O navegador recusou entrada negativa, finalizou R$ 24,00 calculados com R$ 25,75 no caixa e confirmou diferença +R$ 1,75 preservando o item. APK/aparelho permanecem pendentes; o aviso de tamanho inicial do bundle continua.
+
+## Refinamento visual — 03/10/2026
+
+Cabeçalhos principais compartilham largura e hierarquia, mantendo o fundo integrado e as safe areas do Ionic. Início destaca a compra ativa em verde profundo, com cartões compactos de compras recentes e iniciais dos mercados. Carrinho destaca subtotal por produto e orçamento; estados vazios usam superfícies suaves e menos espaço vertical. Não há imagens ou marcas fictícias.
+
+Validação: 52 testes, lint, formatação e build. Revisão no navegador das quatro abas em larguras de celular; build mantém aviso de tamanho inicial. APK/aparelho Android continuam pendentes.
