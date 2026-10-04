@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe, DOCUMENT } from '@angular/common';
 import {
   IonButton,
   IonButtons,
@@ -40,12 +40,14 @@ import { groupHistory, HistoryPeriod } from '../models/history-groups';
     EmptyStateComponent,
   ],
   templateUrl: './history.page.html',
+  host: { '(document:visibilitychange)': 'refreshDate()' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HistoryPage {
   readonly subtotal = itemSubtotalCents;
   readonly emptyIcon = receiptOutline;
   readonly store = inject(ShoppingSessionStore);
+  private readonly document = inject(DOCUMENT);
   readonly period = signal<HistoryPeriod>('all');
   private readonly today = signal(new Date());
   readonly groups = computed(() => groupHistory(this.store.history(), this.period(), this.today()));
@@ -58,6 +60,10 @@ export class HistoryPage {
   ionViewWillEnter(): void {
     this.today.set(new Date());
     void this.store.load();
+  }
+
+  refreshDate(): void {
+    if (this.document.visibilityState === 'visible') this.today.set(new Date());
   }
 
   async open(shopping: CompletedShopping): Promise<void> {

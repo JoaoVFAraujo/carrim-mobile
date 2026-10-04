@@ -199,3 +199,5 @@ Validação: 52 testes, lint, formatação e build. Revisão no navegador das qu
 Histórico oferece Todas / Este mês com segmento Ionic e agrupamento mensal, do mais recente para o mais antigo. O filtro respeita os limites do mês no horário local, inclusive mudanças de ano; não modifica compras e diferencia mês vazio de histórico vazio. Detalhes e comparação com o caixa permanecem somente leitura.
 
 Validação: 54 testes (incluindo limites de mês, ordenação e preservação da lista original), lint, formatação e build. No navegador foram verificados filtro, grupo mensal e abertura de detalhes. O teste de navegação aguarda hidratação dos componentes Ionic antes de descartar a tela. Android físico permanece pendente; build mantém aviso de tamanho inicial.
+
+A revisão do PR acrescentou atualização da data ao retornar do segundo plano, via visibilitychange. Um teste simula a virada de janeiro para fevereiro com a aba mantida aberta. Validação atualizada: 55 testes passaram, além de lint e build.
