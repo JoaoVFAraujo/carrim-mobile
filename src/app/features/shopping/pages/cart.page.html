@@ -89,13 +89,43 @@
               por unidade.
             </p>
           }
+          @if (item.measurementType !== 'WEIGHT') {
+            <div
+              class="tw:flex tw:items-center tw:gap-2"
+              [attr.aria-label]="'Quantidade de ' + item.name"
+              role="group"
+            >
+              <ion-button
+                fill="outline"
+                size="small"
+                [disabled]="saving() || item.quantity <= quantityStep(item)"
+                (click)="changeQuantity(item, -1)"
+                [attr.aria-label]="'Diminuir quantidade de ' + item.name"
+                >−</ion-button
+              >
+              <span class="tw:min-w-8 tw:text-center tw:font-semibold" aria-live="polite">{{
+                item.quantity
+              }}</span>
+              <ion-button
+                fill="outline"
+                size="small"
+                [disabled]="saving() || item.quantity + quantityStep(item) > 9999"
+                (click)="changeQuantity(item, 1)"
+                [attr.aria-label]="'Aumentar quantidade de ' + item.name"
+                >+</ion-button
+              >
+              @if (item.pricingType === 'BUNDLE') {
+                <span class="tw:text-xs tw:text-gray-600">Grupos de {{ item.bundleQuantity }}</span>
+              }
+            </div>
+          }
           <div>
             <ion-button
               fill="clear"
               [disabled]="saving()"
               (click)="openItem(item)"
               [attr.aria-label]="'Editar ' + item.name"
-              >Editar</ion-button
+              >{{ item.measurementType === 'WEIGHT' ? 'Editar peso' : 'Editar' }}</ion-button
             >
             <ion-button
               fill="clear"

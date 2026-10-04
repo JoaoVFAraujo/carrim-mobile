@@ -75,6 +75,38 @@ describe('repeated products', () => {
     return { store, transaction };
   }
 
+  it('serializes quantity changes and steps complete promotional groups', async () => {
+    const { store } = setup();
+    await store.saveItem('Rice', 799, 1);
+    const id = store.items()[0].id;
+    await Promise.all([store.changeQuantity(id, 1), store.changeQuantity(id, 1)]);
+    expect(store.items()[0].quantity).toBe(3);
+    await store.changeQuantity(id, -1);
+    expect(store.items()[0].quantity).toBe(2);
+    await store.saveBundleItem('Milk', 3, 1000, 3);
+    const bundle = store.items()[1].id;
+    await store.changeQuantity(bundle, 1);
+    expect(store.items()[1].quantity).toBe(6);
+    expect(store.totalCents()).toBe(3598);
+    await store.changeQuantity(bundle, -1);
+    await expect(store.changeQuantity(bundle, -1)).rejects.toThrow('quantidade');
+    expect(store.items()[1].quantity).toBe(3);
+  });
+
+  it('preserves quantities on write failure and rejects weight or out-of-range changes', async () => {
+    const { store, transaction } = setup();
+    await store.saveItem('Rice', 799, 1);
+    const id = store.items()[0].id;
+    await expect(store.changeQuantity(id, -1)).rejects.toThrow('quantidade');
+    transaction.mockRejectedValueOnce(new Error('disk full'));
+    await expect(store.changeQuantity(id, 1)).rejects.toThrow('disk full');
+    expect(store.items()[0].quantity).toBe(1);
+    await store.saveWeightItem('Banana', 699, 824);
+    await expect(store.changeQuantity(store.items()[1].id, 1)).rejects.toThrow('peso');
+    await store.saveItem('Rice', 799, 9999, id);
+    await expect(store.changeQuantity(id, 1)).rejects.toThrow('quantidade');
+  });
+
   it('combines concurrent additions and queues an update with the final quantity', async () => {
     const { store, transaction } = setup();
     await Promise.all([store.saveItem(' Coffee ', 1749, 2), store.saveItem('Coffee', 1749, 3)]);

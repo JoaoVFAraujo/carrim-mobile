@@ -130,6 +130,23 @@ export class CartPage {
     }
   }
 
+  quantityStep(item: ShoppingItem): number {
+    return item.pricingType === 'BUNDLE' ? item.bundleQuantity! : 1;
+  }
+
+  async changeQuantity(item: ShoppingItem, direction: -1 | 1): Promise<void> {
+    if (this.saving()) return;
+    this.saving.set(true);
+    this.actionError.set('');
+    try {
+      await this.store.changeQuantity(item.id, direction);
+    } catch {
+      this.actionError.set('Não foi possível alterar a quantidade. Tente novamente.');
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
   async confirmComplete(): Promise<void> {
     if (this.saving() || this.confirming || !this.store.items().length) return;
     this.confirming = true;
