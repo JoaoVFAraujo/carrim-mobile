@@ -33,7 +33,7 @@ npm run build
 npm run format
 ```
 
-A aplicação web de desenvolvimento fica em `http://localhost:4200`.
+A aplicação web de desenvolvimento fica em `http://localhost:4202`, tanto com `npm start` quanto com `ng serve`.
 
 ## Android
 
