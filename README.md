@@ -2,9 +2,9 @@
 
 Aplicativo do Carrim para acompanhar compras de supermercado. Este repositório e `JoaoVFAraujo/carrim-api` formam o mesmo produto.
 
-## Estado: 0.0.1 — Fluxo local de compras
+## Estado: 0.0.2 — Identidade protegida e cliente HTTP
 
-Base Angular/Ionic standalone, navegação com carregamento sob demanda, Tailwind e Capacitor Android. SQLite suporta compra ativa, produtos manuais por unidade ou peso, promoções por quantidade, produtos por código, orçamento, finalização, Histórico somente leitura e compras recentes no Início. O scanner MLKit está integrado; sua execução com câmera em aparelho Android permanece pendente. Autenticação e sincronização remota ficam para próximas entregas.
+Base Angular/Ionic standalone, navegação com carregamento sob demanda, Tailwind e Capacitor Android. SQLite suporta compra ativa, produtos manuais por unidade ou peso, promoções por quantidade, produtos por código, orçamento, finalização, Histórico somente leitura e compras recentes no Início. O scanner MLKit está integrado; sua execução com câmera em aparelho Android permanece pendente. Serviços de identidade anônima protegida e consultas HTTP estão preparados; a interface ainda trabalha localmente e a fila ainda não sincroniza.
 
 ## Stack e pré-requisitos
 
@@ -45,7 +45,7 @@ npx cap sync android
 npx cap open android
 ```
 
-A versão nativa acompanha `0.0.1`; o versionCode começa em 1. `cap sync` atualiza os assets web e plugins, mas não compila um APK. A validação de APK e dispositivo real ainda está pendente.
+A versão nativa acompanha `0.0.2`; o versionCode é 2. `cap sync` atualiza os assets web e plugins, mas não compila um APK. A validação de APK e dispositivo real ainda está pendente.
 
 O bundle identifier iOS também será `br.com.carrim`. A plataforma iOS ainda não foi gerada.
 
@@ -65,7 +65,9 @@ Signals controlam o estado da compra ativa, supermercados, carregamento e erros.
 
 ## Segurança
 
-Nenhum segredo ou token deve entrar no bundle. Tokens não serão armazenados em localStorage. Arquivos `.env` reais são ignorados. O app usa SQLite local para supermercados, catálogo, compras e preços. A câmera é solicitada somente ao tocar em Abrir câmera no aplicativo nativo. Não faz chamadas à API; a fila local ainda não envia operações ao servidor.
+Nenhum segredo fixo ou token deve entrar no bundle. A prova da instalação é gerada com aleatoriedade criptográfica em execução. Credenciais nativas usam armazenamento protegido pelo sistema, sem sincronização com iCloud; no navegador ficam somente em memória, nunca em localStorage, sessionStorage ou SQLite. Arquivos `.env` reais são ignorados. O app usa SQLite local para supermercados, catálogo, compras e preços. A câmera é solicitada somente ao tocar em Abrir câmera no aplicativo nativo. Não há conexão automática ao iniciar nem envio da fila local.
+
+Veja [integração e segurança](docs/INTEGRACAO-SEGURANCA.md) para configuração, limites e validações pendentes.
 
 ## Referência e evolução
 

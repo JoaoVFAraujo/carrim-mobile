@@ -1,6 +1,6 @@
 {
   "name": "carrim-mobile",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "engines": {
     "node": ">=24.15.0 <25"
@@ -21,6 +21,7 @@
     "@angular/forms": "22.2.1",
     "@angular/platform-browser": "22.2.1",
     "@angular/router": "22.2.1",
+    "@aparajita/capacitor-secure-storage": "8.0.1",
     "@capacitor-community/sqlite": "8.1.1",
     "@capacitor-mlkit/barcode-scanning": "8.2.1",
     "@capacitor/app": "8.1.2",
@@ -38,7 +39,7 @@
     "@angular/cli": "22.2.0",
     "@angular/compiler-cli": "22.2.1",
     "@capacitor/android": "8.5.2",
-    "@capacitor/cli": "8.5.2",
+    "@capacitor/cli": "8.4.3",
     "@capacitor/ios": "8.5.2",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.0.0",

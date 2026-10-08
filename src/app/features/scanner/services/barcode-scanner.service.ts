@@ -9,14 +9,36 @@ import {
 } from '@capacitor-mlkit/barcode-scanning';
 import { parseBarcode } from '../models/catalog-product';
 
-export const BARCODE_SCANNER = new InjectionToken<BarcodeScannerPlugin>('barcode scanner', {
+type ScannerAdapter = Pick<
+  BarcodeScannerPlugin,
+  | 'isSupported'
+  | 'checkPermissions'
+  | 'requestPermissions'
+  | 'addListener'
+  | 'startScan'
+  | 'stopScan'
+  | 'openSettings'
+>;
+export const BARCODE_SCANNER = new InjectionToken<ScannerAdapter>('barcode scanner', {
   providedIn: 'root',
-  factory: () => BarcodeScanner,
+  // A Capacitor proxy invents a callable for any property, including Angular's ngOnDestroy.
+  factory: () => ({
+    isSupported: BarcodeScanner.isSupported.bind(BarcodeScanner),
+    checkPermissions: BarcodeScanner.checkPermissions.bind(BarcodeScanner),
+    requestPermissions: BarcodeScanner.requestPermissions.bind(BarcodeScanner),
+    addListener: BarcodeScanner.addListener.bind(BarcodeScanner),
+    startScan: BarcodeScanner.startScan.bind(BarcodeScanner),
+    stopScan: BarcodeScanner.stopScan.bind(BarcodeScanner),
+    openSettings: BarcodeScanner.openSettings.bind(BarcodeScanner),
+  }),
 });
-export const SCANNER_APP = new InjectionToken<AppPlugin>('scanner app lifecycle', {
-  providedIn: 'root',
-  factory: () => App,
-});
+export const SCANNER_APP = new InjectionToken<Pick<AppPlugin, 'addListener'>>(
+  'scanner app lifecycle',
+  {
+    providedIn: 'root',
+    factory: () => ({ addListener: App.addListener.bind(App) }),
+  },
+);
 
 @Injectable({ providedIn: 'root' })
 export class BarcodeScannerService {
