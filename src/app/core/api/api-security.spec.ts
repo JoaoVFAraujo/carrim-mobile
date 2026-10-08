@@ -75,9 +75,11 @@ describe('API identity security', () => {
   let api: CarrimApiService;
   let stored: string | null;
   let write: ReturnType<typeof vi.fn>;
+  let read: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     stored = null;
+    read = vi.fn(async () => stored);
     write = vi.fn(async (value: string) => {
       stored = value;
     });
@@ -86,7 +88,7 @@ describe('API identity security', () => {
         provideHttpClient(withFetch()),
         provideHttpClientTesting(),
         { provide: API_BASE_URL, useValue: '/api/v1' },
-        { provide: CredentialVault, useValue: { read: async () => stored, write } },
+        { provide: CredentialVault, useValue: { read, write } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -243,6 +245,32 @@ describe('API identity security', () => {
     http.expectOne('/api/v1/auth/anonymous').flush(response());
     expect(await pending).toBe(newToken);
     expect(await identity.accessToken(oldToken)).toBe(newToken);
+    http.expectNone('/api/v1/auth/anonymous');
+  });
+
+  it('forces one renewal when concurrent 401 handlers join a pending cached-token lookup', async () => {
+    stored = JSON.stringify({
+      installationId,
+      installationSecret: proof,
+      userId,
+      accessToken: oldToken,
+      expiresAt: response().expiresAt,
+    });
+    let release!: (value: string | null) => void;
+    read.mockReturnValueOnce(
+      new Promise<string | null>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const ordinary = identity.accessToken();
+    const forced = identity.accessToken(oldToken);
+    const concurrent = identity.accessToken(oldToken);
+    release(stored);
+    expect(await ordinary).toBe(oldToken);
+    await tick();
+    http.expectOne('/api/v1/auth/anonymous').flush(response());
+    expect(await forced).toBe(newToken);
+    expect(await concurrent).toBe(newToken);
     http.expectNone('/api/v1/auth/anonymous');
   });
 

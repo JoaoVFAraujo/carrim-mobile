@@ -70,7 +70,7 @@ Preencher após a execução real. Nenhuma linha pendente significa aprovação 
 
 | Verificação                 | Resultado atual | Evidência                                                |
 | --------------------------- | --------------- | -------------------------------------------------------- |
-| Testes e ferramentas locais | Passou          | 78 testes; lint, Prettier, SQLite real, build e cap sync |
+| Testes e ferramentas locais | Passou          | 79 testes; lint, Prettier, SQLite real, build e cap sync |
 | Navegador                   | Passou          | Fluxos interativos em larguras de celular                |
 | Compilação APK              | Pendente        | SDK Android não encontrado nesta sessão                  |
 | Aparelho                    | Pendente        | adb sem dispositivo conectado                            |

@@ -26,7 +26,7 @@ Android desabilita tráfego sem TLS, backup automático e transferência dos dad
 
 O CLI Capacitor foi fixado em 8.4.3 porque 8.5.2 trazia `xcode`/`uuid` com alerta GHSA-w5hq-g745-h8pq. Core e plataforma Android permanecem 8.5.2. Audit completo e de produção retornaram zero vulnerabilidades conhecidas após o ajuste; isso não comprova ausência de outras falhas.
 
-78 testes passaram, cobrindo isolamento de credenciais web/nativas, persistência antes do HTTP, concorrência, recuperação após resposta perdida, armazenamento indisponível, recusa de proprietário diferente, destinos externos, renovação única, 403 e reutilização após 401 atrasado. Build, lint, formatação, SQLite real e registro do plugin no Android passaram.
+79 testes passaram, cobrindo isolamento de credenciais web/nativas, persistência antes do HTTP, concorrência, recuperação após resposta perdida, armazenamento indisponível, recusa de proprietário diferente, destinos externos, renovação única, 403 e reutilização após 401 atrasado. Um teste adicional garante renovação quando um 401 chega durante a leitura de um token em cache. Build, lint, formatação, SQLite real e registro do plugin no Android passaram.
 
 Os adaptadores Angular dos plugins expõem somente métodos utilizados. Isso evita invocar um `ngOnDestroy` sintetizado pelo proxy Capacitor durante descarte; um teste de navegação protege essa integração. Arquivos existentes receberam ajustes de formatação, sem alteração do comportamento das compras.
 

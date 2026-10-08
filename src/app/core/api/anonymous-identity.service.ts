@@ -25,7 +25,14 @@ export class AnonymousIdentityService {
   private pending: Promise<string> | null = null;
 
   accessToken(rejectedToken?: string): Promise<string> {
-    if (this.pending) return this.pending;
+    if (this.pending) {
+      if (!rejectedToken) return this.pending;
+      // A pending vault lookup may return the rejected cached token. Wait for it,
+      // then join/start renewal instead of replaying that invalid credential.
+      return this.pending.then((value) =>
+        value === rejectedToken ? this.accessToken(rejectedToken) : value,
+      );
+    }
     this.pending = this.obtain(rejectedToken).finally(() => {
       this.pending = null;
     });
