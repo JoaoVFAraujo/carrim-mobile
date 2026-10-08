@@ -1,8 +1,8 @@
 # Validação Android do Carrim
 
-## Estado em 03/10/2026
+## Estado em 08/10/2026
 
-62 testes, lint, formatação, SQLite real, build web e `cap sync android` passaram. Revisão no navegador cobriu compra, produtos por unidade/peso/promoção, finalização, total do caixa, Histórico, filtros e reutilização do catálogo. O build web mantém aviso de tamanho inicial de 1,06 MB, sem ultrapassar o limite de erro.
+Frontend 0.0.2 acrescenta serviços de identidade protegida e HTTP, sem envio automático. Consulte [integração e segurança](INTEGRACAO-SEGURANCA.md). A revisão anterior no navegador cobriu compra, produtos por unidade/peso/promoção, finalização, total do caixa, Histórico, filtros e reutilização do catálogo. O build web mantém aviso de tamanho inicial acima de 1 MB, sem ultrapassar o limite de erro.
 
 APK, captura física, permissões do sistema e persistência nativa ainda não foram validados. Não foi encontrado SDK Android nem aparelho conectado neste ambiente. A conferência final encontrou JDK 21 em C:\Program Files\Java\jdk-21.0.10, além do Java 25 e Java 8; o código Android do Capacitor usa Java 21. Sincronizar assets/plugins não confirma compilação ou execução nativa.
 
@@ -64,11 +64,13 @@ Registrar modelo, versão Android, commit, versão do APK e resultado de cada et
 
 ## Registro de execução
 
+Ao habilitar um endpoint HTTPS nativo, validar geração/renovação concorrente e persistência da identidade após fechar o processo e atualizar com `-r`. Confirmar ausência de token/prova no SQLite, Web Storage, logs e backups; confirmar recusa de HTTP e redirecionamentos. Falha do Keystore deve impedir chamadas protegidas mantendo as compras locais acessíveis. Esta execução ainda está pendente.
+
 Preencher após a execução real. Nenhuma linha pendente significa aprovação implícita.
 
 | Verificação                 | Resultado atual | Evidência                                                |
 | --------------------------- | --------------- | -------------------------------------------------------- |
-| Testes e ferramentas locais | Passou          | 62 testes; lint, Prettier, SQLite real, build e cap sync |
+| Testes e ferramentas locais | Passou          | 79 testes; lint, Prettier, SQLite real, build e cap sync |
 | Navegador                   | Passou          | Fluxos interativos em larguras de celular                |
 | Compilação APK              | Pendente        | SDK Android não encontrado nesta sessão                  |
 | Aparelho                    | Pendente        | adb sem dispositivo conectado                            |
