@@ -52,6 +52,17 @@ export class SyncProcessorService {
       this.state.set('OFFLINE');
       return;
     }
+    const paused = await this.db.query<{ value: string }>(
+      'SELECT value FROM app_metadata WHERE key=?',
+      ['sync_pull_paused'],
+    );
+    if (paused[0]?.value === '1') {
+      this.status.message.set(
+        'O recebimento está pausado por um conflito. Suas compras foram preservadas.',
+      );
+      this.state.set('ATTENTION');
+      return;
+    }
     await this.queue.recover();
     for (let count = 0; count < 100; count++) {
       const entry = await this.queue.claim();
@@ -60,8 +71,28 @@ export class SyncProcessorService {
           "SELECT id FROM sync_queue WHERE status = 'FAILED' LIMIT 1",
         );
         if (!failed.length) {
-          await this.pull.run();
-          await this.store.load();
+          try {
+            await this.pull.run();
+            await this.store.load();
+          } catch (error) {
+            if (!(error instanceof SyncTransportError)) {
+              await this.db.transaction([
+                {
+                  statement:
+                    'INSERT INTO app_metadata(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+                  values: ['sync_pull_paused', '1'],
+                },
+              ]);
+              this.status.message.set(
+                'O recebimento foi pausado por um conflito. Suas compras locais foram preservadas.',
+              );
+            } else
+              this.status.message.set(
+                'Não foi possível receber as alterações agora. Suas compras locais foram preservadas.',
+              );
+            this.state.set('ATTENTION');
+            return;
+          }
         }
         this.status.message.set(
           failed.length

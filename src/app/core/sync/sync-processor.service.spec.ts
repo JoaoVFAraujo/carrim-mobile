@@ -136,4 +136,14 @@ describe('sync processor', () => {
     await first;
     expect(push).toHaveBeenCalledTimes(1);
   });
+  it('persists and displays an import conflict instead of silently retrying it', async () => {
+    claim.mockReset().mockResolvedValue(null);
+    const pull = TestBed.inject(SyncPullService);
+    vi.mocked(pull.run).mockRejectedValue(new Error('terminal conflict'));
+    await service.run();
+    expect(service.state()).toBe('ATTENTION');
+    expect(TestBed.inject(DatabaseService).transaction).toHaveBeenCalledWith([
+      expect.objectContaining({ values: ['sync_pull_paused', '1'] }),
+    ]);
+  });
 });
