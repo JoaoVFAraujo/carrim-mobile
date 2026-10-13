@@ -9,6 +9,8 @@ import { productCatalogSchema } from '../src/app/core/database/migrations/005-pr
 import { weightItemsSchema } from '../src/app/core/database/migrations/006-weight-items.ts';
 import { bundleItemsSchema } from '../src/app/core/database/migrations/007-bundle-items.ts';
 import { checkoutTotalSchema } from '../src/app/core/database/migrations/008-checkout-total.ts';
+import { syncRetrySchema } from '../src/app/core/database/migrations/009-sync-retry.ts';
+import { syncRequestSchema } from '../src/app/core/database/migrations/010-sync-request.ts';
 
 // A fresh, in-memory database: this verification never touches the user's app data.
 const SQL = await initSqlJs();
@@ -277,7 +279,63 @@ db.run("DELETE FROM shopping_items WHERE id = 'next-item'");
 insertRegularItem(['free', 'next', 'Free item', 1, 1, 6, 6, null, 'UNIT', null]);
 complete('next', 'zero-checkout', false, 0);
 assert.equal(scalar("SELECT checkout_total_cents FROM shopping_sessions WHERE id = 'next'"), 0);
+// Exercise the actual queue SQL against SQLite, including restart and stale responses.
+apply(syncRetrySchema);
+assert.equal(scalar('SELECT MAX(version) FROM schema_migrations'), 9);
+apply(syncRequestSchema);
+assert.equal(scalar("SELECT COUNT(*) FROM shopping_items WHERE session_id = 'next'"), 1);
+db.run('DELETE FROM sync_queue');
+const queueSource = await readFile(
+  new URL('../src/app/core/sync/sync-queue.service.ts', import.meta.url),
+  'utf8',
+);
+const queueStatements = [...queueSource.matchAll(/statement:\s*`([^`]+)`/g)]
+  .map((x) => x[1])
+  .filter((sql) => sql.startsWith('UPDATE sync_queue'));
+assert.equal(queueStatements.length, 4);
+const [claimSql, appliedSql, failedSql, recoverSql] = queueStatements;
+for (const [id, sequence] of [
+  ['first', 1],
+  ['second', 2],
+]) {
+  db.run(
+    `INSERT INTO sync_queue(id, sequence_number, aggregate_type, aggregate_id, operation,
+    payload_json, created_at_ms, updated_at_ms) VALUES (?, ?, 'PRODUCT', ?, 'CREATE', '{}', 0, 0)`,
+    [id, sequence, id],
+  );
+}
+db.run(claimSql, [100, 100, 'lease-1', 100]);
+assert.equal(scalar("SELECT attempt_count FROM sync_queue WHERE id = 'first'"), 1);
+db.run(claimSql, [101, 101, 'competing', 101]);
+assert.equal(scalar("SELECT status FROM sync_queue WHERE id = 'second'"), 'PENDING');
+db.run(failedSql, ['PENDING', 100, 2100, 'TRANSIENT', 'first', 'lease-1']);
+const savedQueue = db.export();
+db.close();
+db = new SQL.Database(savedQueue);
+db.run(claimSql, [2099, 2099, 'too-early', 2099]);
+assert.equal(scalar("SELECT status FROM sync_queue WHERE id = 'first'"), 'PENDING');
+db.run(claimSql, [2100, 2100, 'lease-2', 2100]);
+assert.equal(scalar("SELECT attempt_count FROM sync_queue WHERE id = 'first'"), 2);
+db.run(recoverSql, [122099, 122099, 2099]);
+assert.equal(scalar("SELECT status FROM sync_queue WHERE id = 'first'"), 'SYNCING');
+db.run(recoverSql, [122100, 122100, 2100]);
+assert.equal(scalar("SELECT status FROM sync_queue WHERE id = 'first'"), 'PENDING');
+db.run(claimSql, [122100, 122100, 'lease-3', 122100]);
+db.run(appliedSql, [122101, 'first', 'lease-2']);
+assert.equal(scalar("SELECT status FROM sync_queue WHERE id = 'first'"), 'SYNCING');
+db.run(failedSql, ['FAILED', 122101, null, 'PERMANENT', 'first', 'lease-2']);
+assert.equal(scalar("SELECT status FROM sync_queue WHERE id = 'first'"), 'SYNCING');
+db.run(appliedSql, [122102, 'first', 'lease-3']);
+db.run(claimSql, [122103, 122103, 'lease-4', 122103]);
+assert.equal(scalar("SELECT lease_token FROM sync_queue WHERE id = 'second'"), 'lease-4');
+db.run(failedSql, ['FAILED', 122104, null, 'PERMANENT', 'second', 'lease-4']);
+db.run(claimSql, [999999, 999999, 'no-retry', 999999]);
+assert.equal(scalar("SELECT status FROM sync_queue WHERE id = 'second'"), 'FAILED');
+assert.equal(scalar('SELECT id FROM sync_queue WHERE sequence_number = 1'), 'first');
 db.close();
 console.log(
-  'SQLite verified: migrations v1-v8, preservation, atomic catalog/item/outbox, repeated product grouping, weight and bundle constraints, exact mixed history, optional checkout including zero, rollback, completion replay, immutable history, leading zeros, price configuration isolation and reopen.',
+  'Sync queue verified: migration preservation, atomic claims, ordering, persisted retries/restart, stale recovery, lease isolation, permanent failure.',
+);
+console.log(
+  'SQLite verified: migrations v1-v10, preservation, atomic catalog/item/outbox, repeated product grouping, weight and bundle constraints, exact mixed history, optional checkout including zero, rollback, completion replay, immutable history, leading zeros, price configuration isolation and reopen.',
 );

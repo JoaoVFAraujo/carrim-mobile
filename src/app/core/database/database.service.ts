@@ -13,6 +13,8 @@ import { productCatalogSchema } from './migrations/005-product-catalog';
 import { weightItemsSchema } from './migrations/006-weight-items';
 import { bundleItemsSchema } from './migrations/007-bundle-items';
 import { checkoutTotalSchema } from './migrations/008-checkout-total';
+import { syncRetrySchema } from './migrations/009-sync-retry';
+import { syncRequestSchema } from './migrations/010-sync-request';
 
 @Injectable({ providedIn: 'root' })
 export class DatabaseService {
@@ -20,6 +22,40 @@ export class DatabaseService {
   private database?: SQLiteDBConnection;
   private opening?: Promise<void>;
   private queue: Promise<unknown> = Promise.resolve();
+
+  /** Serialize owner checks with local writes; credentials never belong in SQLite. */
+  async verifySyncOwner(installationId: string, userId?: string, bind = false): Promise<void> {
+    return this.serial(async () => {
+      await this.open();
+      const result = await this.database!.query(
+        "SELECT value FROM app_metadata WHERE key = 'sync_owner'",
+      );
+      const stored = result.values?.[0]?.value;
+      if (stored !== undefined) {
+        let owner: { installationId?: string; userId?: string };
+        try {
+          owner = JSON.parse(stored);
+        } catch {
+          throw new Error('O vínculo das compras precisa ser recuperado antes de sincronizar.');
+        }
+        if (!owner || owner.installationId !== installationId || !userId || owner.userId !== userId)
+          throw new Error('A identidade não corresponde ao proprietário das compras locais.');
+      } else if (bind) {
+        if (!userId) throw new Error('Uma identidade autenticada é necessária para sincronizar.');
+        await this.database!.executeSet(
+          [
+            {
+              statement: 'INSERT INTO app_metadata(key, value) VALUES (?, ?)',
+              values: ['sync_owner', JSON.stringify({ installationId, userId })],
+            },
+          ],
+          true,
+        );
+      }
+      // Retry persistence even when a previous save failed after the SQLite insert.
+      if (bind && !Capacitor.isNativePlatform()) await this.connection!.saveToStore('carrim');
+    });
+  }
 
   async query<T>(statement: string, values: (string | number | null)[] = []): Promise<T[]> {
     return this.serial(async () => {
@@ -132,7 +168,19 @@ export class DatabaseService {
         checkoutTotalSchema.map((statement) => ({ statement, values: [] })),
         true,
       );
-    } else if (version !== 8) {
+    }
+    if ([1, 2, 3, 4, 5, 6, 7, 8].includes(version)) {
+      await this.database.executeSet(
+        syncRetrySchema.map((statement) => ({ statement, values: [] })),
+        true,
+      );
+    }
+    if ([1, 2, 3, 4, 5, 6, 7, 8, 9].includes(version)) {
+      await this.database.executeSet(
+        syncRequestSchema.map((statement) => ({ statement, values: [] })),
+        true,
+      );
+    } else if (version !== 10) {
       throw new Error('Versão do banco não suportada.');
     }
     await this.database.run('INSERT OR IGNORE INTO app_metadata(key, value) VALUES (?, ?)', [
