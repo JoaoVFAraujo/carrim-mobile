@@ -4,9 +4,9 @@ Aplicativo do Carrim para acompanhar compras de supermercado. Este repositório 
 
 ## Estado: 0.0.2 — Identidade protegida e cliente HTTP
 
-Base Angular/Ionic standalone, navegação com carregamento sob demanda, Tailwind e Capacitor Android. SQLite suporta compra ativa, produtos manuais por unidade ou peso, promoções por quantidade, produtos por código, orçamento, finalização, Histórico somente leitura e compras recentes no Início. O scanner MLKit está integrado; sua execução com câmera em aparelho Android permanece pendente. Serviços de identidade anônima protegida e consultas HTTP estão preparados; a interface ainda trabalha localmente e a fila ainda não sincroniza.
+Base Angular/Ionic standalone, navegação com carregamento sob demanda, Tailwind e Capacitor Android. SQLite suporta compra ativa, produtos manuais por unidade ou peso, promoções por quantidade, produtos por código, orçamento, finalização, Histórico somente leitura e compras recentes no Início. O scanner MLKit está integrado; sua execução com câmera em aparelho Android permanece pendente. Serviços de identidade anônima protegida e consultas HTTP estão preparados; o processador nativo sincroniza a fila quando há API HTTPS configurada, com recebimento de snapshots e conflitos explícitos. O navegador continua local; execução nativa em aparelho ainda precisa ser validada.
 
-Preparação adicional: o [vínculo local para sincronização](docs/INTEGRACAO-SEGURANCA.md#preparação-do-vínculo-local-para-sync--12102026) impede associar o banco a outra identidade. O processador da fila ainda não foi implementado.
+Preparação adicional: o [vínculo local para sincronização](docs/INTEGRACAO-SEGURANCA.md#preparação-do-vínculo-local-para-sync--12102026) impede associar o banco a outra identidade. O processador, retries, pull e conflitos estão implementados nas branches desta entrega; consulte [produção](docs/PRODUCAO.md) para habilitar HTTPS.
 
 ## Stack e pré-requisitos
 

@@ -1,6 +1,6 @@
 # Identidade e HTTP — 08/10/2026
 
-Frontend 0.0.2 prepara os serviços para o contrato do backend 0.0.8. A interface e a fila continuam locais; esta entrega não envia compras nem inicia autenticação automaticamente.
+As branches atuais incluem processador nativo de fila, pull e pausas explícitas de conflito. A sincronização inicia no Capacitor somente com API HTTPS configurada; o navegador continua local. As seções datadas abaixo preservam o histórico das entregas. Consulte PRODUCAO.md para configuração e VALIDACAO-ANDROID.md para limites da validação.
 
 ## Preparação do vínculo local para sync — 12/10/2026
 
