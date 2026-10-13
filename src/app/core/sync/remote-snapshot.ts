@@ -62,8 +62,8 @@ export function snapshotStatements(change: RemoteSnapshot, now: number): capSQLi
     throw new Error('Data remota inválida.');
   const statements: capSQLiteSet[] = [
     {
-      statement: `INSERT OR IGNORE INTO shopping_sessions(id,supermarket_id,budget_cents,status,started_at_ms)
-      VALUES (?,?,?,'ACTIVE',?)`,
+      statement: `INSERT INTO shopping_sessions(id,supermarket_id,budget_cents,status,started_at_ms)
+      VALUES (?,?,?,'ACTIVE',?) ON CONFLICT(id) DO NOTHING`,
       values: [s.id, String(s['supermarketId']), s['budgetCents'] as number | null, started],
     },
     {

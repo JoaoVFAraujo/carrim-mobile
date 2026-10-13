@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Capacitor } from '@capacitor/core';
 import { vi } from 'vitest';
+import { RemoteImportConflict } from '../database/remote-import-conflict';
 import { DatabaseService } from '../database/database.service';
 import { API_BASE_URL } from '../api/api-endpoint';
 import { SyncProcessorService } from './sync-processor.service';
@@ -139,11 +140,21 @@ describe('sync processor', () => {
   it('persists and displays an import conflict instead of silently retrying it', async () => {
     claim.mockReset().mockResolvedValue(null);
     const pull = TestBed.inject(SyncPullService);
-    vi.mocked(pull.run).mockRejectedValue(new Error('terminal conflict'));
+    vi.mocked(pull.run).mockRejectedValue(new RemoteImportConflict());
     await service.run();
     expect(service.state()).toBe('ATTENTION');
     expect(TestBed.inject(DatabaseService).transaction).toHaveBeenCalledWith([
       expect.objectContaining({ values: ['sync_pull_paused', '1'] }),
     ]);
+  });
+  it('keeps authentication and storage outages retryable without persisting a conflict pause', async () => {
+    claim.mockReset().mockResolvedValue(null);
+    vi.mocked(TestBed.inject(SyncPullService).run).mockRejectedValueOnce(
+      new Error('authentication unavailable'),
+    );
+    await service.run();
+    expect(TestBed.inject(DatabaseService).transaction).not.toHaveBeenCalled();
+    await service.run();
+    expect(service.state()).toBe('READY');
   });
 });

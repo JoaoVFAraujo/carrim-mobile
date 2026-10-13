@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { API_BASE_URL } from '../api/api-endpoint';
+import { RemoteImportConflict } from '../database/remote-import-conflict';
 import { DatabaseService } from '../database/database.service';
 import { SyncStatusService } from './sync-status.service';
 import { SyncPullService } from './sync-pull.service';
@@ -26,7 +27,12 @@ export class SyncProcessorService {
     if (this.started || !Capacitor.isNativePlatform() || !this.base) return;
     this.started = true;
     const run = () => {
-      void this.run().catch(() => this.state.set('ATTENTION'));
+      void this.run().catch(() => {
+        this.state.set('ATTENTION');
+        this.status.message.set(
+          'Não foi possível sincronizar agora. Suas compras locais foram preservadas.',
+        );
+      });
     };
     const timer = setInterval(run, 2000);
     window.addEventListener('online', run);
@@ -75,7 +81,7 @@ export class SyncProcessorService {
             await this.pull.run();
             await this.store.load();
           } catch (error) {
-            if (!(error instanceof SyncTransportError)) {
+            if (error instanceof RemoteImportConflict) {
               await this.db.transaction([
                 {
                   statement:

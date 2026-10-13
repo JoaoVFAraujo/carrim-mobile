@@ -1,3 +1,4 @@
+import { RemoteImportConflict } from './remote-import-conflict';
 import { Injectable } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import type {
@@ -79,22 +80,31 @@ export class DatabaseService {
             (local.status !== remote.status ||
               (local.checkout_total_cents ?? null) !== (remote.checkoutTotalCents ?? null))
           )
-            throw new Error(
-              'Conflito com uma compra local encerrada. Seus dados foram preservados.',
-            );
+            throw new RemoteImportConflict();
         }
       }
-      await this.database!.executeSet(
-        [
-          ...statements,
-          {
-            statement:
-              'INSERT INTO app_metadata(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
-            values: ['sync_cursor', cursor],
-          },
-        ],
-        true,
-      );
+      try {
+        await this.database!.executeSet(
+          [
+            ...statements,
+            {
+              statement:
+                'INSERT INTO app_metadata(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+              values: ['sync_cursor', cursor],
+            },
+          ],
+          true,
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          /UNIQUE constraint failed|FOREIGN KEY constraint failed|CHECK constraint failed|Shopping session is not active/i.test(
+            error.message,
+          )
+        )
+          throw new RemoteImportConflict();
+        throw error;
+      }
       if (!Capacitor.isNativePlatform()) await this.connection!.saveToStore('carrim');
       return true;
     });

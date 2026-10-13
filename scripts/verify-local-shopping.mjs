@@ -405,6 +405,43 @@ assert.equal(scalar('SELECT count(*) FROM sync_queue'), 0);
 runSnapshot(remote); // repeated journal events must preserve terminal items without triggering forbidden edits
 assert.equal(scalar('SELECT count(*) FROM shopping_items'), 1);
 assert.equal(scalar('SELECT count(*) FROM price_history'), 1);
+const oldActive = 'a20e47cf-a002-4b01-a001-000000000004';
+const newActive = 'a20e47cf-a002-4b01-a001-000000000005';
+db.run(
+  "INSERT INTO shopping_sessions(id,supermarket_id,status,started_at_ms) VALUES (?,?,'ACTIVE',0)",
+  [oldActive, marketId],
+);
+const activeChange = {
+  aggregateType: 'SHOPPING_SESSION',
+  aggregateId: newActive,
+  snapshot: {
+    id: newActive,
+    version: 0,
+    supermarketId: marketId,
+    budgetCents: null,
+    status: 'ACTIVE',
+    startedAt: '2026-10-13T12:02:00Z',
+    finishedAt: null,
+    items: [],
+  },
+};
+assert.throws(() => runSnapshot(activeChange)); // must not silently ignore one_active_session collisions
+runSnapshot({
+  aggregateType: 'SHOPPING_SESSION',
+  aggregateId: oldActive,
+  snapshot: {
+    id: oldActive,
+    version: 1,
+    supermarketId: marketId,
+    budgetCents: null,
+    status: 'CANCELED',
+    startedAt: '1970-01-01T00:00:00Z',
+    finishedAt: '2026-10-13T12:01:00Z',
+    items: [],
+  },
+});
+runSnapshot(activeChange);
+assert.equal(scalar("SELECT id FROM shopping_sessions WHERE status='ACTIVE'"), newActive);
 db.close();
 console.log(
   'Remote snapshots verified: bootstrap, completed items/history, repeated terminal events, no outbox echo.',
