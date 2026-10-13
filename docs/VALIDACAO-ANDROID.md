@@ -78,3 +78,13 @@ Preencher após a execução real. Nenhuma linha pendente significa aprovação 
 | SQLite nativo e atualização | Pendente        | Requer execução nativa                                   |
 
 Ao encontrar falha, registrar etapa, valores, resultado esperado/obtido e evidência. Corrigir em branch `fix/<correcao>` a partir da main e repetir a etapa afetada antes de considerar a validação concluída.
+
+## Validação executada no ambiente cloud
+
+SDK Android 35/36 e Build Tools 35.0.0/36.0.0 foram instalados; plugins usam ambos. A compilação exige JDK 21 completo (javac), não apenas JRE. `npm run build`, `npx cap sync android` e Gradle 8.14.3 `assembleDebug` passaram. APK debug gerado em `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+O teste integrado `CARRIM_LIVE_SYNC=1 npm test` passou com 101 testes contra API local e PostgreSQL real. Exercita os serviços de identidade, processador e transporte reais e SQL real; os plugins nativos são substituídos por adaptadores de teste. Cria compra offline com unidade/peso/promoção, reabre SQLite, perde resposta de push, reenvia sem duplicar e recebe alteração REST via pull. Esses resultados não comprovam Keystore, câmera ou persistência nativa.
+
+Para repetir, iniciar a API com migrations V5/V6 em banco local isolado na porta 8082. O teste usa dados descartáveis e uma identidade nova, sem segredos externos. Sem CARRIM_LIVE_SYNC=1, esse teste é explicitamente pulado; os demais continuam executando normalmente.
+
+ADB não encontrou dispositivo conectado. Permanecem pendentes instalação/execução, câmera/permissões, Keystore, SQLite nativo e atualização com `adb install -r`. Não houve teste em supermercado nem liberação de APK de produção. Endpoint HTTPS do app ainda deve ser configurado antes da sincronização nativa.
