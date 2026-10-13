@@ -1,5 +1,11 @@
 import type { capSQLiteSet } from '@capacitor-community/sqlite';
 
+export class RemoteImportConflict extends Error {
+  constructor() {
+    super('Conflito ao receber dados. Suas compras locais foram preservadas.');
+  }
+}
+
 export interface RemoteSnapshot {
   aggregateType: 'PRODUCT' | 'SUPERMARKET' | 'SHOPPING_SESSION';
   aggregateId: string;
@@ -7,6 +13,13 @@ export interface RemoteSnapshot {
 }
 
 export function snapshotStatements(change: RemoteSnapshot, now: number): capSQLiteSet[] {
+  try {
+    return buildSnapshot(change, now);
+  } catch {
+    throw new RemoteImportConflict();
+  }
+}
+function buildSnapshot(change: RemoteSnapshot, now: number): capSQLiteSet[] {
   const s = change.snapshot;
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (
@@ -17,6 +30,15 @@ export function snapshotStatements(change: RemoteSnapshot, now: number): capSQLi
     s.version < 0
   )
     throw new Error('Estado remoto inválido.');
+  const validName = (value: unknown) =>
+    typeof value === 'string' && value.trim().length > 0 && value.length <= 120;
+  const integer = (value: unknown, min: number, max: number) =>
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
+  if (
+    (change.aggregateType === 'PRODUCT' || change.aggregateType === 'SUPERMARKET') &&
+    !validName(s['name'])
+  )
+    throw new Error();
   const metadata: capSQLiteSet[] = [
     {
       statement:
@@ -60,6 +82,14 @@ export function snapshotStatements(change: RemoteSnapshot, now: number): capSQLi
     finished = s['finishedAt'] == null ? null : Date.parse(String(s['finishedAt']));
   if (!Number.isSafeInteger(started) || (finished !== null && !Number.isSafeInteger(finished)))
     throw new Error('Data remota inválida.');
+  if (
+    !uuid.test(String(s['supermarketId'])) ||
+    (s['status'] === 'ACTIVE') !== (finished === null) ||
+    (finished !== null && finished < started) ||
+    (s['budgetCents'] != null && !integer(s['budgetCents'], 1, 100000000)) ||
+    (s['checkoutTotalCents'] != null && !integer(s['checkoutTotalCents'], 0, 100000000))
+  )
+    throw new Error();
   const statements: capSQLiteSet[] = [
     {
       statement: `INSERT INTO shopping_sessions(id,supermarket_id,budget_cents,status,started_at_ms)
@@ -76,7 +106,35 @@ export function snapshotStatements(change: RemoteSnapshot, now: number): capSQLi
       values: [s.id, s.id],
     },
   ];
+  const ids = new Set<string>();
   for (const item of s['items'] as Record<string, unknown>[]) {
+    if (
+      !item ||
+      !uuid.test(String(item['id'])) ||
+      ids.has(String(item['id'])) ||
+      !validName(item['productNameSnapshot']) ||
+      (item['productId'] != null && !uuid.test(String(item['productId']))) ||
+      !['UNIT', 'WEIGHT'].includes(String(item['measurementType'])) ||
+      !['REGULAR', 'BUNDLE'].includes(String(item['pricingType']))
+    )
+      throw new Error();
+    ids.add(String(item['id']));
+    const price = item['unitPriceCents'] ?? item['pricePerKgCents'] ?? item['bundlePriceCents'];
+    if (!integer(price, 1, 100000000)) throw new Error();
+    if (item['measurementType'] === 'WEIGHT') {
+      if (
+        item['pricingType'] !== 'REGULAR' ||
+        !integer(item['weightGrams'], 1, 9999999) ||
+        item['quantityUnits'] != null
+      )
+        throw new Error();
+    } else if (!integer(item['quantityUnits'], 1, 9999)) throw new Error();
+    if (
+      item['pricingType'] === 'BUNDLE' &&
+      (!integer(item['bundleQuantity'], 2, 9999) ||
+        (item['quantityUnits'] as number) % (item['bundleQuantity'] as number) !== 0)
+    )
+      throw new Error();
     const productId = item['productId'] == null ? null : String(item['productId']);
     statements.push({
       statement: `INSERT INTO shopping_items(id,session_id,name,unit_price_cents,quantity,
