@@ -42,4 +42,38 @@ describe('sync pull reconciliation', () => {
       [[], 'next'],
     ]);
   });
+  it('imports terminal sessions before a newer active session regardless of journal order', async () => {
+    const a = 'a20e47cf-a002-4b01-a001-000000000001',
+      b = 'a20e47cf-a002-4b01-a001-000000000002';
+    const change = (id: string, status: string) => ({
+      aggregateType: 'SHOPPING_SESSION',
+      aggregateId: id,
+      snapshot: {
+        id,
+        version: 1,
+        supermarketId: 'a20e47cf-a002-4b01-a001-000000000003',
+        budgetCents: null,
+        startedAt: '2026-10-13T10:00:00Z',
+        finishedAt: status === 'ACTIVE' ? null : '2026-10-13T11:00:00Z',
+        status,
+        items: [],
+      },
+    });
+    query.mockImplementation(async (sql: string, values?: string[]) => {
+      if (values?.[0] === 'sync_import_pending') return [{ value: '1' }];
+      if (sql.includes('incoming_snapshot:%'))
+        return [
+          { value: JSON.stringify(change(b, 'ACTIVE')) },
+          { value: JSON.stringify(change(a, 'CANCELED')) },
+        ];
+      return [];
+    });
+    await TestBed.inject(SyncPullService).run();
+    const final = apply.mock.calls.at(-1)![0] as { statement: string; values: string[] }[];
+    expect(
+      final
+        .filter((st) => st.statement.includes('INSERT INTO shopping_sessions'))
+        .map((st) => st.values[0]),
+    ).toEqual([a, b]);
+  });
 });

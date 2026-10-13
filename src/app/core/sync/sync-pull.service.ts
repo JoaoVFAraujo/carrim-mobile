@@ -49,9 +49,17 @@ export class SyncPullService {
           }>(`SELECT value FROM app_metadata WHERE key LIKE 'incoming_snapshot:%'
             ORDER BY CASE WHEN key LIKE 'incoming_snapshot:PRODUCT:%' THEN 0
               WHEN key LIKE 'incoming_snapshot:SUPERMARKET:%' THEN 1 ELSE 2 END`);
-          const imports = snapshots.flatMap((row) =>
-            snapshotStatements(JSON.parse(row.value), Date.now()),
-          );
+          const ordered = snapshots.map((row) => JSON.parse(row.value));
+          const priority = (change: { aggregateType: string; snapshot: { status?: string } }) =>
+            change.aggregateType === 'PRODUCT'
+              ? 0
+              : change.aggregateType === 'SUPERMARKET'
+                ? 1
+                : change.snapshot.status === 'ACTIVE'
+                  ? 3
+                  : 2;
+          ordered.sort((a, b) => priority(a) - priority(b));
+          const imports = ordered.flatMap((change) => snapshotStatements(change, Date.now()));
           imports.push({
             statement: 'UPDATE app_metadata SET value=? WHERE key=?',
             values: ['0', 'sync_import_pending'],
