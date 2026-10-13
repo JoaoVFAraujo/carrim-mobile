@@ -3,8 +3,14 @@ export function apiEndpoint(base: string | null, path: string): string {
   if (!/^\/[a-zA-Z0-9/-]+$/.test(path) || path.includes('//') || path.includes('..')) {
     throw new Error('Caminho da API inválido.');
   }
+  let normalized = base;
   if (base !== '/api/v1') {
-    const url = new URL(base);
+    let url: URL;
+    try {
+      url = new URL(base);
+    } catch {
+      throw new Error('Endereço da API inválido.');
+    }
     if (
       url.protocol !== 'https:' ||
       url.username ||
@@ -15,6 +21,7 @@ export function apiEndpoint(base: string | null, path: string): string {
     ) {
       throw new Error('A API exige um endereço HTTPS sem credenciais.');
     }
+    normalized = url.href;
   }
-  return base + path;
+  return normalized + path;
 }

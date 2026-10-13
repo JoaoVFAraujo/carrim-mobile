@@ -2,7 +2,12 @@ import { mkdir, writeFile } from 'node:fs/promises';
 
 const base = process.env.CARRIM_API_URL;
 if (!base) throw new Error('Informe CARRIM_API_URL com HTTPS e caminho /api/v1.');
-const url = new URL(base);
+let url;
+try {
+  url = new URL(base);
+} catch {
+  throw new Error('Endereço da API inválido.');
+}
 if (
   url.protocol !== 'https:' ||
   url.username ||
@@ -15,6 +20,6 @@ if (
 await mkdir(new URL('../public/', import.meta.url), { recursive: true });
 await writeFile(
   new URL('../public/api-config.json', import.meta.url),
-  JSON.stringify({ apiBaseUrl: base }) + '\n',
+  JSON.stringify({ apiBaseUrl: url.href }) + '\n',
 );
 console.log('Configuração pública da API gerada. Execute build e cap sync antes de instalar.');

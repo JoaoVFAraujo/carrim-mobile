@@ -9,10 +9,16 @@ export function setApiConfiguration(value: unknown): void {
     configured = null;
     return;
   }
-  if (typeof value !== 'string' || !value.startsWith('https://'))
+  if (typeof value !== 'string') throw new Error('Configuração da API inválida.');
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
     throw new Error('Configuração da API inválida.');
-  apiEndpoint(value, '/auth/me');
-  configured = value;
+  }
+  if (url.protocol !== 'https:') throw new Error('Configuração da API inválida.');
+  apiEndpoint(url.href, '/auth/me');
+  configured = url.href;
 }
 export async function loadApiConfiguration(): Promise<void> {
   try {

@@ -16,4 +16,8 @@ describe('native API configuration', () => {
       expect(() => setApiConfiguration(value)).toThrow();
     expect(configuredApi()).toBeNull();
   });
+  it('canonicalizes scheme, host, default port and surrounding whitespace', () => {
+    setApiConfiguration('HTTPS://API.EXAMPLE.COM:443/api/v1 ');
+    expect(configuredApi()).toBe('https://api.example.com/api/v1');
+  });
 });
