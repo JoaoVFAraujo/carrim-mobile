@@ -4,6 +4,8 @@ import { vi } from 'vitest';
 import { DatabaseService } from '../database/database.service';
 import { API_BASE_URL } from '../api/api-endpoint';
 import { SyncProcessorService } from './sync-processor.service';
+import { SyncPullService } from './sync-pull.service';
+import { ShoppingSessionStore } from '../../features/shopping/services/shopping-session.store';
 import { SyncQueueService } from './sync-queue.service';
 import { SyncTransportService, SyncTransportError } from './sync-transport.service';
 
@@ -58,8 +60,13 @@ describe('sync processor', () => {
     });
     TestBed.configureTestingModule({
       providers: [
+        { provide: SyncPullService, useValue: { run: vi.fn() } },
+        { provide: ShoppingSessionStore, useValue: { load: vi.fn() } },
         { provide: API_BASE_URL, useValue: 'https://api.example.com/api/v1' },
-        { provide: SyncQueueService, useValue: { claim, applied, failed, recover: vi.fn() } },
+        {
+          provide: SyncQueueService,
+          useValue: { claim, applied, failed, conflict: failed, recover: vi.fn() },
+        },
         { provide: SyncTransportService, useValue: { push } },
         {
           provide: DatabaseService,
@@ -109,7 +116,7 @@ describe('sync processor', () => {
   it('stops on conflict without acknowledging the operation', async () => {
     push.mockResolvedValue({ status: 'CONFLICT', operationId: 'op' });
     await service.run();
-    expect(failed).toHaveBeenCalledWith(entry, false);
+    expect(failed).toHaveBeenCalledWith(entry, undefined);
     expect(applied).not.toHaveBeenCalled();
     expect(service.state()).toBe('ATTENTION');
   });

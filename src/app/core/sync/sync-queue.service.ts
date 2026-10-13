@@ -86,6 +86,27 @@ export class SyncQueueService {
     ]);
   }
 
+  async conflict(entry: QueuedOperation, state: unknown): Promise<void> {
+    await this.database.transaction([
+      {
+        statement: `INSERT INTO app_metadata(key,value) SELECT ?,? WHERE EXISTS
+        (SELECT 1 FROM sync_queue WHERE id=? AND lease_token=? AND status='SYNCING')
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
+        values: [
+          `sync_conflict:${entry.id}`,
+          JSON.stringify(state ?? null),
+          entry.id,
+          entry.lease_token,
+        ],
+      },
+      {
+        statement: `UPDATE sync_queue SET status='FAILED',last_error='CONFLICT',lease_token=NULL,
+        processing_started_at_ms=NULL,updated_at_ms=? WHERE id=? AND lease_token=? AND status='SYNCING'`,
+        values: [Date.now(), entry.id, entry.lease_token],
+      },
+    ]);
+  }
+
   async recover(now = Date.now(), staleAfterMs = 120000): Promise<void> {
     if (!Number.isSafeInteger(staleAfterMs) || staleAfterMs < 120000)
       throw new Error('A janela de recuperação deve ser de pelo menos dois minutos.');

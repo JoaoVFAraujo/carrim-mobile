@@ -1,7 +1,8 @@
-import { HttpBackend, HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpBackend, HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL, apiEndpoint } from '../api/api-endpoint';
+import type { RemoteSnapshot } from './remote-snapshot';
 import { SyncIdentityService } from '../api/sync-identity.service';
 
 export interface SyncRequest {
@@ -33,6 +34,43 @@ export class SyncTransportService {
   private readonly base = inject(API_BASE_URL);
   private readonly identity = inject(SyncIdentityService);
   private readonly http = new HttpClient(inject(HttpBackend));
+  async pull(
+    cursor?: string,
+  ): Promise<{ changes: RemoteSnapshot[]; cursor: string; hasMore: boolean }> {
+    const url = apiEndpoint(this.base, '/sync/pull');
+    let token = await this.identity.accessToken();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const page = await firstValueFrom(
+          this.http.get<{ changes: RemoteSnapshot[]; cursor: string; hasMore: boolean }>(url, {
+            params: cursor ? new HttpParams().set('cursor', cursor) : undefined,
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: 'omit',
+            redirect: 'error',
+            cache: 'no-store',
+            timeout: 15000,
+          }),
+        );
+        if (
+          !page ||
+          !Array.isArray(page.changes) ||
+          page.changes.length > 100 ||
+          typeof page.cursor !== 'string' ||
+          page.cursor.length > 128 ||
+          typeof page.hasMore !== 'boolean'
+        )
+          throw new SyncTransportError(true);
+        return page;
+      } catch (error) {
+        if (error instanceof HttpErrorResponse && error.status === 401 && attempt === 0) {
+          token = await this.identity.accessToken(token);
+          continue;
+        }
+        throw new SyncTransportError(true);
+      }
+    }
+    throw new SyncTransportError(true);
+  }
   async push(request: SyncRequest): Promise<SyncOutcome> {
     const url = apiEndpoint(this.base, '/sync/push');
     let token = await this.identity.accessToken();

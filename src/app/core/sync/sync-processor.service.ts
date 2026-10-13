@@ -2,6 +2,9 @@ import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { API_BASE_URL } from '../api/api-endpoint';
 import { DatabaseService } from '../database/database.service';
+import { SyncStatusService } from './sync-status.service';
+import { SyncPullService } from './sync-pull.service';
+import { ShoppingSessionStore } from '../../features/shopping/services/shopping-session.store';
 import { QueuedOperation, SyncQueueService } from './sync-queue.service';
 import { SyncRequest, SyncTransportService, SyncTransportError } from './sync-transport.service';
 
@@ -10,6 +13,9 @@ export class SyncProcessorService {
   private readonly queue = inject(SyncQueueService);
   private readonly db = inject(DatabaseService);
   private readonly transport = inject(SyncTransportService);
+  private readonly status = inject(SyncStatusService);
+  private readonly pull = inject(SyncPullService);
+  private readonly store = inject(ShoppingSessionStore);
   private readonly base = inject(API_BASE_URL);
   private readonly destroy = inject(DestroyRef);
   readonly state = signal<'DISABLED' | 'OFFLINE' | 'SYNCING' | 'READY' | 'ATTENTION'>('DISABLED');
@@ -53,6 +59,15 @@ export class SyncProcessorService {
         const failed = await this.db.query(
           "SELECT id FROM sync_queue WHERE status = 'FAILED' LIMIT 1",
         );
+        if (!failed.length) {
+          await this.pull.run();
+          await this.store.load();
+        }
+        this.status.message.set(
+          failed.length
+            ? 'A sincronização está pausada. Há uma operação que precisa de revisão; suas compras locais foram preservadas.'
+            : '',
+        );
         this.state.set(failed.length ? 'ATTENTION' : 'READY');
         return;
       }
@@ -66,7 +81,12 @@ export class SyncProcessorService {
             value: String(result.state!.snapshot.version),
           });
         } else {
-          await this.queue.failed(entry, false);
+          if (result.status === 'CONFLICT') {
+            await this.queue.conflict(entry, result.state);
+            this.status.message.set(
+              'Há alterações diferentes no servidor. A sincronização foi pausada sem substituir suas compras.',
+            );
+          } else await this.queue.failed(entry, false);
           this.state.set('ATTENTION');
           return;
         }

@@ -57,6 +57,49 @@ export class DatabaseService {
     });
   }
 
+  async applyRemotePage(statements: capSQLiteSet[], cursor: string): Promise<boolean> {
+    return this.serial(async () => {
+      await this.open();
+      const pending = await this.database!.query(
+        "SELECT id FROM sync_queue WHERE status!='SYNCED' LIMIT 1",
+      );
+      if (pending.values?.length) return false;
+      for (const statement of statements) {
+        const key = statement.values?.[0];
+        if (typeof key === 'string' && key.startsWith('remote_snapshot:SHOPPING_SESSION:')) {
+          const remote = JSON.parse(String(statement.values?.[1]));
+          const existing = await this.database!.query(
+            'SELECT status,checkout_total_cents FROM shopping_sessions WHERE id=?',
+            [remote.id],
+          );
+          const local = existing.values?.[0];
+          if (
+            local &&
+            local.status !== 'ACTIVE' &&
+            (local.status !== remote.status ||
+              (local.checkout_total_cents ?? null) !== (remote.checkoutTotalCents ?? null))
+          )
+            throw new Error(
+              'Conflito com uma compra local encerrada. Seus dados foram preservados.',
+            );
+        }
+      }
+      await this.database!.executeSet(
+        [
+          ...statements,
+          {
+            statement:
+              'INSERT INTO app_metadata(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+            values: ['sync_cursor', cursor],
+          },
+        ],
+        true,
+      );
+      if (!Capacitor.isNativePlatform()) await this.connection!.saveToStore('carrim');
+      return true;
+    });
+  }
+
   async query<T>(statement: string, values: (string | number | null)[] = []): Promise<T[]> {
     return this.serial(async () => {
       await this.open();
