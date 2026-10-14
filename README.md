@@ -6,6 +6,8 @@ Aplicativo do Carrim para acompanhar compras de supermercado. Este repositório 
 
 Base Angular/Ionic standalone, navegação com carregamento sob demanda, Tailwind e Capacitor Android. SQLite suporta compra ativa, produtos manuais por unidade ou peso, promoções por quantidade, produtos por código, orçamento, finalização, Histórico somente leitura e compras recentes no Início. O scanner MLKit está integrado; sua execução com câmera em aparelho Android permanece pendente. Serviços de identidade anônima protegida e consultas HTTP estão preparados; a interface ainda trabalha localmente e a fila ainda não sincroniza.
 
+Preparação adicional: o [vínculo local para sincronização](docs/INTEGRACAO-SEGURANCA.md#preparação-do-vínculo-local-para-sync--12102026) impede associar o banco a outra identidade. O processador da fila ainda não foi implementado.
+
 ## Stack e pré-requisitos
 
 - Node.js 24 LTS, a partir de 24.15.0; npm 11.
