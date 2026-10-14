@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { DatabaseService } from '../database/database.service';
 import { SyncTransportService } from './sync-transport.service';
-import { snapshotStatements } from './remote-snapshot';
+import { snapshotStatements, RemoteImportConflict } from './remote-snapshot';
 
 @Injectable({ providedIn: 'root' })
 export class SyncPullService {
@@ -21,6 +21,7 @@ export class SyncPullService {
       // Stage pages first: a session's latest snapshot may reference catalog entries
       // whose journal events occur on later pages. Import dependencies together only
       // after reaching the current head, including after an interrupted bootstrap.
+      page.changes.forEach((change) => snapshotStatements(change, Date.now()));
       const statements = page.changes.map((change) => ({
         statement:
           'INSERT INTO app_metadata(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
@@ -49,7 +50,16 @@ export class SyncPullService {
           }>(`SELECT value FROM app_metadata WHERE key LIKE 'incoming_snapshot:%'
             ORDER BY CASE WHEN key LIKE 'incoming_snapshot:PRODUCT:%' THEN 0
               WHEN key LIKE 'incoming_snapshot:SUPERMARKET:%' THEN 1 ELSE 2 END`);
-          const ordered = snapshots.map((row) => JSON.parse(row.value));
+          const ordered = snapshots.map((row) => {
+            let change;
+            try {
+              change = JSON.parse(row.value);
+            } catch {
+              throw new RemoteImportConflict();
+            }
+            snapshotStatements(change, Date.now());
+            return change;
+          });
           const priority = (change: { aggregateType: string; snapshot: { status?: string } }) =>
             change.aggregateType === 'PRODUCT'
               ? 0

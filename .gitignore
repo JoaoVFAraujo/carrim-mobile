@@ -59,3 +59,6 @@ GoogleService-Info.plist
 
 # Angular cache and local verification artifacts
 .angular/
+
+# Generated non-secret API endpoint configuration
+/public/api-config.json
