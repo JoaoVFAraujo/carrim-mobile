@@ -20,6 +20,7 @@ import {
 import { basketOutline } from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ShoppingSessionStore } from '../../shopping/services/shopping-session.store';
+import { SyncStatusService } from '../../../core/sync/sync-status.service';
 import { parseBudget } from '../../shopping/models/shopping-session';
 
 @Component({
@@ -48,6 +49,7 @@ import { parseBudget } from '../../shopping/models/shopping-session';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomePage {
+  readonly syncStatus = inject(SyncStatusService);
   readonly store = inject(ShoppingSessionStore);
   readonly basketIcon = basketOutline;
   readonly modalOpen = signal(false);

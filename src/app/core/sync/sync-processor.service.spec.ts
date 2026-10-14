@@ -1,9 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { Capacitor } from '@capacitor/core';
 import { vi } from 'vitest';
+import { RemoteImportConflict } from '../database/remote-import-conflict';
 import { DatabaseService } from '../database/database.service';
 import { API_BASE_URL } from '../api/api-endpoint';
 import { SyncProcessorService } from './sync-processor.service';
+import { SyncPullService } from './sync-pull.service';
+import { ShoppingSessionStore } from '../../features/shopping/services/shopping-session.store';
 import { SyncQueueService } from './sync-queue.service';
 import { SyncTransportService, SyncTransportError } from './sync-transport.service';
 
@@ -58,8 +61,13 @@ describe('sync processor', () => {
     });
     TestBed.configureTestingModule({
       providers: [
+        { provide: SyncPullService, useValue: { run: vi.fn() } },
+        { provide: ShoppingSessionStore, useValue: { load: vi.fn() } },
         { provide: API_BASE_URL, useValue: 'https://api.example.com/api/v1' },
-        { provide: SyncQueueService, useValue: { claim, applied, failed, recover: vi.fn() } },
+        {
+          provide: SyncQueueService,
+          useValue: { claim, applied, failed, conflict: failed, recover: vi.fn() },
+        },
         { provide: SyncTransportService, useValue: { push } },
         {
           provide: DatabaseService,
@@ -109,7 +117,7 @@ describe('sync processor', () => {
   it('stops on conflict without acknowledging the operation', async () => {
     push.mockResolvedValue({ status: 'CONFLICT', operationId: 'op' });
     await service.run();
-    expect(failed).toHaveBeenCalledWith(entry, false);
+    expect(failed).toHaveBeenCalledWith(entry, undefined);
     expect(applied).not.toHaveBeenCalled();
     expect(service.state()).toBe('ATTENTION');
   });
@@ -128,5 +136,25 @@ describe('sync processor', () => {
     expect(service.run()).toBe(first);
     await first;
     expect(push).toHaveBeenCalledTimes(1);
+  });
+  it('persists and displays an import conflict instead of silently retrying it', async () => {
+    claim.mockReset().mockResolvedValue(null);
+    const pull = TestBed.inject(SyncPullService);
+    vi.mocked(pull.run).mockRejectedValue(new RemoteImportConflict());
+    await service.run();
+    expect(service.state()).toBe('ATTENTION');
+    expect(TestBed.inject(DatabaseService).transaction).toHaveBeenCalledWith([
+      expect.objectContaining({ values: ['sync_pull_paused', '1'] }),
+    ]);
+  });
+  it('keeps authentication and storage outages retryable without persisting a conflict pause', async () => {
+    claim.mockReset().mockResolvedValue(null);
+    vi.mocked(TestBed.inject(SyncPullService).run).mockRejectedValueOnce(
+      new Error('authentication unavailable'),
+    );
+    await service.run();
+    expect(TestBed.inject(DatabaseService).transaction).not.toHaveBeenCalled();
+    await service.run();
+    expect(service.state()).toBe('READY');
   });
 });

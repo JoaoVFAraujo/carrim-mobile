@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import initSqlJs from 'sql.js';
+import { snapshotStatements } from '../src/app/core/sync/remote-snapshot.ts';
 import { initialSchema } from '../src/app/core/database/migrations/001-initial-schema.ts';
 import { shoppingItemsSchema } from '../src/app/core/database/migrations/002-shopping-items.ts';
 import { completedShoppingSchema } from '../src/app/core/database/migrations/003-completed-shopping.ts';
@@ -291,7 +292,7 @@ const queueSource = await readFile(
 );
 const queueStatements = [...queueSource.matchAll(/statement:\s*`([^`]+)`/g)]
   .map((x) => x[1])
-  .filter((sql) => sql.startsWith('UPDATE sync_queue'));
+  .filter((sql) => sql.startsWith('UPDATE sync_queue') && !sql.includes("last_error='CONFLICT'"));
 assert.equal(queueStatements.length, 4);
 const [claimSql, appliedSql, failedSql, recoverSql] = queueStatements;
 for (const [id, sequence] of [
@@ -335,6 +336,115 @@ assert.equal(scalar('SELECT id FROM sync_queue WHERE sequence_number = 1'), 'fir
 db.close();
 console.log(
   'Sync queue verified: migration preservation, atomic claims, ordering, persisted retries/restart, stale recovery, lease isolation, permanent failure.',
+);
+// Import current remote snapshots into a fresh local database, without generating outbox operations.
+db = new SQL.Database();
+db.run('PRAGMA foreign_keys = ON');
+for (const schema of [
+  initialSchema,
+  shoppingItemsSchema,
+  completedShoppingSchema,
+  itemSessionGuardSchema,
+  productCatalogSchema,
+  weightItemsSchema,
+  bundleItemsSchema,
+  checkoutTotalSchema,
+  syncRetrySchema,
+  syncRequestSchema,
+])
+  apply(schema);
+const marketId = 'a20e47cf-a002-4b01-a001-000000000001';
+const sessionId = 'a20e47cf-a002-4b01-a001-000000000002';
+const itemId = 'a20e47cf-a002-4b01-a001-000000000003';
+const runSnapshot = (change) => {
+  db.run('BEGIN');
+  try {
+    for (const st of snapshotStatements(change, 1000)) db.run(st.statement, st.values);
+    db.run('COMMIT');
+  } catch (e) {
+    db.run('ROLLBACK');
+    throw e;
+  }
+};
+runSnapshot({
+  aggregateType: 'SUPERMARKET',
+  aggregateId: marketId,
+  snapshot: { id: marketId, name: 'Remote market', version: 0 },
+});
+const remote = {
+  aggregateType: 'SHOPPING_SESSION',
+  aggregateId: sessionId,
+  snapshot: {
+    id: sessionId,
+    supermarketId: marketId,
+    budgetCents: 20000,
+    status: 'COMPLETED',
+    startedAt: '2026-10-13T12:00:00Z',
+    finishedAt: '2026-10-13T12:01:00Z',
+    checkoutTotalCents: 1600,
+    version: 2,
+    items: [
+      {
+        id: itemId,
+        productId: null,
+        productNameSnapshot: 'Rice',
+        measurementType: 'UNIT',
+        pricingType: 'REGULAR',
+        quantityUnits: 2,
+        unitPriceCents: 799,
+        subtotalCents: 1598,
+      },
+    ],
+  },
+};
+runSnapshot(remote);
+assert.equal(scalar('SELECT status FROM shopping_sessions'), 'COMPLETED');
+assert.equal(scalar('SELECT unit_price_cents*quantity FROM shopping_items'), 1598);
+assert.equal(scalar('SELECT count(*) FROM price_history'), 1);
+assert.equal(scalar('SELECT count(*) FROM sync_queue'), 0);
+runSnapshot(remote); // repeated journal events must preserve terminal items without triggering forbidden edits
+assert.equal(scalar('SELECT count(*) FROM shopping_items'), 1);
+assert.equal(scalar('SELECT count(*) FROM price_history'), 1);
+const oldActive = 'a20e47cf-a002-4b01-a001-000000000004';
+const newActive = 'a20e47cf-a002-4b01-a001-000000000005';
+db.run(
+  "INSERT INTO shopping_sessions(id,supermarket_id,status,started_at_ms) VALUES (?,?,'ACTIVE',0)",
+  [oldActive, marketId],
+);
+const activeChange = {
+  aggregateType: 'SHOPPING_SESSION',
+  aggregateId: newActive,
+  snapshot: {
+    id: newActive,
+    version: 0,
+    supermarketId: marketId,
+    budgetCents: null,
+    status: 'ACTIVE',
+    startedAt: '2026-10-13T12:02:00Z',
+    finishedAt: null,
+    items: [],
+  },
+};
+assert.throws(() => runSnapshot(activeChange)); // must not silently ignore one_active_session collisions
+runSnapshot({
+  aggregateType: 'SHOPPING_SESSION',
+  aggregateId: oldActive,
+  snapshot: {
+    id: oldActive,
+    version: 1,
+    supermarketId: marketId,
+    budgetCents: null,
+    status: 'CANCELED',
+    startedAt: '1970-01-01T00:00:00Z',
+    finishedAt: '2026-10-13T12:01:00Z',
+    items: [],
+  },
+});
+runSnapshot(activeChange);
+assert.equal(scalar("SELECT id FROM shopping_sessions WHERE status='ACTIVE'"), newActive);
+db.close();
+console.log(
+  'Remote snapshots verified: bootstrap, completed items/history, repeated terminal events, no outbox echo.',
 );
 console.log(
   'SQLite verified: migrations v1-v10, preservation, atomic catalog/item/outbox, repeated product grouping, weight and bundle constraints, exact mixed history, optional checkout including zero, rollback, completion replay, immutable history, leading zeros, price configuration isolation and reopen.',

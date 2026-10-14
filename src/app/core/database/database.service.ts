@@ -1,3 +1,4 @@
+import { RemoteImportConflict } from './remote-import-conflict';
 import { Injectable } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import type {
@@ -54,6 +55,58 @@ export class DatabaseService {
       }
       // Retry persistence even when a previous save failed after the SQLite insert.
       if (bind && !Capacitor.isNativePlatform()) await this.connection!.saveToStore('carrim');
+    });
+  }
+
+  async applyRemotePage(statements: capSQLiteSet[], cursor: string): Promise<boolean> {
+    return this.serial(async () => {
+      await this.open();
+      const pending = await this.database!.query(
+        "SELECT id FROM sync_queue WHERE status!='SYNCED' LIMIT 1",
+      );
+      if (pending.values?.length) return false;
+      for (const statement of statements) {
+        const key = statement.values?.[0];
+        if (typeof key === 'string' && key.startsWith('remote_snapshot:SHOPPING_SESSION:')) {
+          const remote = JSON.parse(String(statement.values?.[1]));
+          const existing = await this.database!.query(
+            'SELECT status,checkout_total_cents FROM shopping_sessions WHERE id=?',
+            [remote.id],
+          );
+          const local = existing.values?.[0];
+          if (
+            local &&
+            local.status !== 'ACTIVE' &&
+            (local.status !== remote.status ||
+              (local.checkout_total_cents ?? null) !== (remote.checkoutTotalCents ?? null))
+          )
+            throw new RemoteImportConflict();
+        }
+      }
+      try {
+        await this.database!.executeSet(
+          [
+            ...statements,
+            {
+              statement:
+                'INSERT INTO app_metadata(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+              values: ['sync_cursor', cursor],
+            },
+          ],
+          true,
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          /UNIQUE constraint failed|FOREIGN KEY constraint failed|CHECK constraint failed|Shopping session is not active/i.test(
+            error.message,
+          )
+        )
+          throw new RemoteImportConflict();
+        throw error;
+      }
+      if (!Capacitor.isNativePlatform()) await this.connection!.saveToStore('carrim');
+      return true;
     });
   }
 

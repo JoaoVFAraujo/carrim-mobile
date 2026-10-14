@@ -59,3 +59,11 @@ Pendentes: execução real do Keystore em Android, compilação de APK, testes d
 O processador inicia somente no Capacitor nativo com API HTTPS explicitamente configurada. Usa a identidade protegida, respeita offline e agenda tentativas a cada dois segundos; execuções concorrentes compartilham o mesmo processamento. O payload HTTP é salvo na fila antes do primeiro envio e reutilizado literalmente em retries, incluindo baseVersion, evitando reutilizar a chave idempotente com outra versão.
 
 Confirmação e atualização da versão remota são atômicas e condicionadas à reserva da tentativa. Falhas temporárias preservam a operação; conflitos e rejeições interrompem dependentes. O navegador continua apenas com dados locais. A configuração do endpoint e pull/conflitos são entregas seguintes. Validação: 94 testes, lint, build e SQLite; Android físico ainda pendente.
+
+## Pull, bootstrap e conflitos
+
+Após esvaziar a fila, o processador recebe páginas do journal e salva snapshots/cursor juntos. A importação ocorre depois de alcançar a cabeça para ordenar catálogo e mercados antes das compras. Esse estágio sobrevive à interrupção do bootstrap. Uma edição local surgida durante o pull bloqueia a aplicação no banco; operações pendentes nunca são sobrescritas por snapshots.
+
+Compras finalizadas são importadas com itens e preços, sem gerar novas operações na fila. Repetição de eventos mantém itens terminais intactos. Divergência de estado/caixa de uma compra local encerrada é recusada. Colisões de identidade ou códigos de produto que não possam ser aplicadas respeitando as referências locais pausam a importação, sem descartar os dados.
+
+CONFLICT salva o estado remoto junto com FAILED e interrompe dependentes. A tela Início informa que a sincronização foi pausada e que as compras locais foram preservadas. Não há last-write-wins nem auto-rebase. Nesta entrega, a resolução manual assistida e a identidade web persistente continuam pendentes; não desbloquear FAILED nem trocar operationId automaticamente. Validação: 99 testes, SQLite real, lint e build.
