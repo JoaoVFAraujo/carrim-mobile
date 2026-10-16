@@ -1,6 +1,8 @@
 # Validação Android do Carrim
 
-## Estado em 08/10/2026
+## Histórico em 08/10/2026
+
+Estado atual consolidado: [retomada no PC](RETOMADA-PC.md). O relato desta seção é anterior à preparação cloud: SDK e APK debug foram verificados depois, mas aparelho continua pendente.
 
 Frontend 0.0.2 acrescenta serviços de identidade protegida e HTTP, sem envio automático. Consulte [integração e segurança](INTEGRACAO-SEGURANCA.md). A revisão anterior no navegador cobriu compra, produtos por unidade/peso/promoção, finalização, total do caixa, Histórico, filtros e reutilização do catálogo. O build web mantém aviso de tamanho inicial acima de 1 MB, sem ultrapassar o limite de erro.
 
@@ -68,14 +70,14 @@ Ao habilitar um endpoint HTTPS nativo, validar geração/renovação concorrente
 
 Preencher após a execução real. Nenhuma linha pendente significa aprovação implícita.
 
-| Verificação                 | Resultado atual | Evidência                                                |
-| --------------------------- | --------------- | -------------------------------------------------------- |
-| Testes e ferramentas locais | Passou          | 79 testes; lint, Prettier, SQLite real, build e cap sync |
-| Navegador                   | Passou          | Fluxos interativos em larguras de celular                |
-| Compilação APK              | Pendente        | SDK Android não encontrado nesta sessão                  |
-| Aparelho                    | Pendente        | adb sem dispositivo conectado                            |
-| Câmera e permissões         | Pendente        | Requer execução nativa                                   |
-| SQLite nativo e atualização | Pendente        | Requer execução nativa                                   |
+| Verificação                 | Resultado atual    | Evidência                                                                        |
+| --------------------------- | ------------------ | -------------------------------------------------------------------------------- |
+| Testes e ferramentas locais | Passou             | 107 testes na execução live final; lint, Prettier, SQLite real, build e cap sync |
+| Navegador                   | Passou             | Fluxos interativos em larguras de celular                                        |
+| Compilação APK debug        | Passou no cloud/CI | JDK 21, SDK 35/36 e assembleDebug; execução física pendente                      |
+| Aparelho                    | Pendente           | adb sem dispositivo conectado                                                    |
+| Câmera e permissões         | Pendente           | Requer execução nativa                                                           |
+| SQLite nativo e atualização | Pendente           | Requer execução nativa                                                           |
 
 Ao encontrar falha, registrar etapa, valores, resultado esperado/obtido e evidência. Corrigir em branch `fix/<correcao>` a partir da main e repetir a etapa afetada antes de considerar a validação concluída.
 
@@ -83,7 +85,7 @@ Ao encontrar falha, registrar etapa, valores, resultado esperado/obtido e evidê
 
 SDK Android 35/36 e Build Tools 35.0.0/36.0.0 foram instalados; plugins usam ambos. A compilação exige JDK 21 completo (javac), não apenas JRE. `npm run build`, `npx cap sync android` e Gradle 8.14.3 `assembleDebug` passaram. APK debug gerado em `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-O teste integrado `CARRIM_LIVE_SYNC=1 npm test` passou com 101 testes contra API local e PostgreSQL real. Exercita os serviços de identidade, processador e transporte reais e SQL real; os plugins nativos são substituídos por adaptadores de teste. Cria compra offline com unidade/peso/promoção, reabre SQLite, perde resposta de push, reenvia sem duplicar e recebe alteração REST via pull. Esses resultados não comprovam Keystore, câmera ou persistência nativa.
+O teste integrado `CARRIM_LIVE_SYNC=1 npm test` passou; a execução final consolidada teve 107 testes contra API local e PostgreSQL real. Exercita os serviços de identidade, processador e transporte reais e SQL real; os plugins nativos são substituídos por adaptadores de teste. Cria compra offline com unidade/peso/promoção, reabre SQLite, perde resposta de push, reenvia sem duplicar e recebe alteração REST via pull. Esses resultados não comprovam Keystore, câmera ou persistência nativa.
 
 Para repetir, iniciar a API com migrations V5/V6 em banco local isolado na porta 8082. O teste usa dados descartáveis e uma identidade nova, sem segredos externos. Sem CARRIM_LIVE_SYNC=1, esse teste é explicitamente pulado; os demais continuam executando normalmente.
 

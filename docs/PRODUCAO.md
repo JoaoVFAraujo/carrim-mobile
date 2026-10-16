@@ -1,5 +1,7 @@
 # Configuração e verificações finais
 
+Entregas integradas na main pelos PRs #13–#16; consulte [retomada no PC](RETOMADA-PC.md) para commits e distinção entre implementação e validação.
+
 O aplicativo continua funcionando localmente sem endpoint. Para habilitar sincronização nativa, informar CARRIM_API_URL com HTTPS e caminho `/api/v1`, executar `npm run configure:api`, `npm run build` e `npx cap sync android`. O arquivo gerado `public/api-config.json` contém somente o endereço público, é ignorado pelo Git e deve ser incluído no build antes da instalação. Não colocar tokens, provas ou senhas nesse arquivo.
 
 No PowerShell: `$env:CARRIM_API_URL = 'https://seu-dominio/api/v1'`. Esse endereço é ilustrativo: esta entrega não configura DNS/HTTPS nem publica API. No navegador, a sincronização persistente permanece desabilitada porque a identidade é somente em memória; o cliente de consultas continua disponível.

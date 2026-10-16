@@ -2,11 +2,11 @@
 
 Aplicativo do Carrim para acompanhar compras de supermercado. Este repositório e `JoaoVFAraujo/carrim-api` formam o mesmo produto.
 
-## Estado: 0.0.2 — Identidade protegida e cliente HTTP
+## Estado: 0.0.2 — Sincronização nativa integrada
 
 Base Angular/Ionic standalone, navegação com carregamento sob demanda, Tailwind e Capacitor Android. SQLite suporta compra ativa, produtos manuais por unidade ou peso, promoções por quantidade, produtos por código, orçamento, finalização, Histórico somente leitura e compras recentes no Início. O scanner MLKit está integrado; sua execução com câmera em aparelho Android permanece pendente. Serviços de identidade anônima protegida e consultas HTTP estão preparados; o processador nativo sincroniza a fila quando há API HTTPS configurada, com recebimento de snapshots e conflitos explícitos. O navegador continua local; execução nativa em aparelho ainda precisa ser validada.
 
-Preparação adicional: o [vínculo local para sincronização](docs/INTEGRACAO-SEGURANCA.md#preparação-do-vínculo-local-para-sync--12102026) impede associar o banco a outra identidade. O processador, retries, pull e conflitos estão implementados nas branches desta entrega; consulte [produção](docs/PRODUCAO.md) para habilitar HTTPS.
+Preparação adicional: o [vínculo local para sincronização](docs/INTEGRACAO-SEGURANCA.md#preparação-do-vínculo-local-para-sync--12102026) impede associar o banco a outra identidade. O processador, retries, pull e conflitos estão implementados na main; consulte [produção](docs/PRODUCAO.md) para habilitar HTTPS.
 
 ## Stack e pré-requisitos
 
@@ -47,7 +47,7 @@ npx cap sync android
 npx cap open android
 ```
 
-A versão nativa acompanha `0.0.2`; o versionCode é 2. `cap sync` atualiza os assets web e plugins, mas não compila um APK. A validação de APK e dispositivo real ainda está pendente.
+A versão nativa acompanha `0.0.2`; o versionCode é 2. `cap sync` atualiza os assets web e plugins, mas não compila um APK. A compilação de APK debug passou no cloud e no CI; instalação e execução em dispositivo real permanecem pendentes.
 
 O bundle identifier iOS também será `br.com.carrim`. A plataforma iOS ainda não foi gerada.
 
@@ -67,11 +67,13 @@ Signals controlam o estado da compra ativa, supermercados, carregamento e erros.
 
 ## Segurança
 
-Nenhum segredo fixo ou token deve entrar no bundle. A prova da instalação é gerada com aleatoriedade criptográfica em execução. Credenciais nativas usam armazenamento protegido pelo sistema, sem sincronização com iCloud; no navegador ficam somente em memória, nunca em localStorage, sessionStorage ou SQLite. Arquivos `.env` reais são ignorados. O app usa SQLite local para supermercados, catálogo, compras e preços. A câmera é solicitada somente ao tocar em Abrir câmera no aplicativo nativo. Não há conexão automática ao iniciar nem envio da fila local.
+Nenhum segredo fixo ou token deve entrar no bundle. A prova da instalação é gerada com aleatoriedade criptográfica em execução. Credenciais nativas usam armazenamento protegido pelo sistema, sem sincronização com iCloud; no navegador ficam somente em memória, nunca em localStorage, sessionStorage ou SQLite. Arquivos `.env` reais são ignorados. O app usa SQLite local para supermercados, catálogo, compras e preços. A câmera é solicitada somente ao tocar em Abrir câmera no aplicativo nativo. Com endpoint HTTPS configurado, o processador nativo inicia a sincronização; sem endpoint e no navegador, as compras continuam locais.
 
 Veja [integração e segurança](docs/INTEGRACAO-SEGURANCA.md) para configuração, limites e validações pendentes.
 
 ## Referência e evolução
+
+Consulte o [registro de retomada no PC](docs/RETOMADA-PC.md) para estado integrado, versões, PRs e pendências. As seções datadas abaixo são históricas: referências a sync ou APK pendentes descrevem aquela entrega, não o estado atual. O layout permanece adiado.
 
 O documento mestre está em [carrim-api/docs/carrim-documento-base-v12.md](https://github.com/JoaoVFAraujo/carrim-api/blob/main/docs/carrim-documento-base-v12.md). Neste Windows, consulte `C:\workspace\backend\mercado\docs\carrim-documento-base-v12.md`. O link remoto estará disponível após a publicação autorizada dos arquivos.
 

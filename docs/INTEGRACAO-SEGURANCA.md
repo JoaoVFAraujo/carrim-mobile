@@ -1,6 +1,8 @@
 # Identidade e HTTP — 08/10/2026
 
-As branches atuais incluem processador nativo de fila, pull e pausas explícitas de conflito. A sincronização inicia no Capacitor somente com API HTTPS configurada; o navegador continua local. As seções datadas abaixo preservam o histórico das entregas. Consulte PRODUCAO.md para configuração e VALIDACAO-ANDROID.md para limites da validação.
+A main inclui processador nativo de fila, pull e pausas explícitas de conflito. A sincronização inicia no Capacitor somente com API HTTPS configurada; o navegador continua local. As seções datadas abaixo preservam o histórico das entregas. Consulte PRODUCAO.md para configuração e VALIDACAO-ANDROID.md para limites da validação.
+
+> Estado consolidado: [retomada no PC](RETOMADA-PC.md). Seções incrementais abaixo preservam decisões e resultados históricos; referências a processador, pull, HTTPS ou compilação futuros foram superadas pelas entregas integradas. Aparelho, resolução assistida e produção pública continuam pendentes.
 
 ## Preparação do vínculo local para sync — 12/10/2026
 
