@@ -1,92 +1,72 @@
-# Validação Android do Carrim
+# Validação Android
 
-## Histórico em 08/10/2026
+Guia operacional do aparelho. Resultado consolidado de testes/CI e prioridades ficam no [roadmap](https://github.com/JoaoVFAraujo/carrim-api/blob/main/docs/ROADMAP.md); configuração HTTPS e comandos web no [README](../README.md).
 
-Estado atual consolidado: [retomada no PC](RETOMADA-PC.md). O relato desta seção é anterior à preparação cloud: SDK e APK debug foram verificados depois, mas aparelho continua pendente.
+APK debug foi compilado no Cloud/CI; execução física, câmera, Keystore, SQLite nativo e atualização ainda **pendentes**. Não presumir que SDK/dispositivo disponíveis no Cloud existem no PC. iOS exige validação própria.
 
-Frontend 0.0.2 acrescenta serviços de identidade protegida e HTTP, sem envio automático. Consulte [integração e segurança](INTEGRACAO-SEGURANCA.md). A revisão anterior no navegador cobriu compra, produtos por unidade/peso/promoção, finalização, total do caixa, Histórico, filtros e reutilização do catálogo. O build web mantém aviso de tamanho inicial acima de 1 MB, sem ultrapassar o limite de erro.
+## Preparar e instalar
 
-APK, captura física, permissões do sistema e persistência nativa ainda não foram validados. Não foi encontrado SDK Android nem aparelho conectado neste ambiente. A conferência final encontrou JDK 21 em C:\Program Files\Java\jdk-21.0.10, além do Java 25 e Java 8; o código Android do Capacitor usa Java 21. Sincronizar assets/plugins não confirma compilação ou execução nativa.
+JDK 21 completo com javac (não JRE nem Java 25 do backend), Android Studio compatível com Capacitor 8, SDK/plataformas 35/36 e Build Tools 35/36. Projeto usa Gradle 8.14.3, plugin 8.13.0, minSdk 24 e compile/target 36. Configurar JAVA_HOME/SDK e Gradle JDK da sessão sem trocar ferramentas globais.
 
-## Preparação
-
-Usar Android Studio Otter 2025.2.1 ou mais recente, SDK Android 36 e JDK 21 para o projeto Android. Conferir o Gradle JDK nas configurações do Android Studio. O wrapper atual é Gradle 8.14.3 e o plugin Android é 8.13.0; não trocar o wrapper apenas para usar o Java 25 do backend. O app suporta Android a partir da API 24.
-
-Referências: [Capacitor 8](https://capacitorjs.com/docs/updating/8-0) e [compatibilidade Java/Gradle](https://docs.gradle.org/current/userguide/compatibility.html). O backend continua com seu próprio Java 25.
-
-No frontend, executar no PowerShell com Node compatível com `package.json`:
+No frontend, depois de configurar endpoint HTTPS de teste se for validar sync:
 
 ```powershell
-Set-Location C:\workspace\frontend\mercado
-npm test
-npm run lint
-npm run format:check
-npm run verify:sqlite
 npm run build
 npx cap sync android
 npx cap open android
 ```
 
-No Android Studio, aguardar a sincronização, selecionar o aparelho e executar o app. Para gerar APK pela linha de comando, configurar previamente o SDK e o JDK 21 na sessão; então:
+Ou, para compilar pelo terminal, na pasta android:
 
 ```powershell
-Set-Location C:\workspace\frontend\mercado\android
 .\gradlew.bat assembleDebug
 ```
 
-O APK esperado é `android/app/build/outputs/apk/debug/app-debug.apk`, relativo à raiz do frontend. Com depuração USB habilitada e autorizada no aparelho:
+APK: android/app/build/outputs/apk/debug/app-debug.apk, relativo à raiz do frontend. Com depuração USB autorizada, executar na raiz (adb deve estar no PATH ou usar o caminho do SDK local):
 
 ```powershell
-Set-Location C:\workspace\frontend\mercado
-& C:\platform-tools\adb.exe devices
-& C:\platform-tools\adb.exe install -r android/app/build/outputs/apk/debug/app-debug.apk
+adb devices
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-O caminho do adb acima corresponde a este computador. A instalação com `-r` preserva dados de um app com o mesmo identificador e assinatura; assinatura incompatível exige resolver a instalação antes do teste. Não desinstalar nem limpar dados ao verificar persistência ou atualização.
+Mesmo appId br.com.carrim e mesma assinatura para atualizar preservando dados. Não desinstalar ou limpar dados se a assinatura não coincidir: resolver distribuição antes do ensaio. Manifest atual 0.0.2/versionCode 2; não confundir debug com release.
 
-## Roteiro no aparelho
+## Roteiro de aceitação
 
-Registrar modelo, versão Android, commit, versão do APK e resultado de cada etapa. Usar dados de teste; não conectar banco remoto.
+Usar dados de teste, endpoint autorizado e banco isolado. Não conectar produção nem copiar dados pessoais. Sync nativo exige HTTPS confiável; o teste live com plugins substituídos não cobre este roteiro.
 
-| Etapa               | Ação e resultado esperado                                                                                                                                                                                                                                                            |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Primeiro uso        | Abrir sem pedir câmera imediatamente. Criar mercado e compra com limite opcional.                                                                                                                                                                                                    |
-| Unidade             | Adicionar duas unidades de R$ 7,99: R$ 15,98. Controles avançam uma unidade e respeitam o mínimo.                                                                                                                                                                                    |
-| Peso                | Adicionar 824 g a R$ 6,99/kg: R$ 5,76. Editar para 500 g: R$ 3,50.                                                                                                                                                                                                                   |
-| Promoção            | Cadastrar 3 por R$ 10,00: seis unidades custam R$ 20,00. Controles avançam grupos completos; quantidade inválida é recusada.                                                                                                                                                         |
-| Scanner e permissão | Abrir Escanear, permitir câmera e ler código físico. Antes do teste de negação, revogar a permissão de câmera nas configurações Android do Carrim, sem limpar dados. Retornar ao scanner, negar o pedido se aparecer e confirmar alternativa manual e orientação para configurações. |
-| Ciclo da câmera     | Cancelar, trocar aba e colocar em segundo plano: captura deve parar. Retornar e iniciar nova leitura. Leituras repetidas não abrem várias confirmações simultâneas.                                                                                                                  |
-| Código desconhecido | Cadastrar nome e preço; confirmar somente uma vez. Verificar zeros iniciais do código e item no Carrinho.                                                                                                                                                                            |
-| Finalização         | Informar total do caixa diferente e finalizar. Histórico mostra total calculado, caixa e diferença; itens permanecem somente leitura.                                                                                                                                                |
-| Catálogo            | Criar outra compra no mesmo mercado, buscar nome acentuado com caixa diferente ou código. Seleção mostra referência anterior e exige preço de hoje.                                                                                                                                  |
-| Sem conexão         | Em modo avião, repetir cadastro manual, edição, finalização, Histórico e busca local. Testar scanner e registrar sua disponibilidade offline neste aparelho.                                                                                                                         |
-| Persistência        | Fechar o processo e reabrir: compra ativa, itens, compras finalizadas e catálogo devem permanecer. Repetir após instalação de atualização com `-r`.                                                                                                                                  |
-| Histórico           | Conferir Todas/Este mês, grupos mensais e detalhes. Verificar retorno do segundo plano em mudança de mês quando possível.                                                                                                                                                            |
-| Visual              | Conferir safe areas, barra inferior, teclado, rolagem, botões, fonte ampliada e orientação. Finalização deve continuar acessível sem cobrir itens.                                                                                                                                   |
+| Etapa              | Resultado esperado                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Primeiro uso       | Não pedir câmera imediatamente; criar mercado e compra com limite opcional                                                           |
+| Unidade            | 2 × R$ 7,99 = R$ 15,98; stepper respeita mínimo e máximo                                                                             |
+| Peso               | 824 g × R$ 6,99/kg = R$ 5,76; editar para 500 g = R$ 3,50                                                                            |
+| Promoção           | 3 por R$ 10,00; seis custam R$ 20,00; grupo incompleto recusado                                                                      |
+| Scanner            | Ação explícita pede câmera; ler código conhecido/desconhecido, preservar zeros iniciais e confirmar preço de hoje                    |
+| Permissão negada   | Revogar câmera nas configurações, sem limpar dados; negar pedido e conferir alternativa manual/orientação                            |
+| Ciclo da câmera    | Cancelar leitura, trocar aba e ir ao segundo plano encerra captura; retorno permite nova leitura, sem sheets duplicados              |
+| Finalização        | Confirmação, caixa opcional inclusive zero; diferença não altera itens; Histórico somente leitura                                    |
+| Catálogo           | Nova compra no mesmo mercado encontra nome acentuado/código; referência anterior com data e preço atual obrigatório                  |
+| Offline            | Em modo avião, criar/editar/remover itens, finalizar e consultar Histórico; registrar disponibilidade do scanner neste aparelho      |
+| Persistência       | Fechar processo/reabrir e atualizar com -r preserva compra, itens, catálogo, Histórico e identidade                                  |
+| Sync               | Offline → online envia fila sem duplicar; recebe alterações remotas e mantém edição local pendente                                   |
+| Conflito           | Estados divergentes pausam dependentes, mostram atenção e conservam dados; não forçar desbloqueio                                    |
+| Credenciais        | Identidade persiste após atualização; ausência/falha do Keystore impede sync sem inutilizar compras locais                           |
+| Transporte         | Recusar HTTP, redirects e configuração inválida; dados sensíveis ausentes de Web Storage, SQLite, logs e backup                      |
+| Histórico e visual | Filtro mensal/retorno do segundo plano, grupos e detalhes; conferir safe areas, 320/390 px, teclado, fonte ampliada e leitor de tela |
 
-## Registro de execução
+Depois do roteiro, ensaiar uma compra real no supermercado. Não registrar câmera/Keystore/SQLite nativo como aprovados apenas porque assembleDebug ou testes unitários passaram.
 
-Ao habilitar um endpoint HTTPS nativo, validar geração/renovação concorrente e persistência da identidade após fechar o processo e atualizar com `-r`. Confirmar ausência de token/prova no SQLite, Web Storage, logs e backups; confirmar recusa de HTTP e redirecionamentos. Falha do Keystore deve impedir chamadas protegidas mantendo as compras locais acessíveis. Esta execução ainda está pendente.
+## Registro mínimo
 
-Preencher após a execução real. Nenhuma linha pendente significa aprovação implícita.
+Atualizar esta tabela somente após execução real, indicando modelo, Android, commit, versão/assinatura e evidência sem dados pessoais. Não criar um arquivo por execução; histórico fica no Git.
 
-| Verificação                 | Resultado atual    | Evidência                                                                        |
-| --------------------------- | ------------------ | -------------------------------------------------------------------------------- |
-| Testes e ferramentas locais | Passou             | 107 testes na execução live final; lint, Prettier, SQLite real, build e cap sync |
-| Navegador                   | Passou             | Fluxos interativos em larguras de celular                                        |
-| Compilação APK debug        | Passou no cloud/CI | JDK 21, SDK 35/36 e assembleDebug; execução física pendente                      |
-| Aparelho                    | Pendente           | adb sem dispositivo conectado                                                    |
-| Câmera e permissões         | Pendente           | Requer execução nativa                                                           |
-| SQLite nativo e atualização | Pendente           | Requer execução nativa                                                           |
+| Verificação física                         | Resultado | Evidência |
+| ------------------------------------------ | --------- | --------- |
+| Instalação e atualização preservando dados | Pendente  | —         |
+| Câmera, permissão e ciclo de vida          | Pendente  | —         |
+| Keystore e proprietário                    | Pendente  | —         |
+| SQLite nativo, reabertura e offline        | Pendente  | —         |
+| HTTPS, push/pull e conflito no aparelho    | Pendente  | —         |
+| Acessibilidade e compra real               | Pendente  | —         |
 
-Ao encontrar falha, registrar etapa, valores, resultado esperado/obtido e evidência. Corrigir em branch `fix/<correcao>` a partir da main e repetir a etapa afetada antes de considerar a validação concluída.
-
-## Validação executada no ambiente cloud
-
-SDK Android 35/36 e Build Tools 35.0.0/36.0.0 foram instalados; plugins usam ambos. A compilação exige JDK 21 completo (javac), não apenas JRE. `npm run build`, `npx cap sync android` e Gradle 8.14.3 `assembleDebug` passaram. APK debug gerado em `android/app/build/outputs/apk/debug/app-debug.apk`.
-
-O teste integrado `CARRIM_LIVE_SYNC=1 npm test` passou; a execução final consolidada teve 107 testes contra API local e PostgreSQL real. Exercita os serviços de identidade, processador e transporte reais e SQL real; os plugins nativos são substituídos por adaptadores de teste. Cria compra offline com unidade/peso/promoção, reabre SQLite, perde resposta de push, reenvia sem duplicar e recebe alteração REST via pull. Esses resultados não comprovam Keystore, câmera ou persistência nativa.
-
-Para repetir, iniciar a API com migrations V5/V6 em banco local isolado na porta 8082. O teste usa dados descartáveis e uma identidade nova, sem segredos externos. Sem CARRIM_LIVE_SYNC=1, esse teste é explicitamente pulado; os demais continuam executando normalmente.
-
-ADB não encontrou dispositivo conectado. Permanecem pendentes instalação/execução, câmera/permissões, Keystore, SQLite nativo e atualização com `adb install -r`. Não houve teste em supermercado nem liberação de APK de produção. Endpoint HTTPS do app ainda deve ser configurado antes da sincronização nativa.
+Ao falhar, registrar esperado/obtido, corrigir em branch fix e repetir o trecho afetado. Produção e assinatura/distribuição release exigem o [guia de Segurança](https://github.com/JoaoVFAraujo/carrim-api/blob/main/docs/SEGURANCA.md).
