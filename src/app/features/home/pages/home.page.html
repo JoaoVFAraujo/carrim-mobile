@@ -1,54 +1,58 @@
-<ion-header class="ion-no-border page-header">
-  <ion-toolbar
-    ><ion-title class="tw:text-3xl tw:font-bold tw:text-green-900">Carrim</ion-title></ion-toolbar
-  >
+<ion-header class="ion-no-border home-header">
+  <ion-toolbar>
+    <div class="brand-row">
+      <div class="brand" aria-label="Carrim">
+        Carrim<span class="brand-leaf" aria-hidden="true"></span>
+      </div>
+      <span class="profile-mark" role="img" aria-label="Compras locais, sem precisar de conta"
+        ><ion-icon [icon]="personIcon" aria-hidden="true"
+      /></span>
+    </div>
+  </ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
-  <main class="tw:mx-auto tw:max-w-lg tw:pt-2 tw:pb-6">
-    <p class="tw:mt-0 tw:text-sm tw:font-medium tw:text-green-800">COMPRE COM TRANQUILIDADE</p>
-    <h1 class="tw:mt-2 tw:mb-3 tw:text-3xl tw:font-bold tw:tracking-tight">
-      Sua compra, sob controle.
-    </h1>
-    <p class="tw:mt-0 tw:text-gray-600 tw:leading-relaxed">
-      Saiba quanto está gastando antes de chegar ao caixa.
-    </p>
+  <main class="home-main">
+    <p class="greeting">Boas compras!</p>
+    <h1>Sua compra, sob controle.</h1>
     @if (syncStatus.message()) {
       <p class="attention-banner" role="status">{{ syncStatus.message() }}</p>
     }
     <app-sync-review />
     @if (store.loading()) {
-      <ion-skeleton-text [animated]="true" class="tw:h-48 tw:rounded-3xl" />
+      <ion-skeleton-text [animated]="true" class="tw:h-64 tw:rounded-3xl" />
     } @else if (store.error()) {
       <section role="alert" class="tw:py-8">
         <p>{{ store.error() }}</p>
         <ion-button (click)="store.load()">Tentar novamente</ion-button>
       </section>
     } @else if (store.active(); as shopping) {
-      <ion-card class="purchase-card tw:mx-0 tw:mt-6 tw:rounded-3xl" color="primary">
+      <ion-card class="active-purchase">
         <ion-card-content>
-          <p>Compra em andamento</p>
-          <div role="heading" aria-level="2" class="tw:mt-2 tw:text-2xl tw:font-semibold">
-            {{ shopping.supermarketName }}
+          <img class="basket-art" src="images/grocery-basket.png" alt="" width="440" height="480" />
+          <div class="purchase-heading">
+            <span class="cart-mark"><ion-icon [icon]="cartIcon" aria-hidden="true" /></span>
+            <div>
+              <p>Compra em andamento</p>
+              <h2>{{ shopping.supermarketName }}</h2>
+            </div>
           </div>
-          <p class="purchase-total-label">Total da compra</p>
-          <div class="tw:mt-1 tw:text-4xl tw:font-bold tw:tracking-tight tw:break-words">
-            {{ store.totalCents() / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+          <div class="purchase-total">
+            <p>Total da compra</p>
+            <strong>{{
+              store.totalCents() / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+            }}</strong>
           </div>
-          <p class="tw:mt-2">
-            {{ store.items().length }} {{ store.items().length === 1 ? 'produto' : 'produtos' }} no
-            carrinho.
-          </p>
           @if (shopping.budgetCents !== null) {
-            <div class="tw:mt-6 tw:grid tw:grid-cols-2 tw:gap-4">
+            <div class="purchase-budget">
               <div>
-                <p>Limite</p>
+                <p>Limite de gastos</p>
                 <strong>{{
                   shopping.budgetCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
                 }}</strong>
               </div>
               <div>
-                <p>{{ store.remainingCents()! < 0 ? 'Limite ultrapassado' : 'Restante' }}</p>
-                <strong>{{
+                <p>{{ store.remainingCents()! < 0 ? 'Limite ultrapassado' : 'Restam' }}</p>
+                <strong class="remaining">{{
                   (store.remainingCents()! < 0
                     ? -store.remainingCents()!
                     : store.remainingCents()!) / 100
@@ -56,58 +60,65 @@
                 }}</strong>
               </div>
             </div>
+            <div class="purchase-progress">
+              <ion-progress-bar
+                [value]="store.budgetProgress()"
+                aria-label="Uso do limite de gastos"
+              /><span>{{ store.budgetPercent() }}% do limite</span>
+            </div>
           } @else {
-            <p class="tw:mt-4">Sem limite de gastos definido.</p>
+            <p class="no-budget">Sem limite de gastos definido.</p>
           }
-          @if (shopping.budgetCents !== null) {
-            <ion-progress-bar
-              class="tw:mt-5 tw:rounded-full"
-              color="light"
-              [value]="store.budgetProgress()"
-              aria-label="Uso do limite de gastos"
-            />
-            <p class="budget-caption">{{ store.budgetPercent() }}% do limite</p>
-          }
-          <ion-button class="tw:mt-6" expand="block" color="light" routerLink="/tabs/cart"
-            >Continuar compra</ion-button
-          >
+          <ion-button expand="block" color="light" routerLink="/tabs/cart" class="continue-button"
+            >Continuar compra<ion-icon slot="end" [icon]="chevronIcon" aria-hidden="true"
+          /></ion-button>
         </ion-card-content>
       </ion-card>
     } @else {
-      <app-empty-state
-        [icon]="basketIcon"
-        title="Pronto para fazer suas compras?"
-        description="Escolha o supermercado, defina um limite se quiser e comece com tranquilidade."
-      >
-        <ion-button (click)="openNewShopping()">Nova compra</ion-button>
-      </app-empty-state>
+      <section class="new-purchase">
+        <img
+          class="tw:object-contain"
+          src="images/grocery-basket.png"
+          alt=""
+          width="160"
+          height="175"
+        />
+        <h2 class="tw:text-2xl tw:font-bold">Pronto para fazer suas compras?</h2>
+        <p class="tw:text-gray-600">
+          Escolha o supermercado e acompanhe cada gasto com tranquilidade.
+        </p>
+        <ion-button expand="block" (click)="openNewShopping()"
+          >Nova compra<ion-icon slot="end" [icon]="chevronIcon" aria-hidden="true"
+        /></ion-button>
+      </section>
     }
-    <section class="tw:mt-8" aria-labelledby="recent-shopping-title">
-      <h2 id="recent-shopping-title" class="tw:mt-0 tw:text-2xl tw:font-bold">Últimas compras</h2>
+    <section class="recent-shopping" aria-labelledby="recent-shopping-title">
+      <div class="recent-heading">
+        <h2 id="recent-shopping-title">Últimas compras</h2>
+        <ion-button fill="clear" routerLink="/tabs/history"
+          >Ver todas<ion-icon slot="end" [icon]="chevronIcon" aria-hidden="true"
+        /></ion-button>
+      </div>
       @for (shopping of store.history().slice(0, 3); track shopping.id) {
-        <article
-          class="tw:mt-3 tw:flex tw:flex-wrap tw:items-center tw:gap-3 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-4 tw:shadow-sm"
-        >
-          <span
-            aria-hidden="true"
-            class="tw:flex tw:h-11 tw:w-11 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-[#e7f0e6] tw:font-bold tw:text-green-900"
-            >{{ shopping.supermarketName.slice(0, 1) }}</span
-          >
-          <div class="tw:min-w-0 tw:flex-1">
-            <h3 class="tw:my-0 tw:font-semibold tw:break-words">{{ shopping.supermarketName }}</h3>
-            <p class="tw:text-sm tw:text-gray-600">
-              {{ shopping.finishedAt | date: 'dd/MM/yyyy' }} · {{ shopping.itemCount }}
-              {{ shopping.itemCount === 1 ? 'produto' : 'produtos' }}
+        <a class="recent-row" routerLink="/tabs/history">
+          <span class="market-mark" aria-hidden="true">{{
+            shopping.supermarketName.slice(0, 1)
+          }}</span>
+          <div class="recent-description">
+            <h3>{{ shopping.supermarketName }}</h3>
+            <p>
+              {{ shopping.finishedAt | date: 'dd MMM' : undefined : 'pt-BR' }} ·
+              {{ shopping.itemCount }} {{ shopping.itemCount === 1 ? 'produto' : 'produtos' }}
             </p>
           </div>
-          <strong class="tw:text-green-900">{{
+          <strong>{{
             shopping.totalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-          }}</strong>
-        </article>
+          }}</strong
+          ><ion-icon [icon]="chevronIcon" aria-hidden="true" />
+        </a>
       } @empty {
-        <p class="tw:mt-2">Suas compras finalizadas aparecerão aqui.</p>
+        <p class="tw:text-sm tw:text-gray-600">Suas compras finalizadas vão aparecer aqui.</p>
       }
-      <ion-button fill="clear" routerLink="/tabs/history">Ver histórico</ion-button>
     </section>
   </main>
 </ion-content>

@@ -1,54 +1,63 @@
-<ion-header class="ion-no-border page-header">
+<ion-header class="ion-no-border page-header scanner-header">
   <ion-toolbar
-    ><ion-title role="heading" aria-level="1" class="tw:text-3xl tw:font-semibold"
-      >Escanear</ion-title
-    ></ion-toolbar
-  >
+    ><ion-title role="heading" aria-level="1">Escanear</ion-title>
+    @if (scanner.native && store.active()) {
+      <ion-buttons slot="end"
+        ><ion-button
+          class="camera-button"
+          aria-label="Abrir câmera para ler código de barras"
+          [disabled]="scanner.busy() || loadingProduct() || modalOpen()"
+          (click)="scan()"
+          ><ion-icon slot="icon-only" [icon]="cameraIcon" /></ion-button
+      ></ion-buttons>
+    }
+  </ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
-  <main class="tw:mx-auto tw:max-w-lg tw:pt-2 tw:pb-6">
+  <main class="scanner-main">
     @if (store.loading()) {
       <p role="status">Abrindo sua compra…</p>
     } @else if (store.error()) {
       <p role="alert">{{ store.error() }}</p>
       <ion-button (click)="store.load()">Tentar novamente</ion-button>
     } @else if (store.active(); as shopping) {
-      <p class="tw:mt-0 tw:text-gray-600">{{ shopping.supermarketName }} · compra em andamento</p>
-      <section
-        class="tw:mt-6 tw:rounded-3xl tw:border tw:border-green-200 tw:bg-green-50 tw:p-6 tw:text-center"
-      >
-        <ion-icon name="barcode-outline" class="tw:text-6xl tw:text-green-800" aria-hidden="true" />
-        <h2 class="tw:text-xl tw:font-semibold">Um código, um produto.</h2>
-        <p class="tw:leading-relaxed">
-          Leia a embalagem e confirme o preço de hoje antes de adicionar.
-        </p>
+      <p class="scanner-subtitle">
+        <strong>{{ shopping.supermarketName }}</strong> · compra em andamento
+      </p>
+      <section class="camera-viewport" aria-label="Área de leitura do código de barras">
+        <div class="scan-corners" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><ion-icon [icon]="emptyIcon" />
+        </div>
         @if (scanner.native) {
           <ion-button
-            expand="block"
+            color="light"
             [disabled]="scanner.busy() || loadingProduct()"
             (click)="scan()"
             >{{ scanner.busy() ? 'Abrindo câmera…' : 'Abrir câmera' }}</ion-button
           >
         } @else {
-          <p class="tw:text-sm tw:text-gray-600">
-            A câmera está disponível no aplicativo Android. No navegador, você pode digitar o
-            código.
-          </p>
+          <p>A leitura com câmera está disponível no aplicativo Android.</p>
         }
       </section>
-      <form class="tw:mt-6 tw:space-y-4" (ngSubmit)="lookup()">
+      <p class="scan-instruction">Aponte para o código de barras</p>
+      <ion-button class="manual-link" fill="clear" expand="block" routerLink="/tabs/cart"
+        >Adicionar manualmente</ion-button
+      >
+      <form class="barcode-entry tw:border-t tw:border-[#e1e7df] tw:pt-2.5" (ngSubmit)="lookup()">
+        <h2 class="tw:text-lg tw:mt-1.5 tw:mb-3.5">Ou digite o código</h2>
         <ion-input
           label="Código de barras"
           labelPlacement="stacked"
           fill="outline"
           name="barcode"
           inputmode="numeric"
-          placeholder="Digite os números da embalagem"
+          placeholder="Números da embalagem"
           [maxlength]="13"
           [(ngModel)]="code"
           [disabled]="scanner.busy() || loadingProduct()"
         />
         <ion-button
+          class="tw:my-3 tw:mx-0"
           type="submit"
           expand="block"
           fill="outline"
@@ -64,17 +73,15 @@
           >Abrir configurações</ion-button
         >
       }
-      <ion-button class="tw:mt-4" expand="block" fill="clear" routerLink="/tabs/cart"
-        >Adicionar sem código no Carrinho</ion-button
-      >
     } @else {
       <app-empty-state
         [icon]="emptyIcon"
         title="Nenhuma compra em andamento"
         description="Comece uma compra para escanear produtos e acompanhar os preços no carrinho."
+        ><ion-button routerLink="/tabs/home" fill="outline"
+          >Ir para o início</ion-button
+        ></app-empty-state
       >
-        <ion-button routerLink="/tabs/home" fill="outline">Ir para o início</ion-button>
-      </app-empty-state>
     }
   </main>
 </ion-content>
@@ -85,77 +92,121 @@
     <ion-button color="light" (click)="scanner.cancel()">Cancelar leitura</ion-button>
   </section>
 }
-<ion-modal [isOpen]="modalOpen()" [canDismiss]="!saving()" (didDismiss)="onProductDismiss()">
+<ion-modal
+  class="product-sheet"
+  [isOpen]="modalOpen()"
+  [canDismiss]="!saving()"
+  [initialBreakpoint]="1"
+  [breakpoints]="[0, 1]"
+  (didDismiss)="onProductDismiss()"
+>
   <ng-template>
-    <ion-header class="ion-no-border"
-      ><ion-toolbar>
-        <ion-title>{{ known() ? 'Produto encontrado' : 'Novo produto' }}</ion-title>
-        <ion-buttons slot="end"
-          ><ion-button [disabled]="saving()" (click)="modalOpen.set(false)"
-            >Fechar</ion-button
-          ></ion-buttons
-        >
-      </ion-toolbar></ion-header
-    >
-    <ion-content class="ion-padding">
-      <form class="tw:mx-auto tw:max-w-lg tw:space-y-6" (ngSubmit)="save()">
-        <p class="tw:mt-0 tw:text-sm tw:text-gray-600">Código {{ productCode }}</p>
-        @if (lastPrice(); as previous) {
-          <p class="tw:rounded-2xl tw:bg-green-50 tw:p-4">
-            Último preço neste mercado:
-            <strong>{{
-              previous.unitPriceCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-            }}</strong
-            ><br />{{ previous.recordedAt | date: 'dd/MM/yyyy' }} · confirme o preço de hoje.
-          </p>
-        } @else {
-          <p class="tw:text-gray-600">Ainda não há preço de uma compra finalizada neste mercado.</p>
-        }
-        <ion-input
-          label="Nome do produto"
-          labelPlacement="stacked"
-          fill="outline"
-          name="name"
-          [(ngModel)]="name"
-          [maxlength]="120"
-          [disabled]="saving()"
-        />
-        <ion-input
-          label="Preço hoje por unidade"
-          labelPlacement="stacked"
-          fill="outline"
-          name="price"
-          placeholder="Ex.: 17,49"
-          inputmode="decimal"
-          [(ngModel)]="price"
-          [maxlength]="12"
-          [disabled]="saving()"
-        />
-        <ion-input
-          label="Quantidade"
-          labelPlacement="stacked"
-          fill="outline"
-          name="quantity"
-          inputmode="numeric"
-          [(ngModel)]="quantity"
-          [maxlength]="4"
-          [disabled]="saving()"
-        />
-        @if (formError()) {
-          <p role="alert" class="tw:text-red-800">{{ formError() }}</p>
-        }
-        <ion-button type="submit" expand="block" [disabled]="saving()">{{
-          saving() ? 'Salvando…' : 'Adicionar ao carrinho'
-        }}</ion-button>
+    <div class="product-sheet-content">
+      <div class="sheet-heading">
+        <h2>{{ known() ? 'Produto encontrado' : 'Novo produto' }}</h2>
         <ion-button
-          type="button"
-          expand="block"
           fill="clear"
           [disabled]="saving()"
           (click)="modalOpen.set(false)"
-          >Cancelar</ion-button
+          aria-label="Fechar produto"
+          ><ion-icon slot="icon-only" [icon]="closeIcon"
+        /></ion-button>
+      </div>
+      <form (ngSubmit)="save()">
+        <div class="product-summary">
+          <span class="product-thumbnail" aria-hidden="true"
+            ><ion-icon [icon]="productIcon"
+          /></span>
+          <div class="product-description">
+            <h3>{{ name || 'Cadastre este produto' }}</h3>
+            @if (lastPrice(); as previous) {
+              <p>
+                Último preço:
+                {{ previous.unitPriceCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+                · {{ previous.recordedAt | date: 'dd/MM/yyyy' }}
+              </p>
+            } @else {
+              <p>Sem preço anterior neste mercado.</p>
+            }
+            @if (known() && !editingName()) {
+              <ion-button
+                fill="clear"
+                size="small"
+                [disabled]="saving()"
+                (click)="editingName.set(true)"
+                >Editar nome</ion-button
+              >
+            }
+          </div>
+        </div>
+        @if (!known() || editingName()) {
+          <ion-input
+            class="tw:mb-4"
+            label="Nome do produto"
+            labelPlacement="stacked"
+            fill="outline"
+            name="name"
+            [(ngModel)]="name"
+            [maxlength]="120"
+            [disabled]="saving()"
+          />
+        }
+        <div class="product-fields">
+          <ion-input
+            label="Preço hoje"
+            labelPlacement="stacked"
+            fill="outline"
+            name="price"
+            placeholder="Ex.: 17,49"
+            inputmode="decimal"
+            [(ngModel)]="price"
+            [maxlength]="12"
+            [disabled]="saving()"
+            ><span slot="start" aria-hidden="true">R$</span></ion-input
+          >
+          <div class="quantity-field">
+            <label for="scan-quantity">Quantidade</label>
+            <div class="quantity-stepper">
+              <ion-button
+                fill="clear"
+                type="button"
+                aria-label="Diminuir quantidade"
+                [disabled]="saving() || quantity === '1'"
+                (click)="changeQuantity(-1)"
+                >−</ion-button
+              ><input
+                id="scan-quantity"
+                name="quantity"
+                inputmode="numeric"
+                maxlength="4"
+                [(ngModel)]="quantity"
+                [disabled]="saving()"
+              /><ion-button
+                fill="clear"
+                type="button"
+                aria-label="Aumentar quantidade"
+                [disabled]="saving() || quantity === '9999'"
+                (click)="changeQuantity(1)"
+                >+</ion-button
+              >
+            </div>
+          </div>
+        </div>
+        <p class="price-reminder">
+          Informe o preço de hoje por unidade. O preço anterior é apenas uma referência.
+        </p>
+        @if (formError()) {
+          <p role="alert" class="tw:text-red-800">{{ formError() }}</p>
+        }
+        <ion-button class="add-product" type="submit" expand="block" [disabled]="saving()"
+          ><ion-icon slot="start" [icon]="cartIcon" aria-hidden="true" />{{
+            saving() ? 'Salvando…' : 'Adicionar ao carrinho'
+          }}</ion-button
         >
+        <p class="tw:text-center tw:text-gray-600 tw:text-xs tw:mt-2.5 tw:mb-0">
+          Código {{ productCode }}
+        </p>
       </form>
-    </ion-content>
+    </div>
   </ng-template>
 </ion-modal>

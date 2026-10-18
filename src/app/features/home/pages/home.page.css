@@ -1,0 +1,284 @@
+.home-header ion-toolbar {
+  --min-height: 76px;
+}
+.brand-row {
+  max-width: 512px;
+  margin: auto;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand {
+  position: relative;
+  color: #104c38;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -2.5px;
+  line-height: 1.25;
+}
+.brand-leaf {
+  position: absolute;
+  width: 10px;
+  height: 17px;
+  border-radius: 12px 0 12px 0;
+  background: #64ad6d;
+  left: 24px;
+  top: 0;
+  transform: rotate(16deg);
+}
+.profile-mark,
+.cart-mark {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.profile-mark {
+  width: 42px;
+  height: 42px;
+  background: #e4ede1;
+  color: #17573e;
+  font-size: 24px;
+}
+.home-main {
+  max-width: 512px;
+  margin: auto;
+  padding: 4px 0 24px;
+}
+.greeting {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+h1 {
+  font-size: clamp(23px, 6.4vw, 32px);
+  font-weight: 750;
+  letter-spacing: -1px;
+  line-height: 1.18;
+  margin: 0 0 22px;
+  color: #080d0b;
+}
+.active-purchase {
+  margin: 0;
+  color: #f7faf4;
+  background: radial-gradient(ellipse at top right, #256d4c, #124b38);
+  border: 1px solid #2d7454;
+  border-radius: 20px;
+  box-shadow: none;
+  overflow: hidden;
+}
+.active-purchase ion-card-content {
+  position: relative;
+  padding: 18px 16px 14px;
+}
+.active-purchase p {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #dce9dc;
+  margin: 0;
+}
+.basket-art {
+  position: absolute;
+  right: 4px;
+  top: 15px;
+  width: 43%;
+  height: 158px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.purchase-heading {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 62%;
+  min-height: 46px;
+}
+.cart-mark {
+  width: 36px;
+  height: 36px;
+  background: #ffffff14;
+  color: #b0e3a7;
+  font-size: 24px;
+}
+.purchase-heading h2 {
+  font-size: 21px;
+  line-height: 1.15;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  margin: 3px 0 0;
+}
+.purchase-heading p {
+  font-size: 12px;
+}
+.purchase-total {
+  position: relative;
+  margin: 18px 0 16px;
+  width: 62%;
+}
+.purchase-total strong {
+  display: block;
+  margin-top: 4px;
+  font-size: clamp(27px, 8.3vw, 40px);
+  line-height: 1.1;
+  letter-spacing: -1px;
+  overflow-wrap: anywhere;
+  color: #fff;
+}
+.purchase-budget {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.purchase-budget > div + div {
+  padding-left: 18px;
+  border-left: 1px solid #ffffff30;
+}
+.purchase-budget strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.purchase-budget .remaining {
+  color: #a8e49d;
+}
+.purchase-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+}
+.purchase-progress ion-progress-bar {
+  flex: 1;
+  height: 13px;
+  border-radius: 16px;
+  --progress-background: #9bdf94;
+  --background: #ffffff1c;
+}
+.purchase-progress span {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.no-budget {
+  padding: 4px 0 14px;
+}
+.continue-button {
+  margin: 16px 0 0;
+  --background: #f7f8f4;
+  --color: #104e39;
+  --border-radius: 12px;
+  font-size: 16px;
+  min-height: 44px;
+}
+.continue-button ion-icon {
+  position: absolute;
+  right: 0;
+  font-size: 22px;
+}
+.recent-shopping {
+  margin-top: 18px;
+}
+.recent-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.recent-heading h2 {
+  font-size: 22px;
+  letter-spacing: -0.7px;
+  font-weight: 750;
+  margin: 0;
+}
+.recent-heading ion-button {
+  --padding-start: 0;
+  --padding-end: 0;
+  --color: #626a6d;
+  font-size: 13px;
+  margin: 0;
+}
+.recent-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 80px;
+  padding: 12px;
+  margin: 0 0 8px;
+  border: 1px solid #e1e6df;
+  border-radius: 18px;
+  box-shadow: 0 3px 10px #233d1f04;
+  text-decoration: none;
+  color: inherit;
+}
+.market-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #eaf0e6;
+  color: #18583e;
+  font-weight: 700;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.recent-description {
+  flex: 1;
+  min-width: 0;
+}
+.recent-description h3 {
+  font-size: 17px;
+  line-height: 1.2;
+  font-weight: 700;
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+.recent-description p {
+  font-size: 13px;
+  color: #636a6e;
+  margin: 0;
+}
+.recent-row strong {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+  max-width: 34%;
+}
+.recent-row > ion-icon {
+  color: #636a6e;
+  flex-shrink: 0;
+}
+.new-purchase {
+  background: #e8efe3;
+  border-radius: 20px;
+  padding: 20px;
+  text-align: center;
+}
+.recent-row:focus-visible {
+  outline: 3px solid #246b50;
+  outline-offset: 2px;
+}
+@media (max-width: 350px) {
+  .market-mark {
+    width: 36px;
+    height: 36px;
+  }
+  .recent-row {
+    gap: 8px;
+    padding: 10px;
+  }
+  .recent-heading h2 {
+    font-size: 20px;
+  }
+  .recent-row strong {
+    font-size: 14px;
+  }
+  .purchase-heading {
+    width: 65%;
+    gap: 6px;
+  }
+  .cart-mark {
+    display: none;
+  }
+}

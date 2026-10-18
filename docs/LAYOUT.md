@@ -71,4 +71,22 @@ As referências guiam também proporções, densidade, posição das ações e d
 
 O Carrinho foi recomposto com resumo horizontal compacto (total à esquerda, restante/limite à direita), opções da compra no menu “⋯”, cartões em linhas com área de miniatura, quantidade agrupada, menu por item e ações de escanear/adicionar abaixo da lista. Peso continua com edição em kg, sem copiar o stepper ilustrativo. Contador do Carrinho representa linhas de produtos; mantém a definição documentada, não o número ilustrativo do conceito.
 
-Comparação local em 390/320 px com quatro produtos, total R$ 112,36, limite R$ 200,00 e restante R$ 87,64. Menus preservam edição e confirmação de remoção/cancelamento; troca de compra enquanto o menu está aberto invalida a ação. Miniaturas usam placeholders porque o catálogo atual não contém fotos. Fotos reais e fidelidade das outras três abas ainda precisam de trabalho e aprovação visual; não marcar o layout completo como finalizado nem avançar para distribuição com base só nos testes funcionais.
+Comparação local em 390/320 px com quatro produtos, total R$ 112,36, limite R$ 200,00 e restante R$ 87,64. Menus preservam edição e confirmação de remoção/cancelamento; troca de compra enquanto o menu está aberto invalida a ação. Miniaturas usam placeholders porque o catálogo atual não contém fotos.
+
+As outras três abas foram recompostas na sequência:
+
+- Início: marca com folha, saudação sem identidade inventada, cesta ilustrativa própria, cartão verde com total/orçamento/progresso e compras recentes em linhas. O símbolo de perfil identifica o uso local; não simula uma conta ou ação disponível.
+- Histórico: filtro em cápsula, data lateral, mercado/contagem/total, resumo expansível com app/caixa/diferença e botão Ver itens. Caixa nulo continua “Não informado”, inclusive distinto de zero; valores mantêm o sinal caixa − app. Itens antigos continuam somente leitura.
+- Escanear: área de leitura grande com cantos marcados, alternativa manual e ficha inferior com nome/preço anterior datado, preço de hoje obrigatório e quantidade agrupada. O navegador explica a indisponibilidade da câmera, sem mostrar foto como se fosse uma leitura real. A câmera nativa mantém permissão por ação e encerramento ao sair; seu enquadramento real e teclado precisam de aparelho.
+- Tipografia de sistema, ícones maiores nas abas e indicador da aba ativa. Capturas locais em 390/320 px, abertura/fechamento dos itens do Histórico, filtro, edição de quantidade e navegação conferidos. Não houve rolagem horizontal das páginas na amostra; preço e nome continuam editáveis na ficha.
+
+A conferência visual do usuário, fotos reais do catálogo, leitor de tela, fonte ampliada e aparelho continuam pendentes. Não declarar equivalência exata às imagens nem avançar para distribuição apenas pelos testes funcionais.
+
+<details>
+<summary>Origem da cesta ilustrativa</summary>
+
+Asset local: [public/images/grocery-basket.png](../public/images/grocery-basket.png), gerado com a ferramenta integrada de imagens, com transparência e sem marcas. É decoração do Início, não foto de um produto do catálogo. Prompt usado:
+
+> Use case: product-mockup. Asset type: small transparent hero illustration for Carrim grocery shopping mobile app. Create a single rich dark forest green plastic supermarket shopping basket filled with fresh lettuce, tomatoes, a few bananas, a baguette in kraft paper and a plain glass milk bottle with blue cap. No brands, no labels, no words. Realistic premium studio product render, three-quarter view, basket handle partly upright, compact tall composition, soft light upper left, natural textures, crisp silhouette, subtle grounded shadow. Entire basket and groceries fully inside image, centered filling canvas with minimal transparent padding. Background genuinely transparent. Intended to be displayed at 150px wide on a deep green card. No backdrop, no table, no border, no text, no watermark.
+
+</details>

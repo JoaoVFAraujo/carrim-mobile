@@ -12,7 +12,7 @@ describe('HomePage', () => {
     const fixture = TestBed.createComponent(HomePage);
     fixture.detectChanges();
     const page: HTMLElement = fixture.nativeElement;
-    expect(page.querySelector('ion-title')?.textContent).toContain('Carrim');
+    expect(page.querySelector('[aria-label="Carrim"]')?.textContent).toContain('Carrim');
     expect(page.querySelector('ion-content main h1')?.textContent).toContain('Sua compra');
   });
 });
