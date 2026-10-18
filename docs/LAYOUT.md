@@ -1,6 +1,6 @@
 # Carrim — direção visual
 
-Referência aprovada em 30/09/2026, consolidada em 16/10/2026. Imagens e decisões vieram da pasta original do PC. São conceitos de interface, não screenshots de funcionalidades entregues. O redesenho continua adiado; este guia não altera a UI.
+Referência aprovada em 30/09/2026, consolidada em 16/10 e revisada localmente em 17/10/2026. Imagens e decisões vieram da pasta original do PC. São conceitos de interface, não screenshots de funcionalidades entregues. A revisão local foi autorizada antes da preparação do APK de teste.
 
 ## Identidade e hierarquia
 
@@ -54,3 +54,13 @@ Compras agrupadas por período, com mercado, data, linhas e total. Segmento Toda
 - Revisar telas pequenas (320/390 px), safe areas, fonte ampliada, teclado, orientação, navegação assistiva e acesso à ação principal.
 
 Os PNGs foram copiados sem edição, mantendo os quatro originais e nomes para rastreabilidade. A pasta pessoal permanece intacta. Revisões de layout entram neste guia; estado e prioridade ficam no [roadmap](https://github.com/JoaoVFAraujo/carrim-api/blob/main/docs/ROADMAP.md), sem novos documentos visuais por versão.
+
+## Revisão local — 17/10/2026
+
+As quatro abas foram conferidas no navegador local em larguras de 390 e 320 px. A direção permanece clara/sálvia, com cabeçalho integrado, total em destaque, cantos suaves e componentes Ionic; fotos/marcas ilustrativas não foram copiadas para a interface.
+
+Ajustes: resumo do Carrinho com orçamento em colunas, totais longos com quebra e finalização acessível, nomes de itens com largura mínima antes de quebrar a linha, hierarquia/espaçamento do cartão ativo, cartões do Histórico com data e total, botão Fechar no formulário de produtos, superfícies de revisão de sync e foco visível. Botões principais mantêm área mínima de 44 px.
+
+Fluxos conferidos: nova compra com/sem limite; edição/remoção de limite e cancelamento; produto por unidade, peso e grupo promocional; erro de grupo incompleto; cadastro por código e produto conhecido exigindo preço de hoje; finalização com caixa diferente; filtro/detalhes do Histórico e persistência após recarregar. A amostra de unidade/peso/promoção totalizou R$ 54,66, caixa R$ 55,00 e diferença +R$ 0,34. Valores máximos e nome longo foram conferidos em 320 px sem rolagem horizontal.
+
+Isso valida a revisão visual local, não a câmera física, teclado virtual, leitor de tela nativo ou Keystore/SQLite do aparelho. O painel de conflito tem testes de confirmação/concorrência em SQLite isolado; a execução nativa real permanece no roteiro Android. Aprovação final em aparelho e teste no supermercado continuam pendentes.

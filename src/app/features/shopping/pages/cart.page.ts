@@ -4,6 +4,7 @@ import { CurrencyPipe, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   IonButton,
+  IonButtons,
   IonContent,
   IonHeader,
   IonTitle,
@@ -37,6 +38,7 @@ import {
 @Component({
   selector: 'app-cart',
   imports: [
+    IonButtons,
     IonContent,
     IonHeader,
     IonTitle,

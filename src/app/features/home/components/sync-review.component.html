@@ -1,7 +1,7 @@
 @if (native || status.message()) {
   <ion-button fill="clear" (click)="show()" [disabled]="busy()">Revisar sincronização</ion-button>
 }
-<ion-modal [isOpen]="open()" (didDismiss)="open.set(false)">
+<ion-modal [isOpen]="open()" [canDismiss]="!busy()" (didDismiss)="open.set(false)">
   <ng-template>
     <ion-header class="ion-no-border"
       ><ion-toolbar><ion-title>Revisar alterações</ion-title></ion-toolbar></ion-header
