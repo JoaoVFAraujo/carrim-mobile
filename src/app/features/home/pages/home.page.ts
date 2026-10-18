@@ -22,10 +22,12 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { ShoppingSessionStore } from '../../shopping/services/shopping-session.store';
 import { SyncStatusService } from '../../../core/sync/sync-status.service';
 import { parseBudget } from '../../shopping/models/shopping-session';
+import { SyncReviewComponent } from '../components/sync-review.component';
 
 @Component({
   selector: 'app-home',
   imports: [
+    SyncReviewComponent,
     IonContent,
     IonHeader,
     IonTitle,

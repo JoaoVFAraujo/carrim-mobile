@@ -126,6 +126,23 @@ export class DatabaseService {
     });
   }
 
+  /** Compare and mutate under the same local writer lock, including native sync/import. */
+  async checkedTransaction(
+    checks: { statement: string; values: (string | number | null)[]; expected: unknown[] }[],
+    statements: capSQLiteSet[],
+  ): Promise<void> {
+    return this.serial(async () => {
+      await this.open();
+      for (const check of checks) {
+        const actual = await this.database!.query(check.statement, check.values);
+        if (JSON.stringify(actual.values ?? []) !== JSON.stringify(check.expected))
+          throw new Error('Os dados mudaram. Abra a revisão novamente.');
+      }
+      await this.database!.executeSet(statements, true);
+      if (!Capacitor.isNativePlatform()) await this.connection!.saveToStore('carrim');
+    });
+  }
+
   private serial<T>(work: () => Promise<T>): Promise<T> {
     const next = this.queue.then(work);
     this.queue = next.catch(() => undefined);

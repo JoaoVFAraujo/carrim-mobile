@@ -15,6 +15,7 @@
     @if (syncStatus.message()) {
       <p role="status">{{ syncStatus.message() }}</p>
     }
+    <app-sync-review />
     @if (store.loading()) {
       <ion-skeleton-text [animated]="true" class="tw:h-48 tw:rounded-3xl" />
     } @else if (store.error()) {

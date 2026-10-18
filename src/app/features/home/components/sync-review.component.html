@@ -1,0 +1,61 @@
+@if (native || status.message()) {
+  <ion-button fill="clear" (click)="show()" [disabled]="busy()">Revisar sincronização</ion-button>
+}
+<ion-modal [isOpen]="open()" (didDismiss)="open.set(false)">
+  <ng-template>
+    <ion-header class="ion-no-border"
+      ><ion-toolbar><ion-title>Revisar alterações</ion-title></ion-toolbar></ion-header
+    >
+    <ion-content class="ion-padding">
+      <main class="tw:mx-auto tw:max-w-lg">
+        @if (busy()) {
+          <p role="status">Conferindo as alterações…</p>
+        }
+        @if (error()) {
+          <p role="alert">{{ error() }}</p>
+        }
+        @if (review.view(); as comparison) {
+          @if (comparison.local.length) {
+            <section class="review-card" aria-label="Sua alteração">
+              <h2>Sua alteração</h2>
+              @for (line of comparison.local; track $index) {
+                <p>{{ line }}</p>
+              }
+            </section>
+            <section class="review-card" aria-label="Estado atual no servidor">
+              <h2>No servidor</h2>
+              @for (line of comparison.remote; track $index) {
+                <p>{{ line }}</p>
+              }
+            </section>
+          }
+          <p>{{ comparison.reason }}</p>
+          @if (comparison.allowed) {
+            <ion-button expand="block" [disabled]="busy()" (click)="confirm()"
+              >Reaplicar minha alteração</ion-button
+            >
+          }
+        }
+        @if (review.archives().length) {
+          <h2>Revisões preservadas neste aparelho</h2>
+          @for (entry of review.archives(); track entry.createdAt) {
+            <details class="review-card">
+              <summary>{{ entry.createdAt | date: 'dd/MM/yyyy HH:mm' }}</summary>
+              <h3>Alteração escolhida</h3>
+              @for (line of entry.local; track $index) {
+                <p>{{ line }}</p>
+              }
+              <h3>Servidor consultado</h3>
+              @for (line of entry.remote; track $index) {
+                <p>{{ line }}</p>
+              }
+            </details>
+          }
+        }
+        <ion-button fill="outline" expand="block" [disabled]="busy()" (click)="open.set(false)"
+          >Fechar</ion-button
+        >
+      </main>
+    </ion-content>
+  </ng-template>
+</ion-modal>

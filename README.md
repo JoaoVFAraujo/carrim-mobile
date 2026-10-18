@@ -2,9 +2,11 @@
 
 Aplicativo de supermercado offline-first, com compras, catálogo, orçamento e Histórico no SQLite. Manifest **0.0.2**, Android versionCode **2**. Não há release V1.0.0 publicada.
 
-Sync nativo push/pull está integrado e inicia com API HTTPS configurada. Sem endpoint e no navegador, compras continuam locais. Conflitos pausam sync preservando dados; resolução assistida e testes físicos ainda pendentes.
+Sync nativo push/pull está integrado e inicia com API HTTPS configurada. Sem endpoint e no navegador, compras continuam locais. Conflitos pausam sync preservando dados; a revisão assistida compara a alteração local com o servidor antes de uma reaplicação explícita. Testes físicos ainda pendentes.
 
 O Carrinho permite definir/editar/remover o limite e cancelar a compra com confirmação. Alterações ficam no SQLite e na fila na mesma transação; cancelamento preserva itens encerrados e não gera histórico de preços.
+
+No Início nativo, Revisar sincronização permite reaplicar UPDATE de catálogo/limite e alterações de itens de uma compra ainda ativa, após consultar o servidor com a identidade vinculada. A decisão guarda cópias locais e remotas e o pedido anterior, e cria um novo comando explícito; o pedido anterior nunca é reciclado automaticamente. Mudança local durante a revisão invalida a decisão. Compras encerradas, criação de cadastros conflitante e falhas de importação permanecem pausadas para análise, sem sobrescrita automática. As últimas revisões ficam acessíveis no mesmo painel.
 
 ## Documentação essencial
 
