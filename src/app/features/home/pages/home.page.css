@@ -58,15 +58,6 @@ h1 {
   margin: 0 0 22px;
   color: #080d0b;
 }
-.active-purchase {
-  margin: 0;
-  color: #f7faf4;
-  background: radial-gradient(ellipse at top right, #256d4c, #124b38);
-  border: 1px solid #2d7454;
-  border-radius: 20px;
-  box-shadow: none;
-  overflow: hidden;
-}
 .active-purchase ion-card-content {
   position: relative;
   padding: 18px 16px 14px;
@@ -249,11 +240,16 @@ h1 {
   color: #636a6e;
   flex-shrink: 0;
 }
-.new-purchase {
-  background: #e8efe3;
-  border-radius: 20px;
-  padding: 20px;
-  text-align: center;
+.welcome-copy {
+  position: relative;
+  width: 56%;
+  min-height: 174px;
+}
+.welcome-copy h2 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 8px 0 12px;
 }
 .recent-row:focus-visible {
   outline: 3px solid #246b50;

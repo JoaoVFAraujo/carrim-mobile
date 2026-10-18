@@ -74,14 +74,19 @@
         >
       }
     } @else {
-      <app-empty-state
-        [icon]="emptyIcon"
-        title="Nenhuma compra em andamento"
-        description="Comece uma compra para escanear produtos e acompanhar os preços no carrinho."
-        ><ion-button routerLink="/tabs/home" fill="outline"
-          >Ir para o início</ion-button
-        ></app-empty-state
-      >
+      <ion-card class="feature-card">
+        <ion-card-content class="tw:p-5">
+          <span class="card-icon"><ion-icon [icon]="emptyIcon" aria-hidden="true" /></span>
+          <h2>Comece uma compra para escanear</h2>
+          <p class="card-description">
+            Escolha o supermercado no Início. Depois, leia os códigos e confirme o preço de cada
+            produto.
+          </p>
+          <ion-button color="light" expand="block" routerLink="/tabs/home"
+            >Ir para o início</ion-button
+          >
+        </ion-card-content>
+      </ion-card>
     }
   </main>
 </ion-content>

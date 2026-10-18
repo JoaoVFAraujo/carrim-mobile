@@ -44,8 +44,8 @@ describe('Tab navigation', () => {
     const page: HTMLElement = fixture.nativeElement;
 
     for (const [path, selector, message] of [
-      ['/tabs/home', 'app-home', 'Pronto para fazer suas compras?'],
-      ['/tabs/scanner', 'app-scanner', 'Nenhuma compra em andamento'],
+      ['/tabs/home', 'app-home', 'Pronto para começar?'],
+      ['/tabs/scanner', 'app-scanner', 'Comece uma compra para escanear'],
       ['/tabs/cart', 'app-cart', 'Seu carrinho está vazio'],
       ['/tabs/history', 'app-history', 'Nenhuma compra finalizada ainda'],
     ]) {

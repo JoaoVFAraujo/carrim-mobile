@@ -80,6 +80,8 @@ As outras três abas foram recompostas na sequência:
 - Escanear: área de leitura grande com cantos marcados, alternativa manual e ficha inferior com nome/preço anterior datado, preço de hoje obrigatório e quantidade agrupada. O navegador explica a indisponibilidade da câmera, sem mostrar foto como se fosse uma leitura real. A câmera nativa mantém permissão por ação e encerramento ao sair; seu enquadramento real e teclado precisam de aparelho.
 - Tipografia de sistema, ícones maiores nas abas e indicador da aba ativa. Capturas locais em 390/320 px, abertura/fechamento dos itens do Histórico, filtro, edição de quantidade e navegação conferidos. Não houve rolagem horizontal das páginas na amostra; preço e nome continuam editáveis na ficha.
 
+Os estados sem compra do Início e do scanner também usam o verde profundo dos cards de destaque, texto claro e botão claro. No Início, a cesta fica à direita da mensagem, evitando o card sálvia com imagem central que destoava da referência. Os cabeçalhos principais são alinhados à esquerda tanto em Material quanto no modo visual iOS; isso não força o modo iOS no Android.
+
 A conferência visual do usuário, fotos reais do catálogo, leitor de tela, fonte ampliada e aparelho continuam pendentes. Não declarar equivalência exata às imagens nem avançar para distribuição apenas pelos testes funcionais.
 
 <details>
