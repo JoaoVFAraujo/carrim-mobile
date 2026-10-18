@@ -147,7 +147,7 @@
   --padding-end: 8px;
   --border-radius: 22px;
   --color: #315a49;
-  min-width: 40px;
+  min-width: 44px;
   min-height: 44px;
   height: 44px;
   margin: 0;
@@ -245,9 +245,6 @@
   .product-heading > strong,
   .product-heading h2 {
     font-size: 14px;
-  }
-  .quantity-control ion-button {
-    min-width: 36px;
   }
   .cart-add-actions ion-button {
     font-size: 13px;
