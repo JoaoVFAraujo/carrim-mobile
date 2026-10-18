@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { AlertController, ToastController } from '@ionic/angular';
+import { ActionSheetController, AlertController, ToastController } from '@ionic/angular';
 import { vi } from 'vitest';
 import { CartPage } from './cart.page';
 import { ShoppingSessionStore } from '../services/shopping-session.store';
@@ -124,6 +124,52 @@ describe('purchase controls', () => {
     await page.confirmCancel();
     expect(page.actionError()).toContain('Não foi possível cancelar');
     expect(page.saving()).toBe(false);
+  });
+});
+
+describe('cart contextual menus', () => {
+  function setup() {
+    const active = signal({ id: 's', budgetCents: null });
+    const items = signal([
+      { id: 'i', sessionId: 's', name: 'Arroz', unitPriceCents: 100, quantity: 1 },
+    ]);
+    const sheet = { present: vi.fn(), onDidDismiss: vi.fn().mockResolvedValue({ role: 'cancel' }) };
+    const create = vi.fn().mockResolvedValue(sheet);
+    TestBed.configureTestingModule({
+      providers: [
+        CartPage,
+        { provide: ShoppingSessionStore, useValue: { active, items } },
+        { provide: ActionSheetController, useValue: { create } },
+        { provide: AlertController, useValue: {} },
+        { provide: ToastController, useValue: {} },
+        { provide: Router, useValue: {} },
+      ],
+    });
+    return { page: TestBed.inject(CartPage), active, items, sheet, create };
+  }
+  it('opens one purchase menu and dismisses without changing the purchase', async () => {
+    const { page, create } = setup();
+    const cancel = vi.spyOn(page, 'confirmCancel');
+    await Promise.all([page.shoppingOptions(), page.shoppingOptions()]);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+  it('keeps destructive item actions behind their existing confirmation', async () => {
+    const { page, items, sheet } = setup();
+    sheet.onDidDismiss.mockResolvedValue({ role: 'destructive' });
+    const confirmation = vi.spyOn(page, 'confirmRemove').mockResolvedValue();
+    await page.itemOptions(items()[0]);
+    expect(confirmation).toHaveBeenCalledWith(items()[0]);
+  });
+  it('refuses a menu action when its purchase was replaced while open', async () => {
+    const { page, active, sheet } = setup();
+    sheet.onDidDismiss.mockImplementation(async () => {
+      active.set({ id: 'other', budgetCents: null });
+      return { role: 'budget' };
+    });
+    const edit = vi.spyOn(page, 'editBudget').mockResolvedValue();
+    await page.shoppingOptions();
+    expect(edit).not.toHaveBeenCalled();
   });
 });
 

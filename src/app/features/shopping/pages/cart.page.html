@@ -1,174 +1,189 @@
-<ion-header class="ion-no-border page-header">
-  <ion-toolbar
-    ><ion-title role="heading" aria-level="1" class="tw:text-3xl tw:font-semibold"
-      >Carrinho</ion-title
-    ></ion-toolbar
-  >
+<ion-header class="ion-no-border page-header cart-header">
+  <ion-toolbar>
+    <ion-title role="heading" aria-level="1">Carrinho</ion-title>
+    @if (store.active() && !store.loading() && !store.error()) {
+      <ion-buttons slot="end" class="tw:me-3">
+        <ion-button aria-label="Opções da compra" [disabled]="saving()" (click)="shoppingOptions()"
+          ><ion-icon [icon]="icons.more" aria-hidden="true"
+        /></ion-button>
+      </ion-buttons>
+    }
+  </ion-toolbar>
 </ion-header>
-<ion-content class="ion-padding">
-  <main class="tw:mx-auto tw:max-w-lg tw:pt-2 tw:pb-6">
+<ion-content class="cart-content">
+  <main class="cart-page tw:mx-auto tw:max-w-[544px]">
     @if (store.loading()) {
       <p role="status">Abrindo sua compra…</p>
     } @else if (store.error()) {
       <p role="alert">{{ store.error() }}</p>
       <ion-button (click)="store.load()">Tentar novamente</ion-button>
     } @else if (store.active(); as shopping) {
-      <p class="tw:mt-0 tw:text-gray-600">
+      <p class="cart-subtitle">
         {{ shopping.supermarketName }} · {{ store.items().length }}
         {{ store.items().length === 1 ? 'produto' : 'produtos' }}
       </p>
-      <div class="tw:flex tw:flex-wrap tw:gap-2" aria-label="Opções da compra">
-        <ion-button fill="outline" size="small" [disabled]="saving()" (click)="editBudget()">{{
-          shopping.budgetCents === null ? 'Definir limite' : 'Editar limite'
-        }}</ion-button>
-        <ion-button
-          fill="clear"
-          size="small"
-          color="danger"
-          [disabled]="saving()"
-          (click)="confirmCancel()"
-          >Cancelar compra</ion-button
-        >
-      </div>
-      <section class="cart-summary" aria-label="Resumo da compra">
-        <p class="summary-label">Total da compra</p>
-        <strong class="summary-total">{{
-          store.totalCents() / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-        }}</strong>
-        @if (shopping.budgetCents !== null) {
-          <div class="budget-grid">
-            <div>
-              <span>Limite</span
-              ><strong>{{
-                shopping.budgetCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-              }}</strong>
-            </div>
-            @if (store.remainingCents()! < 0) {
-              <div role="status" class="tw:text-red-800">
-                <span>Acima do limite</span
-                ><strong>{{
-                  -store.remainingCents()! / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-                }}</strong>
-              </div>
-            } @else {
-              <div>
-                <span>Restante</span
-                ><strong>{{
-                  store.remainingCents()! / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-                }}</strong>
-              </div>
-            }
+      <section class="budget-summary" aria-label="Resumo da compra">
+        <div class="budget-summary-row" [class.large-amount]="store.totalCents() > 100000000">
+          <div class="budget-summary-main">
+            <p>Total da compra</p>
+            <strong>{{
+              store.totalCents() / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+            }}</strong>
           </div>
+          @if (shopping.budgetCents !== null) {
+            <div class="budget-summary-balance">
+              @if (store.remainingCents()! < 0) {
+                <p class="exceeded" role="status">
+                  Acima do limite
+                  <strong>{{
+                    -store.remainingCents()! / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  }}</strong>
+                </p>
+              } @else {
+                <p>
+                  Restam
+                  <strong>{{
+                    store.remainingCents()! / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  }}</strong>
+                </p>
+              }
+              <span
+                >Limite
+                {{
+                  shopping.budgetCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                }}</span
+              >
+            </div>
+          }
+        </div>
+        @if (shopping.budgetCents !== null) {
           <ion-progress-bar
-            class="tw:mt-4 tw:rounded-full"
             [value]="store.budgetProgress()"
             [color]="store.remainingCents()! < 0 ? 'danger' : 'primary'"
             aria-label="Uso do limite de gastos"
           />
-          <p class="tw:mb-0 tw:text-sm">{{ store.budgetPercent() }}% do limite</p>
+          <p class="budget-caption">{{ store.budgetPercent() }}% do limite</p>
         } @else {
-          <p class="tw:mb-0 tw:text-sm">Sem limite de gastos definido.</p>
+          <p class="budget-caption">Sem limite de gastos definido.</p>
         }
       </section>
-      <div class="tw:mt-6 tw:grid tw:grid-cols-2 tw:gap-2">
-        <ion-button fill="outline" routerLink="/tabs/scanner" [disabled]="saving()"
-          >Escanear</ion-button
-        >
-        <ion-button [disabled]="saving()" (click)="openItem()">Adicionar item</ion-button>
-      </div>
       @if (actionError()) {
-        <p role="alert">{{ actionError() }}</p>
+        <p role="alert" class="tw:rounded-xl tw:bg-red-50 tw:p-3 tw:text-red-800">
+          {{ actionError() }}
+        </p>
       }
-      @for (item of store.items(); track item.id) {
-        <article
-          class="purchase-item tw:mt-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-4"
-        >
-          <div class="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-2">
-            <h2 class="tw:my-0 tw:min-w-0 tw:flex-1 tw:text-lg tw:font-semibold tw:break-words">
-              {{ item.name }}
-            </h2>
-            <strong class="tw:text-lg tw:text-green-900">{{
-              subtotal(item) / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-            }}</strong>
-          </div>
-          <p>
-            @if (item.pricingType === 'BUNDLE') {
-              {{ item.quantity }} unidades · {{ item.bundleQuantity }} por
-            } @else if (item.measurementType === 'WEIGHT') {
-              {{ item.weightGrams! / 1000 | number: '1.3-3' : 'pt-BR' }} kg ×
-            } @else {
-              {{ item.quantity }} ×
-            }
-            {{ item.unitPriceCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
-            @if (item.measurementType === 'WEIGHT') {
-              /kg
-            }
-          </p>
-          @if (item.pricingType === 'BUNDLE') {
-            <p class="tw:text-sm tw:text-gray-600">
-              Equivale a aproximadamente
-              {{
-                item.unitPriceCents / item.bundleQuantity! / 100
-                  | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-              }}
-              por unidade.
-            </p>
-          }
-          @if (item.measurementType !== 'WEIGHT') {
-            <div
-              class="tw:flex tw:items-center tw:gap-2"
-              [attr.aria-label]="'Quantidade de ' + item.name"
-              role="group"
-            >
-              <ion-button
-                fill="outline"
-                size="small"
-                [disabled]="saving() || item.quantity <= quantityStep(item)"
-                (click)="changeQuantity(item, -1)"
-                [attr.aria-label]="'Diminuir quantidade de ' + item.name"
-                >−</ion-button
+      <section class="cart-products tw:grid tw:gap-2" aria-label="Produtos da compra">
+        @for (item of store.items(); track item.id) {
+          <article class="cart-product">
+            <div class="product-thumbnail" aria-hidden="true">
+              <ion-icon
+                class="tw:text-[32px]"
+                [icon]="item.measurementType === 'WEIGHT' ? icons.weight : icons.product"
+              />
+            </div>
+            <div class="product-content tw:min-w-0">
+              <div
+                class="product-heading tw:flex tw:flex-wrap tw:items-start tw:gap-x-2 tw:gap-y-1"
               >
-              <span class="tw:min-w-8 tw:text-center tw:font-semibold" aria-live="polite">{{
-                item.quantity
-              }}</span>
-              <ion-button
-                fill="outline"
-                size="small"
-                [disabled]="saving() || item.quantity + quantityStep(item) > 9999"
-                (click)="changeQuantity(item, 1)"
-                [attr.aria-label]="'Aumentar quantidade de ' + item.name"
-                >+</ion-button
-              >
+                <h2>{{ item.name }}</h2>
+                <strong>{{
+                  subtotal(item) / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                }}</strong>
+              </div>
+              <p class="product-calculation">
+                @if (item.pricingType === 'BUNDLE') {
+                  {{ item.quantity }} un. · {{ item.bundleQuantity }} por
+                } @else if (item.measurementType === 'WEIGHT') {
+                  {{ item.weightGrams! / 1000 | number: '1.3-3' : 'pt-BR' }} kg ×
+                } @else {
+                  {{ item.quantity }} ×
+                }
+                {{ item.unitPriceCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+                @if (item.measurementType === 'WEIGHT') {
+                  /kg
+                }
+              </p>
+              <div class="product-controls tw:flex tw:items-center tw:justify-between tw:gap-1">
+                @if (item.measurementType !== 'WEIGHT') {
+                  <div
+                    class="quantity-control"
+                    role="group"
+                    [attr.aria-label]="'Quantidade de ' + item.name"
+                  >
+                    <ion-button
+                      fill="clear"
+                      [disabled]="saving() || item.quantity <= quantityStep(item)"
+                      (click)="changeQuantity(item, -1)"
+                      [attr.aria-label]="'Diminuir quantidade de ' + item.name"
+                      ><ion-icon [icon]="icons.minus" aria-hidden="true"
+                    /></ion-button>
+                    <span
+                      class="tw:min-w-8 tw:text-center tw:text-[15px] tw:font-semibold"
+                      aria-live="polite"
+                      >{{ item.quantity }}</span
+                    >
+                    <ion-button
+                      fill="clear"
+                      [disabled]="saving() || item.quantity + quantityStep(item) > 9999"
+                      (click)="changeQuantity(item, 1)"
+                      [attr.aria-label]="'Aumentar quantidade de ' + item.name"
+                      ><ion-icon [icon]="icons.plus" aria-hidden="true"
+                    /></ion-button>
+                  </div>
+                } @else {
+                  <ion-button
+                    class="weight-control"
+                    fill="clear"
+                    [disabled]="saving()"
+                    (click)="openItem(item)"
+                    [attr.aria-label]="'Editar peso de ' + item.name"
+                    >{{ item.weightGrams! / 1000 | number: '1.3-3' : 'pt-BR' }} kg</ion-button
+                  >
+                }
+                <ion-button
+                  class="product-menu"
+                  fill="clear"
+                  [disabled]="saving()"
+                  (click)="itemOptions(item)"
+                  [attr.aria-label]="'Opções de ' + item.name"
+                  ><ion-icon class="tw:text-[22px]" [icon]="icons.more" aria-hidden="true"
+                /></ion-button>
+              </div>
               @if (item.pricingType === 'BUNDLE') {
-                <span class="tw:text-xs tw:text-gray-600">Grupos de {{ item.bundleQuantity }}</span>
+                <p class="tw:mt-0 tw:mb-1 tw:text-xs tw:text-gray-600">
+                  Grupos de {{ item.bundleQuantity }} · aprox.
+                  {{
+                    item.unitPriceCents / item.bundleQuantity! / 100
+                      | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  }}/un.
+                </p>
               }
             </div>
-          }
-          <div>
-            <ion-button
-              fill="clear"
-              [disabled]="saving()"
-              (click)="openItem(item)"
-              [attr.aria-label]="'Editar ' + item.name"
-              >{{ item.measurementType === 'WEIGHT' ? 'Editar peso' : 'Editar' }}</ion-button
-            >
-            <ion-button
-              fill="clear"
-              color="danger"
-              [disabled]="saving()"
-              (click)="confirmRemove(item)"
-              [attr.aria-label]="'Remover ' + item.name"
-              >Remover</ion-button
-            >
-          </div>
-        </article>
-      } @empty {
-        <app-empty-state
-          [icon]="emptyIcon"
-          title="Seu carrinho está vazio"
-          description="Adicione o primeiro produto para acompanhar o total."
-        />
-      }
+          </article>
+        } @empty {
+          <p class="tw:px-4 tw:py-6 tw:text-center tw:text-gray-600">
+            Adicione o primeiro produto para acompanhar o total.
+          </p>
+        }
+      </section>
+      <div class="cart-add-actions tw:mt-2 tw:grid tw:grid-cols-2 tw:gap-2">
+        <ion-button expand="block" routerLink="/tabs/scanner" [disabled]="saving()"
+          ><ion-icon
+            class="tw:me-2 tw:text-[22px]"
+            slot="start"
+            [icon]="icons.scan"
+            aria-hidden="true"
+          />Escanear</ion-button
+        >
+        <ion-button expand="block" [disabled]="saving()" (click)="openItem()"
+          ><ion-icon
+            class="tw:me-2 tw:text-[22px]"
+            slot="start"
+            [icon]="icons.add"
+            aria-hidden="true"
+          />Adicionar item</ion-button
+        >
+      </div>
     } @else {
       <app-empty-state
         [icon]="emptyIcon"
@@ -181,14 +196,12 @@
   </main>
 </ion-content>
 @if (!store.loading() && !store.error() && store.active()) {
-  <ion-footer class="ion-no-border">
+  <ion-footer class="ion-no-border cart-footer">
     <ion-toolbar>
-      <div
-        class="checkout-bar tw:mx-auto tw:flex tw:max-w-lg tw:items-center tw:justify-between tw:gap-2 tw:px-4 tw:py-2"
-      >
-        <div>
-          <span class="tw:text-sm tw:text-gray-600">Total</span
-          ><strong class="tw:block tw:text-xl tw:text-green-900">{{
+      <div class="cart-checkout tw:mx-auto tw:max-w-[544px]">
+        <div class="tw:min-w-0">
+          <span>Total</span
+          ><strong>{{
             store.totalCents() / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
           }}</strong>
         </div>
@@ -196,8 +209,9 @@
           color="primary"
           [disabled]="saving() || !store.items().length"
           (click)="confirmComplete()"
-          >{{ saving() ? 'Salvando…' : 'Finalizar compra' }}</ion-button
-        >
+          >{{ saving() ? 'Salvando…' : 'Finalizar compra'
+          }}<ion-icon class="tw:text-xl" slot="end" [icon]="icons.next" aria-hidden="true"
+        /></ion-button>
       </div>
     </ion-toolbar>
   </ion-footer>

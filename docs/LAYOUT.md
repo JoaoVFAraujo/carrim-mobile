@@ -63,4 +63,12 @@ Ajustes: resumo do Carrinho com orçamento em colunas, totais longos com quebra 
 
 Fluxos conferidos: nova compra com/sem limite; edição/remoção de limite e cancelamento; produto por unidade, peso e grupo promocional; erro de grupo incompleto; cadastro por código e produto conhecido exigindo preço de hoje; finalização com caixa diferente; filtro/detalhes do Histórico e persistência após recarregar. A amostra de unidade/peso/promoção totalizou R$ 54,66, caixa R$ 55,00 e diferença +R$ 0,34. Valores máximos e nome longo foram conferidos em 320 px sem rolagem horizontal.
 
-Isso valida a revisão visual local, não a câmera física, teclado virtual, leitor de tela nativo ou Keystore/SQLite do aparelho. O painel de conflito tem testes de confirmação/concorrência em SQLite isolado; a execução nativa real permanece no roteiro Android. Aprovação final em aparelho e teste no supermercado continuam pendentes.
+Esses ensaios validaram os fluxos locais, mas o usuário reprovou a fidelidade visual em 18/10: a tela só compartilhava o conceito com a referência. Não tratar a revisão de 17/10 como aprovação da composição. Câmera, teclado virtual, leitor de tela e Keystore/SQLite físicos também permanecem pendentes.
+
+## Correção de composição — 18/10/2026
+
+As referências guiam também proporções, densidade, posição das ações e desenho dos controles, não apenas a paleta. Não declarar fidelidade antes de comparar capturas na mesma largura e reconhecer diferenças concretas.
+
+O Carrinho foi recomposto com resumo horizontal compacto (total à esquerda, restante/limite à direita), opções da compra no menu “⋯”, cartões em linhas com área de miniatura, quantidade agrupada, menu por item e ações de escanear/adicionar abaixo da lista. Peso continua com edição em kg, sem copiar o stepper ilustrativo. Contador do Carrinho representa linhas de produtos; mantém a definição documentada, não o número ilustrativo do conceito.
+
+Comparação local em 390/320 px com quatro produtos, total R$ 112,36, limite R$ 200,00 e restante R$ 87,64. Menus preservam edição e confirmação de remoção/cancelamento; troca de compra enquanto o menu está aberto invalida a ação. Miniaturas usam placeholders porque o catálogo atual não contém fotos. Fotos reais e fidelidade das outras três abas ainda precisam de trabalho e aprovação visual; não marcar o layout completo como finalizado nem avançar para distribuição com base só nos testes funcionais.

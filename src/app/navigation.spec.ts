@@ -19,6 +19,7 @@ describe('Tab navigation', () => {
           provide: ShoppingSessionStore,
           useValue: {
             active: signal(null),
+            items: signal([]),
             supermarkets: signal([]),
             history: signal([]),
             loading: signal(false),

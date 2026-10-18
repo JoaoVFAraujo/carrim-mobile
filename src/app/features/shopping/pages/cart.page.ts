@@ -4,6 +4,8 @@ import { CurrencyPipe, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   IonButton,
+  IonIcon,
+  ActionSheetController,
   IonButtons,
   IonContent,
   IonHeader,
@@ -21,7 +23,17 @@ import {
   IonItem,
   IonLabel,
 } from '@ionic/angular';
-import { cartOutline } from 'ionicons/icons';
+import {
+  cartOutline,
+  ellipsisHorizontal,
+  addOutline,
+  removeOutline,
+  barcodeOutline,
+  addCircleOutline,
+  chevronForwardOutline,
+  cubeOutline,
+  leafOutline,
+} from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ShoppingSessionStore } from '../services/shopping-session.store';
 import { parseBudget, parseCheckoutTotal } from '../models/shopping-session';
@@ -38,6 +50,7 @@ import {
 @Component({
   selector: 'app-cart',
   imports: [
+    IonIcon,
     IonButtons,
     IonContent,
     IonHeader,
@@ -61,6 +74,7 @@ import {
     EmptyStateComponent,
   ],
   templateUrl: './cart.page.html',
+  styleUrl: './cart.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CartPage {
@@ -70,6 +84,18 @@ export class CartPage {
   private readonly router = inject(Router);
   private readonly toasts = inject(ToastController);
   private readonly catalog = inject(ProductCatalogService);
+  private readonly actionSheets = inject(ActionSheetController);
+  private optionsOpen = false;
+  readonly icons = {
+    more: ellipsisHorizontal,
+    plus: addOutline,
+    minus: removeOutline,
+    scan: barcodeOutline,
+    add: addCircleOutline,
+    next: chevronForwardOutline,
+    product: cubeOutline,
+    weight: leafOutline,
+  };
   readonly catalogResults = signal<CatalogProduct[]>([]);
   readonly catalogLoading = signal(false);
   readonly catalogError = signal('');
@@ -93,6 +119,61 @@ export class CartPage {
 
   ionViewWillEnter(): void {
     void this.store.load();
+  }
+
+  async shoppingOptions(): Promise<void> {
+    await this.options();
+  }
+  async itemOptions(item: ShoppingItem): Promise<void> {
+    await this.options(item);
+  }
+
+  private async options(item?: ShoppingItem): Promise<void> {
+    const sessionId = this.store.active()?.id;
+    if (!sessionId || this.saving() || this.confirming || this.optionsOpen) return;
+    this.optionsOpen = true;
+    let role: string | undefined;
+    try {
+      const sheet = await this.actionSheets.create({
+        header: item?.name ?? 'Opções da compra',
+        buttons: item
+          ? [
+              {
+                text: item.measurementType === 'WEIGHT' ? 'Editar peso' : 'Editar produto',
+                role: 'edit',
+              },
+              { text: 'Remover produto', role: 'destructive' },
+              { text: 'Voltar', role: 'cancel' },
+            ]
+          : [
+              {
+                text:
+                  this.store.active()?.budgetCents === null
+                    ? 'Definir limite'
+                    : 'Editar ou remover limite',
+                role: 'budget',
+              },
+              { text: 'Cancelar compra', role: 'destructive' },
+              { text: 'Voltar', role: 'cancel' },
+            ],
+      });
+      await sheet.present();
+      role = (await sheet.onDidDismiss()).role;
+    } catch {
+      this.actionError.set('Não foi possível abrir as opções. Tente novamente.');
+    } finally {
+      this.optionsOpen = false;
+    }
+    if (this.store.active()?.id !== sessionId || this.saving()) return;
+    if (item) {
+      const current = this.store.items().find((entry) => entry.id === item.id);
+      if (!current) return;
+      if (role === 'edit') this.openItem(current);
+      if (role === 'destructive') await this.confirmRemove(current);
+    } else {
+      if (role === 'budget') await this.editBudget();
+      if (role === 'destructive') await this.confirmCancel();
+    }
   }
 
   openItem(item?: ShoppingItem): void {
