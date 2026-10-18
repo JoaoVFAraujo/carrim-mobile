@@ -7,6 +7,8 @@ import {
   IonButton,
   IonButtons,
   IonContent,
+  IonCard,
+  IonCardContent,
   IonHeader,
   IonTitle,
   IonToolbar,
@@ -22,7 +24,6 @@ import {
   cartOutline,
   closeOutline,
 } from 'ionicons/icons';
-import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { BarcodeScannerService } from '../services/barcode-scanner.service';
 import { ProductCatalogService } from '../services/product-catalog.service';
 import { LastProductPrice, parseBarcode } from '../models/catalog-product';
@@ -32,12 +33,13 @@ import { parseItemPrice, parseItemQuantity } from '../../shopping/models/shoppin
   selector: 'app-scanner',
   imports: [
     IonContent,
+    IonCard,
+    IonCardContent,
     IonHeader,
     IonTitle,
     IonToolbar,
     IonButton,
     RouterLink,
-    EmptyStateComponent,
     IonButtons,
     IonModal,
     IonInput,
