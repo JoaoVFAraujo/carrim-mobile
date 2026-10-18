@@ -13,7 +13,7 @@
       Saiba quanto está gastando antes de chegar ao caixa.
     </p>
     @if (syncStatus.message()) {
-      <p role="status">{{ syncStatus.message() }}</p>
+      <p class="attention-banner" role="status">{{ syncStatus.message() }}</p>
     }
     <app-sync-review />
     @if (store.loading()) {
@@ -30,7 +30,7 @@
           <div role="heading" aria-level="2" class="tw:mt-2 tw:text-2xl tw:font-semibold">
             {{ shopping.supermarketName }}
           </div>
-          <p class="tw:mt-6">Total da compra</p>
+          <p class="purchase-total-label">Total da compra</p>
           <div class="tw:mt-1 tw:text-4xl tw:font-bold tw:tracking-tight tw:break-words">
             {{ store.totalCents() / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
           </div>
@@ -66,7 +66,7 @@
               [value]="store.budgetProgress()"
               aria-label="Uso do limite de gastos"
             />
-            <p class="tw:mt-2">{{ store.budgetPercent() }}% do limite</p>
+            <p class="budget-caption">{{ store.budgetPercent() }}% do limite</p>
           }
           <ion-button class="tw:mt-6" expand="block" color="light" routerLink="/tabs/cart"
             >Continuar compra</ion-button

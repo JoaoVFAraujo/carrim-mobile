@@ -30,27 +30,35 @@
           >Cancelar compra</ion-button
         >
       </div>
-      <section class="tw:mt-4 tw:rounded-3xl tw:bg-[#e7f0e6] tw:p-5" aria-label="Resumo da compra">
-        <p class="tw:mt-0">Total da compra</p>
-        <strong class="tw:text-4xl tw:tracking-tight tw:text-green-900 tw:break-words">{{
+      <section class="cart-summary" aria-label="Resumo da compra">
+        <p class="summary-label">Total da compra</p>
+        <strong class="summary-total">{{
           store.totalCents() / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
         }}</strong>
         @if (shopping.budgetCents !== null) {
-          <p>
-            Limite:
-            {{ shopping.budgetCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
-          </p>
-          @if (store.remainingCents()! < 0) {
-            <p role="status" class="tw:font-semibold tw:text-red-800">
-              Limite ultrapassado em
-              {{ -store.remainingCents()! / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
-            </p>
-          } @else {
-            <p>
-              Restante:
-              {{ store.remainingCents()! / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
-            </p>
-          }
+          <div class="budget-grid">
+            <div>
+              <span>Limite</span
+              ><strong>{{
+                shopping.budgetCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+              }}</strong>
+            </div>
+            @if (store.remainingCents()! < 0) {
+              <div role="status" class="tw:text-red-800">
+                <span>Acima do limite</span
+                ><strong>{{
+                  -store.remainingCents()! / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                }}</strong>
+              </div>
+            } @else {
+              <div>
+                <span>Restante</span
+                ><strong>{{
+                  store.remainingCents()! / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                }}</strong>
+              </div>
+            }
+          </div>
           <ion-progress-bar
             class="tw:mt-4 tw:rounded-full"
             [value]="store.budgetProgress()"
@@ -58,6 +66,8 @@
             aria-label="Uso do limite de gastos"
           />
           <p class="tw:mb-0 tw:text-sm">{{ store.budgetPercent() }}% do limite</p>
+        } @else {
+          <p class="tw:mb-0 tw:text-sm">Sem limite de gastos definido.</p>
         }
       </section>
       <div class="tw:mt-6 tw:grid tw:grid-cols-2 tw:gap-2">
@@ -70,7 +80,9 @@
         <p role="alert">{{ actionError() }}</p>
       }
       @for (item of store.items(); track item.id) {
-        <article class="tw:mt-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-4">
+        <article
+          class="purchase-item tw:mt-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-4"
+        >
           <div class="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-2">
             <h2 class="tw:my-0 tw:min-w-0 tw:flex-1 tw:text-lg tw:font-semibold tw:break-words">
               {{ item.name }}
@@ -172,7 +184,7 @@
   <ion-footer class="ion-no-border">
     <ion-toolbar>
       <div
-        class="tw:mx-auto tw:flex tw:max-w-lg tw:items-center tw:justify-between tw:gap-2 tw:px-4 tw:py-2"
+        class="checkout-bar tw:mx-auto tw:flex tw:max-w-lg tw:items-center tw:justify-between tw:gap-2 tw:px-4 tw:py-2"
       >
         <div>
           <span class="tw:text-sm tw:text-gray-600">Total</span
@@ -194,9 +206,12 @@
   <ng-template>
     <ion-header class="ion-no-border"
       ><ion-toolbar
-        ><ion-title>{{
-          editingId ? 'Editar produto' : 'Adicionar produto'
-        }}</ion-title></ion-toolbar
+        ><ion-title>{{ editingId ? 'Editar produto' : 'Adicionar produto' }}</ion-title
+        ><ion-buttons slot="end"
+          ><ion-button [disabled]="saving()" (click)="modalOpen.set(false)"
+            >Fechar</ion-button
+          ></ion-buttons
+        ></ion-toolbar
       ></ion-header
     >
     <ion-content class="ion-padding">

@@ -31,17 +31,27 @@
             {{ group.date | date: 'MMMM yyyy' : undefined : 'pt-BR' }}
           </h2>
           @for (shopping of group.purchases; track shopping.id) {
-            <article class="tw:mb-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-5">
-              <h3 class="tw:mt-0 tw:text-xl tw:font-semibold tw:break-words">
-                {{ shopping.supermarketName }}
-              </h3>
-              <p>
-                {{ shopping.finishedAt | date: 'dd/MM/yyyy HH:mm' }} · {{ shopping.itemCount }}
-                {{ shopping.itemCount === 1 ? 'produto' : 'produtos' }}
-              </p>
-              <strong class="tw:text-2xl">{{
-                shopping.totalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-              }}</strong>
+            <article
+              class="history-card tw:mb-4 tw:rounded-2xl tw:border tw:border-gray-200 tw:bg-white tw:p-5"
+            >
+              <div class="history-heading">
+                <div class="date-tile" aria-hidden="true">
+                  <strong>{{ shopping.finishedAt | date: 'dd' }}</strong
+                  ><span>{{ shopping.finishedAt | date: 'MMM' : undefined : 'pt-BR' }}</span>
+                </div>
+                <div class="history-description">
+                  <h3 class="tw:mt-0 tw:text-xl tw:font-semibold tw:break-words">
+                    {{ shopping.supermarketName }}
+                  </h3>
+                  <p>
+                    {{ shopping.finishedAt | date: 'dd/MM/yyyy HH:mm' }} · {{ shopping.itemCount }}
+                    {{ shopping.itemCount === 1 ? 'produto' : 'produtos' }}
+                  </p>
+                </div>
+                <strong class="history-total tw:text-xl tw:text-green-900">{{
+                  shopping.totalCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                }}</strong>
+              </div>
               @if (shopping.checkoutTotalCents !== null) {
                 <p class="tw:text-sm tw:text-gray-600">
                   Caixa:
