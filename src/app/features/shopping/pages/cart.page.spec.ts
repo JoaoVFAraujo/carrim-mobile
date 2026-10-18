@@ -77,6 +77,56 @@ describe('cart completion confirmation', () => {
   });
 });
 
+describe('purchase controls', () => {
+  function setup() {
+    const active = signal({ id: 's', budgetCents: 10000 });
+    const changeBudget = vi.fn().mockResolvedValue(undefined),
+      cancel = vi.fn().mockResolvedValue(undefined);
+    const alert = {
+      present: vi.fn(),
+      onDidDismiss: vi.fn().mockResolvedValue({ role: 'confirm' }),
+      message: '',
+    };
+    const create = vi.fn().mockResolvedValue(alert);
+    TestBed.configureTestingModule({
+      providers: [
+        CartPage,
+        { provide: ShoppingSessionStore, useValue: { active, changeBudget, cancel } },
+        { provide: AlertController, useValue: { create } },
+        { provide: ToastController, useValue: {} },
+        { provide: Router, useValue: {} },
+      ],
+    });
+    return { page: TestBed.inject(CartPage), active, changeBudget, cancel, alert, create };
+  }
+  it('keeps invalid money in the dialog and accepts blank to remove the limit', async () => {
+    const { page, changeBudget, alert, create } = setup();
+    alert.onDidDismiss.mockImplementation(async () => {
+      const handler = create.mock.calls[0][0].buttons[1].handler;
+      expect(handler({ budget: '-1' })).toBe(false);
+      expect(handler({ budget: '12,34' })).toBe(true);
+      expect(handler({ budget: '' })).toBe(true);
+      return { role: 'confirm' };
+    });
+    await page.editBudget();
+    expect(changeBudget).toHaveBeenCalledWith(null);
+  });
+  it('cancels only after confirmation and shares no duplicate dialogs', async () => {
+    const { page, cancel, alert, create } = setup();
+    alert.onDidDismiss.mockResolvedValue({ role: 'cancel' });
+    await Promise.all([page.confirmCancel(), page.confirmCancel()]);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+  it('reports cancellation failure without claiming success', async () => {
+    const { page, cancel } = setup();
+    cancel.mockRejectedValue(new Error('disk'));
+    await page.confirmCancel();
+    expect(page.actionError()).toContain('Não foi possível cancelar');
+    expect(page.saving()).toBe(false);
+  });
+});
+
 describe('cart weight form', () => {
   function setup() {
     const saveWeightItem = vi.fn().mockResolvedValue(undefined);

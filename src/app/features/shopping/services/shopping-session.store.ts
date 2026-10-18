@@ -20,10 +20,86 @@ export class ShoppingSessionStore {
 
   complete(checkoutTotalCents: number | null = null): Promise<void> {
     if (this.completing) return this.completing;
-    this.completing = this.persistCompletion(checkoutTotalCents).finally(() => {
-      this.completing = undefined;
-    });
+    if (
+      checkoutTotalCents !== null &&
+      (!Number.isSafeInteger(checkoutTotalCents) ||
+        checkoutTotalCents < 0 ||
+        checkoutTotalCents > 100000000)
+    )
+      return Promise.reject(new Error('Informe um total do caixa válido.'));
+    this.completing = this.sessionWrite(() => this.persistCompletion(checkoutTotalCents)).finally(
+      () => {
+        this.completing = undefined;
+      },
+    );
     return this.completing;
+  }
+
+  private sessionWrite(work: () => Promise<void>): Promise<void> {
+    const sessionId = this.active()?.id;
+    const next = this.itemWrites.then(() => {
+      if (!sessionId || this.active()?.id !== sessionId)
+        throw new Error('A compra não está mais em andamento.');
+      return work();
+    });
+    this.itemWrites = next.catch(() => undefined);
+    return next;
+  }
+
+  changeBudget(budgetCents: number | null): Promise<void> {
+    return this.sessionWrite(async () => {
+      if (
+        budgetCents !== null &&
+        (!Number.isSafeInteger(budgetCents) || budgetCents <= 0 || budgetCents > 100000000)
+      )
+        throw new Error('Informe um limite válido.');
+      const session = this.active()!;
+      const now = Date.now();
+      const entry = this.outbox('SHOPPING_SESSION', session.id, { budgetCents }, now, 'UPDATE');
+      await this.database.transaction([
+        {
+          statement:
+            "UPDATE shopping_sessions SET budget_cents = ? WHERE id = ? AND status = 'ACTIVE'",
+          values: [budgetCents, session.id],
+        },
+        this.changedOutbox(entry.values),
+      ]);
+      this.active.update((value) => (value?.id === session.id ? { ...value, budgetCents } : value));
+      await this.load();
+    });
+  }
+
+  cancel(): Promise<void> {
+    return this.sessionWrite(async () => {
+      const session = this.active()!;
+      const now = Date.now();
+      const entry = this.outbox(
+        'SHOPPING_SESSION',
+        session.id,
+        { canceledAt: new Date(now).toISOString() },
+        now,
+        'CANCEL',
+      );
+      await this.database.transaction([
+        {
+          statement:
+            "UPDATE shopping_sessions SET status = 'CANCELED', finished_at_ms = ? WHERE id = ? AND status = 'ACTIVE'",
+          values: [now, session.id],
+        },
+        this.changedOutbox(entry.values),
+      ]);
+      this.active.set(null);
+      this.items.set([]);
+      await this.load();
+    });
+  }
+
+  private changedOutbox(values: (string | number)[]) {
+    return {
+      statement: `INSERT INTO sync_queue(id, sequence_number, aggregate_type, aggregate_id, operation, payload_json, created_at_ms, updated_at_ms)
+        SELECT ?, (SELECT COALESCE(MAX(sequence_number), 0) + 1 FROM sync_queue), ?, ?, ?, ?, ?, ? WHERE changes() = 1`,
+      values,
+    };
   }
 
   private async persistCompletion(checkoutTotalCents: number | null): Promise<void> {
