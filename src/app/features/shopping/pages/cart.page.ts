@@ -23,7 +23,7 @@ import {
 import { cartOutline } from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ShoppingSessionStore } from '../services/shopping-session.store';
-import { parseCheckoutTotal } from '../models/shopping-session';
+import { parseBudget, parseCheckoutTotal } from '../models/shopping-session';
 import { ProductCatalogService } from '../../scanner/services/product-catalog.service';
 import { CatalogProduct, LastProductPrice } from '../../scanner/models/catalog-product';
 import {
@@ -290,6 +290,84 @@ export class CartPage {
         this.actionError.set('Compra salva. Abra o Histórico para consultar os itens.');
       }
     } finally {
+      this.confirming = false;
+    }
+  }
+
+  async editBudget(): Promise<void> {
+    if (this.saving() || this.confirming) return;
+    const session = this.store.active();
+    if (!session) return;
+    this.confirming = true;
+    try {
+      let budget = session.budgetCents;
+      const alert = await this.alerts.create({
+        header: 'Limite de gastos',
+        message: 'Deixe vazio para comprar sem limite. O limite não impede adicionar produtos.',
+        inputs: [
+          {
+            name: 'budget',
+            type: 'text',
+            value: budget === null ? '' : (budget / 100).toFixed(2).replace('.', ','),
+            attributes: { inputmode: 'decimal', 'aria-label': 'Limite de gastos em reais' },
+          },
+        ],
+        buttons: [
+          { text: 'Voltar', role: 'cancel' },
+          {
+            text: 'Salvar',
+            role: 'confirm',
+            handler: (data: { budget?: string }) => {
+              try {
+                budget = parseBudget(data.budget ?? '');
+                return true;
+              } catch {
+                alert.message = 'Informe um limite válido, como 200,00, ou deixe vazio.';
+                return false;
+              }
+            },
+          },
+        ],
+      });
+      await alert.present();
+      if ((await alert.onDidDismiss()).role !== 'confirm') return;
+      if (this.store.active()?.id !== session.id) return;
+      this.saving.set(true);
+      this.actionError.set('');
+      await this.store.changeBudget(budget);
+    } catch {
+      this.actionError.set('Não foi possível salvar o limite. Tente novamente.');
+    } finally {
+      this.saving.set(false);
+      this.confirming = false;
+    }
+  }
+
+  async confirmCancel(): Promise<void> {
+    if (this.saving() || this.confirming) return;
+    const sessionId = this.store.active()?.id;
+    if (!sessionId) return;
+    this.confirming = true;
+    try {
+      const alert = await this.alerts.create({
+        header: 'Cancelar esta compra?',
+        message:
+          'A compra será encerrada sem gerar histórico de preços. Você poderá iniciar outra compra.',
+        buttons: [
+          { text: 'Continuar comprando', role: 'cancel' },
+          { text: 'Cancelar compra', role: 'confirm' },
+        ],
+      });
+      await alert.present();
+      if ((await alert.onDidDismiss()).role !== 'confirm' || this.store.active()?.id !== sessionId)
+        return;
+      this.saving.set(true);
+      this.actionError.set('');
+      await this.store.cancel();
+    } catch {
+      this.actionError.set('Não foi possível cancelar a compra. Tente novamente.');
+    } finally {
+      this.saving.set(false);
       this.confirming = false;
     }
   }

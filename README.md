@@ -4,6 +4,8 @@ Aplicativo de supermercado offline-first, com compras, catálogo, orçamento e H
 
 Sync nativo push/pull está integrado e inicia com API HTTPS configurada. Sem endpoint e no navegador, compras continuam locais. Conflitos pausam sync preservando dados; resolução assistida e testes físicos ainda pendentes.
 
+O Carrinho permite definir/editar/remover o limite e cancelar a compra com confirmação. Alterações ficam no SQLite e na fila na mesma transação; cancelamento preserva itens encerrados e não gera histórico de preços.
+
 ## Documentação essencial
 
 | Assunto                                | Fonte principal                                                                     |

@@ -428,6 +428,7 @@ describe('shopping completion', () => {
     const first = store.complete(413);
     const second = store.complete(999);
     expect(second).toBe(first);
+    await vi.waitFor(() => expect(transaction).toHaveBeenCalledTimes(1));
     expect(transaction).toHaveBeenCalledTimes(1);
     expect(transaction.mock.calls[0][0][1].values[1]).toBe(413);
     expect(JSON.parse(transaction.mock.calls[0][0][2].values[4]).checkoutTotalCents).toBe(413);
