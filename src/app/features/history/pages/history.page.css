@@ -1,0 +1,239 @@
+.history-header ion-toolbar {
+  --min-height: 72px;
+}
+.history-header ion-title {
+  font-size: 36px;
+  letter-spacing: -1.3px;
+  font-weight: 750;
+}
+.history-main {
+  max-width: 512px;
+  margin: auto;
+  padding-bottom: 20px;
+}
+.history-subtitle {
+  margin: 0 0 22px;
+  color: #646a75;
+  font-size: 16px;
+}
+.period-filter {
+  background: #eaf0e6;
+  border-radius: 20px;
+  padding: 3px;
+  min-height: 42px;
+  margin-bottom: 26px;
+}
+.period-filter ion-segment-button {
+  --background-checked: #246b50;
+  --border-radius: 17px;
+  --indicator-color: transparent;
+  --indicator-height: 100%;
+  --indicator-box-shadow: none;
+  --color: #18212a;
+  --color-checked: #fff;
+  --padding-top: 0;
+  --padding-bottom: 0;
+  min-height: 36px;
+  letter-spacing: 0;
+  font-size: 15px;
+  text-transform: none;
+  font-weight: 600;
+}
+.period-filter ion-segment-button::part(indicator) {
+  padding: 0;
+}
+.period-filter ion-segment-button::part(indicator-background) {
+  border-radius: 17px;
+}
+.period-filter ion-label {
+  margin: 6px 0;
+}
+.month-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #677283;
+  font-weight: 600;
+  margin: 26px 6px 10px;
+}
+.purchase-record {
+  border: 1px solid #e0e6df;
+  border-radius: 19px;
+  margin-bottom: 12px;
+  background: #ffffff50;
+  overflow: hidden;
+}
+.purchase-record summary {
+  list-style: none;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto 14px;
+  gap: 12px;
+  align-items: center;
+  min-height: 82px;
+  padding: 14px;
+}
+.purchase-record summary::-webkit-details-marker {
+  display: none;
+}
+.purchase-date {
+  border-right: 1px solid #dce3db;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-right: 10px;
+}
+.purchase-date strong {
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.6px;
+  color: #111b28;
+}
+.purchase-date > span {
+  color: #666c79;
+  font-size: 14px;
+}
+.record-market {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.record-market > span:last-child {
+  min-width: 0;
+}
+.record-market strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 17px;
+  line-height: 1.15;
+}
+.record-market small {
+  display: block;
+  font-size: 13px;
+  color: #666c79;
+  margin-top: 4px;
+}
+.record-emblem {
+  display: grid;
+  place-items: center;
+  background: #eaf0e6;
+  width: 32px;
+  height: 36px;
+  border-radius: 12px;
+  color: #246b50;
+  flex-shrink: 0;
+  font-size: 22px;
+  font-weight: 750;
+}
+.record-total {
+  font-size: 18px;
+  letter-spacing: -0.5px;
+  color: #146048;
+  overflow-wrap: anywhere;
+  max-width: 135px;
+}
+.record-chevron {
+  color: #246b50;
+  font-size: 18px;
+}
+.purchase-record[open] .record-chevron {
+  transform: rotate(180deg);
+}
+.record-details {
+  border-top: 1px solid #e1e7df;
+  margin: 0 14px;
+  padding: 12px 0 14px;
+}
+.record-details dl {
+  margin: 0 0 14px;
+}
+.record-details dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 14px;
+}
+.record-details dt {
+  color: #666c79;
+}
+.record-details dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.record-details .record-difference {
+  background: #fff2d6;
+  border-radius: 12px;
+  padding: 10px;
+  margin: 4px -3px 0;
+}
+.record-difference dt,
+.record-difference dd {
+  color: #8a5400;
+}
+.record-details .values-match {
+  background: #eaf0e6;
+}
+.values-match dt,
+.values-match dd {
+  color: #246b50;
+}
+.view-items {
+  margin: 0;
+  min-height: 48px;
+  --border-radius: 12px;
+  --border-color: #bfd3c5;
+  --border-width: 1px;
+  --background: #edf2e9;
+  --color: #145b44;
+  --padding-start: 14px;
+  --padding-end: 14px;
+  font-size: 15px;
+}
+.view-items::part(native) {
+  justify-content: flex-start;
+}
+.view-items ion-icon[slot='end'] {
+  margin-left: auto;
+}
+.local-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #677283;
+  font-size: 13px;
+  margin: 32px 0 10px;
+}
+.local-caption ion-icon {
+  padding: 5px;
+  background: #e6ede2;
+  color: #246b50;
+  border-radius: 50%;
+  font-size: 16px;
+}
+.purchase-record summary:focus-visible {
+  outline: 3px solid #246b50;
+  outline-offset: -3px;
+  border-radius: 18px;
+}
+@media (max-width: 370px) {
+  .record-emblem {
+    display: none;
+  }
+  .purchase-record summary {
+    gap: 8px;
+    padding: 12px;
+  }
+  .record-total {
+    font-size: 16px;
+    max-width: 105px;
+  }
+  .record-market strong {
+    font-size: 15px;
+  }
+}

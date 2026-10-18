@@ -12,8 +12,14 @@ import {
   IonSegment,
   IonSegmentButton,
   IonLabel,
+  IonIcon,
 } from '@ionic/angular';
-import { receiptOutline } from 'ionicons/icons';
+import {
+  receiptOutline,
+  chevronDownOutline,
+  chevronForwardOutline,
+  checkmarkOutline,
+} from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ShoppingSessionStore } from '../../shopping/services/shopping-session.store';
 import { CompletedShopping } from '../../shopping/models/completed-shopping';
@@ -33,6 +39,7 @@ import { groupHistory, HistoryPeriod } from '../models/history-groups';
     IonSegment,
     IonSegmentButton,
     IonLabel,
+    IonIcon,
     RouterLink,
     CurrencyPipe,
     DatePipe,
@@ -40,12 +47,17 @@ import { groupHistory, HistoryPeriod } from '../models/history-groups';
     EmptyStateComponent,
   ],
   templateUrl: './history.page.html',
+  styleUrl: './history.page.css',
   host: { '(document:visibilitychange)': 'refreshDate()' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HistoryPage {
   readonly subtotal = itemSubtotalCents;
   readonly emptyIcon = receiptOutline;
+  readonly receiptIcon = receiptOutline;
+  readonly chevronDownIcon = chevronDownOutline;
+  readonly chevronForwardIcon = chevronForwardOutline;
+  readonly checkIcon = checkmarkOutline;
   readonly store = inject(ShoppingSessionStore);
   private readonly document = inject(DOCUMENT);
   readonly period = signal<HistoryPeriod>('all');

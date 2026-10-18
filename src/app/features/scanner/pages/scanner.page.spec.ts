@@ -66,6 +66,25 @@ describe('scanner product confirmation', () => {
     expect(page.formError()).toContain('Não foi possível salvar');
   });
 
+  it('keeps quantity controls within the supported range and preserves invalid input for correction', () => {
+    const { page } = setup();
+    page.changeQuantity(-1);
+    expect(page.quantity).toBe('1');
+    page.changeQuantity(1);
+    expect(page.quantity).toBe('2');
+    page.quantity = '9999';
+    page.changeQuantity(1);
+    expect(page.quantity).toBe('9999');
+    page.quantity = '1.5';
+    page.changeQuantity(1);
+    expect(page.quantity).toBe('1.5');
+    expect(page.formError()).toContain('quantidade');
+    page.quantity = '2';
+    page.saving.set(true);
+    page.changeQuantity(1);
+    expect(page.quantity).toBe('2');
+  });
+
   it('does not open a late lookup after navigating away', async () => {
     const { page, find } = setup();
     let resolve!: (product: null) => void;

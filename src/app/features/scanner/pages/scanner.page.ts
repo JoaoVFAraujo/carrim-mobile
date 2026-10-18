@@ -15,8 +15,13 @@ import {
   IonIcon,
   ToastController,
 } from '@ionic/angular';
-import { addIcons } from 'ionicons';
-import { barcodeOutline } from 'ionicons/icons';
+import {
+  barcodeOutline,
+  cameraOutline,
+  cubeOutline,
+  cartOutline,
+  closeOutline,
+} from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { BarcodeScannerService } from '../services/barcode-scanner.service';
 import { ProductCatalogService } from '../services/product-catalog.service';
@@ -42,10 +47,16 @@ import { parseItemPrice, parseItemQuantity } from '../../shopping/models/shoppin
     DatePipe,
   ],
   templateUrl: './scanner.page.html',
+  styleUrl: './scanner.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ScannerPage {
   readonly emptyIcon = barcodeOutline;
+  readonly cameraIcon = cameraOutline;
+  readonly productIcon = cubeOutline;
+  readonly cartIcon = cartOutline;
+  readonly closeIcon = closeOutline;
+  readonly editingName = signal(false);
   readonly store = inject(ShoppingSessionStore);
   readonly scanner = inject(BarcodeScannerService);
   private readonly catalog = inject(ProductCatalogService);
@@ -65,10 +76,6 @@ export class ScannerPage {
   private request = 0;
   private sessionId = '';
   private resumeCamera = false;
-
-  constructor() {
-    addIcons({ barcodeOutline });
-  }
 
   ionViewWillEnter(): void {
     void this.store.load();
@@ -128,6 +135,7 @@ export class ScannerPage {
       this.price = '';
       this.quantity = '1';
       this.known.set(product !== null);
+      this.editingName.set(false);
       this.lastPrice.set(lastPrice);
       this.formError.set('');
       this.modalOpen.set(true);
@@ -140,6 +148,17 @@ export class ScannerPage {
         );
     } finally {
       this.loadingProduct.set(false);
+    }
+  }
+
+  changeQuantity(delta: -1 | 1): void {
+    if (this.saving()) return;
+    try {
+      const next = parseItemQuantity(this.quantity) + delta;
+      if (next >= 1 && next <= 9999) this.quantity = String(next);
+      this.formError.set('');
+    } catch {
+      this.formError.set('Informe uma quantidade entre 1 e 9999.');
     }
   }
 

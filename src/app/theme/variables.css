@@ -1,4 +1,5 @@
 :root {
+  --ion-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --ion-color-primary: #246b50;
   --ion-color-primary-rgb: 36, 107, 80;
   --ion-color-primary-contrast: #ffffff;
@@ -56,25 +57,6 @@ ion-tab-bar {
   letter-spacing: -0.8px;
 }
 
-.purchase-card {
-  background: linear-gradient(135deg, #246b50, #173d2f);
-}
-
-.purchase-card ion-card-content {
-  padding: 24px;
-}
-.purchase-card .purchase-total-label {
-  margin-top: 24px;
-}
-.purchase-card .budget-caption {
-  margin-top: 8px;
-  color: #e1eee2;
-}
-.purchase-card ion-progress-bar {
-  --progress-background: #a4dfa0;
-  --background: #e4f8df40;
-}
-
 ion-progress-bar {
   height: 8px;
 }
@@ -82,6 +64,24 @@ ion-progress-bar {
 ion-tab-button {
   --color: #626b66;
   --color-selected: #205e46;
+}
+ion-tab-button ion-icon {
+  font-size: 25px;
+}
+ion-tab-button ion-label {
+  font-size: 12px;
+}
+ion-tab-button.tab-selected {
+  font-weight: 600;
+}
+ion-tab-button.tab-selected::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  width: 22px;
+  height: 3px;
+  border-radius: 3px;
+  background: #246b50;
 }
 .cart-tab-count {
   position: absolute;
@@ -99,43 +99,7 @@ ion-select {
   --border-radius: 12px;
 }
 
-/* Shared history and review surfaces. */
-.history-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-.history-description {
-  flex: 1;
-  min-width: 120px;
-}
-.history-description h3 {
-  font-size: 1.125rem;
-  margin: 0 0 6px;
-}
-.history-description p {
-  font-size: 0.875rem;
-  margin: 0;
-  color: #52605a;
-}
-.history-total {
-  overflow-wrap: anywhere;
-}
-.date-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-right: 12px;
-  border-right: 1px solid #dfe7dc;
-}
-.date-tile strong {
-  font-size: 1.5rem;
-}
-.date-tile span {
-  font-size: 0.875rem;
-  color: #52605a;
-}
+/* Shared review surfaces. */
 .review-card {
   margin-block: 16px;
   padding: 16px;
