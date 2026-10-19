@@ -108,7 +108,7 @@ export class SyncProcessorService {
         const waiting = await this.db.query(
           "SELECT id FROM sync_queue WHERE status IN ('PENDING','SYNCING') LIMIT 1",
         );
-        if (waiting.length) {
+        if (waiting.length && !failed.length) {
           this.status.message.set(
             'Há alterações aguardando envio. Suas compras estão salvas neste aparelho.',
           );

@@ -5,6 +5,7 @@ import { RemoteImportConflict } from '../database/remote-import-conflict';
 import { DatabaseService } from '../database/database.service';
 import { API_BASE_URL } from '../api/api-endpoint';
 import { SyncProcessorService } from './sync-processor.service';
+import { SyncStatusService } from './sync-status.service';
 import { SyncPullService } from './sync-pull.service';
 import { ShoppingSessionStore } from '../../features/shopping/services/shopping-session.store';
 import { SyncQueueService } from './sync-queue.service';
@@ -164,5 +165,18 @@ describe('sync processor', () => {
     );
     await service.run();
     expect(service.state()).toBe('SYNCING');
+  });
+  it('keeps conflicts in ATTENTION when dependent operations are still pending', async () => {
+    claim.mockReset().mockResolvedValue(null);
+    vi.mocked(TestBed.inject(DatabaseService).query).mockImplementation(async (sql: string) =>
+      sql.includes("status = 'FAILED'") || sql.includes("status IN ('PENDING','SYNCING')")
+        ? [{ id: 'blocked' }]
+        : [],
+    );
+    await service.run();
+    expect(service.state()).toBe('ATTENTION');
+    expect(TestBed.inject(SyncStatusService).message()).toContain('pausada');
+    expect(TestBed.inject(SyncStatusService).lastSyncedAt()).toBeNull();
+    expect(TestBed.inject(SyncPullService).run).not.toHaveBeenCalled();
   });
 });
