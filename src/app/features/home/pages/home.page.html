@@ -168,17 +168,19 @@
           />
         }
         <ion-input
+          [maskito]="brlMask"
+          [maskitoElement]="ionInputElement"
           mode="md"
           label="Limite de gastos (opcional)"
           labelPlacement="stacked"
           fill="outline"
           placeholder="Ex.: 200,00"
-          inputmode="decimal"
+          inputmode="numeric"
           [(ngModel)]="budget"
           name="budget"
-          [maxlength]="12"
+          [maxlength]="20"
           [disabled]="saving()"
-          helperText="Você pode começar sem definir um limite."
+          helperText="Os dois últimos dígitos são centavos. Pode deixar vazio."
         />
         @if (formError()) {
           <p role="alert" class="tw:text-red-800">{{ formError() }}</p>

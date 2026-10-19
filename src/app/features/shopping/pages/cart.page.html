@@ -344,6 +344,8 @@
           }
         }
         <ion-input
+          [maskito]="brlMask"
+          [maskitoElement]="ionInputElement"
           mode="md"
           [label]="
             measurementType === 'WEIGHT'
@@ -355,10 +357,10 @@
           labelPlacement="stacked"
           fill="outline"
           placeholder="Ex.: 12,99"
-          inputmode="decimal"
+          inputmode="numeric"
           name="price"
           [(ngModel)]="price"
-          [maxlength]="12"
+          [maxlength]="20"
           [disabled]="saving()"
         />
         @if (measurementType === 'WEIGHT') {

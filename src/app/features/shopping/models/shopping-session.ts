@@ -1,3 +1,5 @@
+import { moneyInput } from './money-input';
+
 export interface Supermarket {
   id: string;
   name: string;
@@ -12,7 +14,7 @@ export interface ActiveShoppingSession {
 }
 
 export function parseBudget(value: string): number | null {
-  const input = value.trim();
+  const input = moneyInput(value);
   if (!input) return null;
   if (!/^\d+(?:[,.]\d{1,2})?$/.test(input)) throw new Error('Informe um limite como 200,00.');
   const [whole, fraction = ''] = input.replace(',', '.').split('.');
@@ -24,7 +26,7 @@ export function parseBudget(value: string): number | null {
 }
 
 export function parseCheckoutTotal(value: string): number | null {
-  const input = value.trim();
+  const input = moneyInput(value);
   if (!input) return null;
   if (!/^\d+(?:[,.]\d{1,2})?$/.test(input))
     throw new Error('Informe o total do caixa como 200,00.');

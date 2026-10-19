@@ -26,7 +26,8 @@
   line-height: 1.4;
 }
 .budget-summary {
-  background: #e6eee4;
+  background: var(--carrim-hero-background);
+  color: #f7faf4;
   border-radius: 18px;
   padding: 14px;
   margin-bottom: 12px;
@@ -48,11 +49,11 @@
   font-size: clamp(1.65rem, 7.6vw, 2.2rem);
   line-height: 1.1;
   letter-spacing: -1px;
-  color: var(--cart-green);
+  color: #fff;
   overflow-wrap: anywhere;
 }
 .budget-summary-balance {
-  border-left: 1px solid #cbd8cb;
+  border-left: 1px solid #ffffff30;
   padding-left: 12px;
   min-width: 0;
 }
@@ -61,29 +62,30 @@
   font-size: 14px;
   line-height: 1.35;
   font-weight: 500;
-  color: var(--cart-green);
+  color: #b7edac;
 }
 .budget-summary-balance p strong {
   font-weight: 750;
 }
 .budget-summary-balance > span {
-  color: #53645c;
+  color: #dce9dc;
   font-size: 13px;
   line-height: 1.4;
 }
 .budget-summary-balance .exceeded {
-  color: #9b2d26;
+  color: #ffe0b2;
 }
 .budget-summary ion-progress-bar {
   margin-top: 8px;
   height: 8px;
   border-radius: 8px;
-  --background: #c0d2c4;
+  --background: #ffffff26;
+  --progress-background: #9bdf94;
 }
 .budget-summary .budget-caption {
   margin: 4px 0 0;
   font-size: 13px;
-  color: #53645c;
+  color: #dce9dc;
 }
 .large-amount {
   grid-template-columns: minmax(0, 1fr);
@@ -167,8 +169,8 @@
   margin: 0;
 }
 .cart-add-actions ion-button {
-  --background: #e6eee4;
-  --color: var(--cart-green);
+  --background: var(--ion-color-primary);
+  --color: #fff;
   --border-radius: 14px;
   --padding-start: 8px;
   --padding-end: 8px;
