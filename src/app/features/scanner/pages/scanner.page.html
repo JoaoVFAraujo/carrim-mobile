@@ -46,6 +46,7 @@
       <form class="barcode-entry tw:border-t tw:border-[#e1e7df] tw:pt-2.5" (ngSubmit)="lookup()">
         <h2 class="tw:text-lg tw:mt-1.5 tw:mb-3.5">Ou digite o código</h2>
         <ion-input
+          mode="md"
           label="Código de barras"
           labelPlacement="stacked"
           fill="outline"
@@ -146,6 +147,7 @@
         </div>
         @if (!known() || editingName()) {
           <ion-input
+            mode="md"
             class="tw:mb-4"
             label="Nome do produto"
             labelPlacement="stacked"
@@ -158,6 +160,7 @@
         }
         <div class="product-fields">
           <ion-input
+            mode="md"
             label="Preço hoje"
             labelPlacement="stacked"
             fill="outline"
