@@ -59,7 +59,7 @@
         @if (shopping.budgetCents !== null) {
           <ion-progress-bar
             [value]="store.budgetProgress()"
-            [color]="store.remainingCents()! < 0 ? 'danger' : 'primary'"
+            [class.exceeded]="store.remainingCents()! < 0"
             aria-label="Uso do limite de gastos"
           />
           <p class="budget-caption">{{ store.budgetPercent() }}% do limite</p>

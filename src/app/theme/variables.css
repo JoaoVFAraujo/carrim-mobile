@@ -60,6 +60,13 @@ ion-card {
 .feature-card .empty-content {
   padding: 20px;
 }
+.budget-summary ion-progress-bar {
+  --background: #ffffff26;
+  --progress-background: #9bdf94;
+}
+.budget-summary ion-progress-bar.exceeded {
+  --progress-background: #ffe0b2;
+}
 .feature-card .card-description {
   color: #dce9dc;
   font-size: 14px;

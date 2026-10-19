@@ -79,8 +79,6 @@
   margin-top: 8px;
   height: 8px;
   border-radius: 8px;
-  --background: #ffffff26;
-  --progress-background: #9bdf94;
 }
 .budget-summary .budget-caption {
   margin: 4px 0 0;
