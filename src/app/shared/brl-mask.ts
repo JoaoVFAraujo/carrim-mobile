@@ -41,15 +41,28 @@ function caretFromRight(raw: string, position: number, formatted: string): numbe
 export const brlMask: MaskitoOptions = {
   mask: /^-?\d*$/,
   preprocessors: [
-    ({ elementState, data }) => ({
-      elementState: {
-        value: centsCharacters(elementState.value),
-        selection: elementState.selection.map(
-          (position) => (elementState.value.slice(0, position).match(/[\d-]/g) ?? []).length,
-        ) as [number, number],
-      },
-      data: centsCharacters(data),
-    }),
+    ({ elementState, data }, action) => {
+      const value = centsCharacters(elementState.value);
+      let [from, to] = elementState.selection.map(
+        (position) => (elementState.value.slice(0, position).match(/[\d-]/g) ?? []).length,
+      );
+      if (action === 'deleteBackward' || action === 'deleteForward') {
+        // Skip generated separators instead of trapping the caret on a dot/comma.
+        if (from === to) {
+          if (action === 'deleteBackward' && from > 0) from--;
+          else if (action === 'deleteForward' && to < value.length) to++;
+        }
+        const remaining = value.slice(0, from) + value.slice(to);
+        const deletingDigit = /\d/.test(value.slice(from, to));
+        if (
+          deletingDigit &&
+          (/^-?0+$/.test(value) || (to === value.length && /^-?0*$/.test(remaining)))
+        ) {
+          return { elementState: { value: '', selection: [0, 0] }, data: '' };
+        }
+      }
+      return { elementState: { value, selection: [from, to] }, data: centsCharacters(data) };
+    },
   ],
   postprocessors: [
     ({ value, selection }) => {

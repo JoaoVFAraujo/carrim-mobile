@@ -91,4 +91,44 @@ describe('BRL currency fields', () => {
       alert.remove();
     }
   });
+
+  it('clears the last digit with backspace, preserves an explicit zero until deletion and skips separators', () => {
+    const input = document.createElement('input');
+    document.body.append(input);
+    const mask = new Maskito(input, brlMask);
+    const insert = (data: string) => {
+      mask.insert(data);
+      input.dispatchEvent(
+        new InputEvent('input', { bubbles: true, inputType: 'insertText', data }),
+      );
+    };
+    const backspace = () => {
+      const end = input.selectionStart ?? input.value.length;
+      mask.delete([Math.max(0, end - 1), end]);
+      input.dispatchEvent(
+        new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' }),
+      );
+    };
+    try {
+      input.focus();
+      insert('1234');
+      for (let i = 0; i < 4; i++) backspace();
+      expect(input.value).toBe('');
+      expect(parseBudget(input.value)).toBeNull();
+      expect(parseCheckoutTotal(input.value)).toBeNull();
+      insert('0');
+      expect(input.value).toBe('R$ 0,00');
+      expect(parseCheckoutTotal(input.value)).toBe(0);
+      backspace();
+      expect(input.value).toBe('');
+      insert('123456');
+      input.setSelectionRange(5, 5); // Immediately after the thousands separator.
+      backspace();
+      expect(input.value).toBe('R$ 234,56');
+      expect(parseItemPrice(input.value)).toBe(23456);
+    } finally {
+      mask.destroy();
+      input.remove();
+    }
+  });
 });
