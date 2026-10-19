@@ -82,8 +82,25 @@ export class SyncProcessorService {
           "SELECT id FROM sync_queue WHERE status = 'FAILED' LIMIT 1",
         );
         if (!failed.length) {
+          const waitingBeforePull = await this.db.query(
+            "SELECT id FROM sync_queue WHERE status IN ('PENDING','SYNCING') LIMIT 1",
+          );
+          if (waitingBeforePull.length) {
+            this.status.message.set(
+              'Há alterações aguardando envio. Suas compras estão salvas neste aparelho.',
+            );
+            this.state.set('SYNCING');
+            return;
+          }
           try {
-            await this.pull.run();
+            if (!(await this.pull.run())) {
+              this.status.lastSyncedAt.set(null);
+              this.status.message.set(
+                'Recebendo alterações do servidor. Suas compras locais estão preservadas.',
+              );
+              this.state.set('SYNCING');
+              return;
+            }
             await this.store.load();
           } catch (error) {
             if (error instanceof RemoteImportConflict) {

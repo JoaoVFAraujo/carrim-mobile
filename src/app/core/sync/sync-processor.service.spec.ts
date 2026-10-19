@@ -62,7 +62,7 @@ describe('sync processor', () => {
     });
     TestBed.configureTestingModule({
       providers: [
-        { provide: SyncPullService, useValue: { run: vi.fn() } },
+        { provide: SyncPullService, useValue: { run: vi.fn().mockResolvedValue(true) } },
         { provide: ShoppingSessionStore, useValue: { load: vi.fn() } },
         { provide: API_BASE_URL, useValue: 'https://api.example.com/api/v1' },
         {
@@ -165,6 +165,7 @@ describe('sync processor', () => {
     );
     await service.run();
     expect(service.state()).toBe('SYNCING');
+    expect(TestBed.inject(SyncPullService).run).not.toHaveBeenCalled();
   });
   it('keeps conflicts in ATTENTION when dependent operations are still pending', async () => {
     claim.mockReset().mockResolvedValue(null);
@@ -178,5 +179,17 @@ describe('sync processor', () => {
     expect(TestBed.inject(SyncStatusService).message()).toContain('pausada');
     expect(TestBed.inject(SyncStatusService).lastSyncedAt()).toBeNull();
     expect(TestBed.inject(SyncPullService).run).not.toHaveBeenCalled();
+  });
+  it('confirms synchronization only after the remote backlog was fully imported', async () => {
+    claim.mockReset().mockResolvedValue(null);
+    vi.mocked(TestBed.inject(SyncPullService).run).mockResolvedValueOnce(false);
+    TestBed.inject(SyncStatusService).lastSyncedAt.set(1);
+    await service.run();
+    expect(service.state()).toBe('SYNCING');
+    expect(TestBed.inject(SyncStatusService).lastSyncedAt()).toBeNull();
+    expect(TestBed.inject(ShoppingSessionStore).load).not.toHaveBeenCalled();
+    await service.run();
+    expect(service.state()).toBe('READY');
+    expect(TestBed.inject(SyncStatusService).lastSyncedAt()).not.toBeNull();
   });
 });
