@@ -160,18 +160,19 @@
         }
         <div class="product-fields">
           <ion-input
+            [maskito]="brlMask"
+            [maskitoElement]="ionInputElement"
             mode="md"
             label="Preço hoje"
             labelPlacement="stacked"
             fill="outline"
             name="price"
             placeholder="Ex.: 17,49"
-            inputmode="decimal"
+            inputmode="numeric"
             [(ngModel)]="price"
-            [maxlength]="12"
+            [maxlength]="20"
             [disabled]="saving()"
-            ><span slot="start" aria-hidden="true">R$</span></ion-input
-          >
+          />
           <div class="quantity-field">
             <label for="scan-quantity">Quantidade</label>
             <div class="quantity-stepper">
@@ -201,7 +202,7 @@
           </div>
         </div>
         <p class="price-reminder">
-          Informe o preço de hoje por unidade. O preço anterior é apenas uma referência.
+          Digite os centavos junto: 1999 = R$ 19,99. Informe o preço de hoje por unidade.
         </p>
         @if (formError()) {
           <p role="alert" class="tw:text-red-800">{{ formError() }}</p>

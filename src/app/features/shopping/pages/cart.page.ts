@@ -1,3 +1,5 @@
+import { MaskitoDirective } from '@maskito/angular';
+import { brlMask, ionInputElement, attachBrlMask } from '../../../shared/brl-mask';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CurrencyPipe, DecimalPipe, DatePipe } from '@angular/common';
@@ -50,6 +52,7 @@ import {
 @Component({
   selector: 'app-cart',
   imports: [
+    MaskitoDirective,
     IonIcon,
     IonButtons,
     IonContent,
@@ -78,6 +81,8 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CartPage {
+  readonly brlMask = brlMask;
+  readonly ionInputElement = ionInputElement;
   readonly emptyIcon = cartOutline;
   readonly store = inject(ShoppingSessionStore);
   private readonly alerts = inject(AlertController);
@@ -325,10 +330,11 @@ export class CartPage {
         inputs: [
           {
             name: 'checkoutTotal',
+            id: 'carrim-checkout-total',
             cssClass: 'carrim-outline-input',
             type: 'text',
             placeholder: 'Total do caixa (opcional)',
-            attributes: { inputmode: 'decimal', 'aria-label': 'Total do caixa (opcional)' },
+            attributes: { inputmode: 'numeric', 'aria-label': 'Total do caixa (opcional)' },
           },
         ],
         buttons: [
@@ -350,7 +356,8 @@ export class CartPage {
         ],
       });
       await alert.present();
-      const result = await alert.onDidDismiss();
+      const releaseMask = attachBrlMask(alert, 'carrim-checkout-total');
+      const result = await alert.onDidDismiss().finally(releaseMask);
       if (result.role !== 'confirm' || this.saving()) return;
       this.saving.set(true);
       this.actionError.set('');
@@ -391,10 +398,11 @@ export class CartPage {
         inputs: [
           {
             name: 'budget',
+            id: 'carrim-budget',
             cssClass: 'carrim-outline-input',
             type: 'text',
             value: budget === null ? '' : (budget / 100).toFixed(2).replace('.', ','),
-            attributes: { inputmode: 'decimal', 'aria-label': 'Limite de gastos em reais' },
+            attributes: { inputmode: 'numeric', 'aria-label': 'Limite de gastos em reais' },
           },
         ],
         buttons: [
@@ -415,7 +423,8 @@ export class CartPage {
         ],
       });
       await alert.present();
-      if ((await alert.onDidDismiss()).role !== 'confirm') return;
+      const releaseMask = attachBrlMask(alert, 'carrim-budget');
+      if ((await alert.onDidDismiss().finally(releaseMask)).role !== 'confirm') return;
       if (this.store.active()?.id !== session.id) return;
       this.saving.set(true);
       this.actionError.set('');

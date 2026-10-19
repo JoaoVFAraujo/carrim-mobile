@@ -1,3 +1,5 @@
+import { moneyInput } from './money-input';
+
 export interface ShoppingItem {
   id: string;
   sessionId: string;
@@ -33,7 +35,7 @@ export function parseWeightGrams(value: string): number {
 }
 
 export function parseItemPrice(value: string): number {
-  const input = value.trim();
+  const input = moneyInput(value);
   if (!/^\d+(?:[,.]\d{1,2})?$/.test(input)) throw new Error('Informe um preço como 12,99.');
   const [whole, fraction = ''] = input.replace(',', '.').split('.');
   const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));

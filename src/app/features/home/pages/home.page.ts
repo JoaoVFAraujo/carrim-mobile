@@ -1,3 +1,5 @@
+import { MaskitoDirective } from '@maskito/angular';
+import { brlMask, ionInputElement } from '../../../shared/brl-mask';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -27,6 +29,7 @@ import { SyncReviewComponent } from '../components/sync-review.component';
 @Component({
   selector: 'app-home',
   imports: [
+    MaskitoDirective,
     SyncReviewComponent,
     IonContent,
     IonHeader,
@@ -52,6 +55,8 @@ import { SyncReviewComponent } from '../components/sync-review.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomePage {
+  readonly brlMask = brlMask;
+  readonly ionInputElement = ionInputElement;
   readonly syncStatus = inject(SyncStatusService);
   readonly store = inject(ShoppingSessionStore);
   readonly cartIcon = cartOutline;

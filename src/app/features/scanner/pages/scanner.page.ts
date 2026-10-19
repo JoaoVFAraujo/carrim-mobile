@@ -1,3 +1,5 @@
+import { MaskitoDirective } from '@maskito/angular';
+import { brlMask, ionInputElement } from '../../../shared/brl-mask';
 import { ShoppingSessionStore } from '../../shopping/services/shopping-session.store';
 import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
@@ -32,6 +34,7 @@ import { parseItemPrice, parseItemQuantity } from '../../shopping/models/shoppin
 @Component({
   selector: 'app-scanner',
   imports: [
+    MaskitoDirective,
     IonContent,
     IonCard,
     IonCardContent,
@@ -53,6 +56,8 @@ import { parseItemPrice, parseItemQuantity } from '../../shopping/models/shoppin
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ScannerPage {
+  readonly brlMask = brlMask;
+  readonly ionInputElement = ionInputElement;
   readonly emptyIcon = barcodeOutline;
   readonly cameraIcon = cameraOutline;
   readonly productIcon = cubeOutline;

@@ -13,6 +13,7 @@ describe('cart completion confirmation', () => {
     const navigateByUrl = vi.fn().mockResolvedValue(true);
     const toast = { present: vi.fn().mockResolvedValue(undefined) };
     const alert = {
+      querySelector: vi.fn().mockReturnValue(null),
       present: vi.fn().mockResolvedValue(undefined),
       onDidDismiss: vi.fn().mockResolvedValue({ role: 'confirm' }),
     };
@@ -61,7 +62,7 @@ describe('cart completion confirmation', () => {
     const handler = create.mock.calls[0][0].buttons[1].handler;
     expect(handler({ checkoutTotal: '-1' })).toBe(false);
     expect(complete).not.toHaveBeenCalled();
-    expect(handler({ checkoutTotal: '24,09' })).toBe(true);
+    expect(handler({ checkoutTotal: 'R$ 24,09' })).toBe(true);
     dismiss({ role: 'confirm' });
     await pending;
     expect(complete).toHaveBeenCalledWith(2409);
@@ -83,6 +84,7 @@ describe('purchase controls', () => {
     const changeBudget = vi.fn().mockResolvedValue(undefined),
       cancel = vi.fn().mockResolvedValue(undefined);
     const alert = {
+      querySelector: vi.fn().mockReturnValue(null),
       present: vi.fn(),
       onDidDismiss: vi.fn().mockResolvedValue({ role: 'confirm' }),
       message: '',

@@ -59,7 +59,7 @@
         @if (shopping.budgetCents !== null) {
           <ion-progress-bar
             [value]="store.budgetProgress()"
-            [color]="store.remainingCents()! < 0 ? 'danger' : 'primary'"
+            [class.exceeded]="store.remainingCents()! < 0"
             aria-label="Uso do limite de gastos"
           />
           <p class="budget-caption">{{ store.budgetPercent() }}% do limite</p>
@@ -344,6 +344,8 @@
           }
         }
         <ion-input
+          [maskito]="brlMask"
+          [maskitoElement]="ionInputElement"
           mode="md"
           [label]="
             measurementType === 'WEIGHT'
@@ -355,10 +357,10 @@
           labelPlacement="stacked"
           fill="outline"
           placeholder="Ex.: 12,99"
-          inputmode="decimal"
+          inputmode="numeric"
           name="price"
           [(ngModel)]="price"
-          [maxlength]="12"
+          [maxlength]="20"
           [disabled]="saving()"
         />
         @if (measurementType === 'WEIGHT') {

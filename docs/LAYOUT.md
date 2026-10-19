@@ -47,6 +47,7 @@ Compras agrupadas por período, com mercado, data, linhas e total. Segmento Toda
 - Prioridade: componentes/APIs Ionic e Angular, Tailwind tw:, CSS manual quando necessário. Customização Ionic por variáveis/parts públicos, sem seletores internos frágeis.
 - Angular standalone, Signals para estado e templates HTML separados. Não forçar modo iOS no Android.
 - Campos e seletores usam outline, borda de 1 px, raio de 12 px e foco verde. Apenas ion-input/ion-select usam modo Material para manter o outline também no iOS (fill é exclusivo de md no Ionic); o restante do app preserva o modo da plataforma. Quantidade agrupada e campos nativos dos alertas de limite/caixa seguem a mesma borda, com foco visível.
+- Valores monetários têm máscara de reais com centavos automáticos e teclado numérico: 1999 vira R$ 19,99; 20000 vira R$ 200,00. Colagem de valor já formatado e valores de edição preservam o montante. Limpar mantém o opcional vazio, distinto de zero; domínio continua validando e persistindo centavos inteiros. Peso e quantidade não recebem máscara de moeda.
 - Quatro abas fixas: Início, Escanear, Carrinho e Histórico, inclusive sem compra ativa.
 - Usar componentes Ionic para tabs, cards, botões, inputs, progress, toast, alert e modal. Estados vazios/carregamento/erro concretos, sem negócio fictício.
 - Miniaturas, logos e cesta nas imagens são ilustrações. Não pressupor catálogo de fotos, parceria ou autorização de marcas; usar placeholders até haver assets adequados.
@@ -84,6 +85,7 @@ As outras três abas foram recompostas na sequência:
 
 Os estados sem compra do Início e do scanner também usam o verde profundo dos cards de destaque, texto claro e botão claro. No Início, a cesta fica à direita da mensagem, evitando o card sálvia com imagem central que destoava da referência. Os cabeçalhos principais são alinhados à esquerda tanto em Material quanto no modo visual iOS; isso não força o modo iOS no Android.
 Os estados vazios de Histórico e Carrinho compartilham agora esse mesmo card verde, com ação clara e contraste de texto. A mudança de período não mantém duas listas simultâneas ou altera compras; apenas anima a entrada da lista filtrada.
+O resumo de orçamento do Carrinho também usa o verde profundo, com total claro, restante em verde claro e alerta de excesso em tom claro legível. As ações Escanear e Adicionar item usam verde principal com texto branco, mantendo a leitura dos estados desabilitados.
 
 A conferência visual do usuário, fotos reais do catálogo, leitor de tela, fonte ampliada e aparelho continuam pendentes. Não declarar equivalência exata às imagens nem avançar para distribuição apenas pelos testes funcionais.
 
