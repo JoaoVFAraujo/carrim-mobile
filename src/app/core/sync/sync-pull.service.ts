@@ -7,10 +7,10 @@ import { snapshotStatements, RemoteImportConflict } from './remote-snapshot';
 export class SyncPullService {
   private readonly db = inject(DatabaseService);
   private readonly transport = inject(SyncTransportService);
-  async run(): Promise<void> {
+  async run(): Promise<boolean> {
     // Do not apply server state over any local pending edit.
     const pending = await this.db.query("SELECT id FROM sync_queue WHERE status!='SYNCED' LIMIT 1");
-    if (pending.length) return;
+    if (pending.length) return false;
     const cursors = await this.db.query<{ value: string }>(
       'SELECT value FROM app_metadata WHERE key=?',
       ['sync_cursor'],
@@ -37,7 +37,7 @@ export class SyncPullService {
           values: ['sync_import_pending', '1'],
         });
       const applied = await this.db.applyRemotePage(statements, page.cursor);
-      if (!applied) return;
+      if (!applied) return false;
       cursor = page.cursor;
       if (!page.hasMore) {
         const dirty = await this.db.query<{ value: string }>(
@@ -74,10 +74,11 @@ export class SyncPullService {
             statement: 'UPDATE app_metadata SET value=? WHERE key=?',
             values: ['0', 'sync_import_pending'],
           });
-          await this.db.applyRemotePage(imports, cursor);
+          if (!(await this.db.applyRemotePage(imports, cursor))) return false;
         }
-        return;
+        return true;
       }
     }
+    return false;
   }
 }

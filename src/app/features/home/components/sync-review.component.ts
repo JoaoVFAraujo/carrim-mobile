@@ -1,6 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { Capacitor } from '@capacitor/core';
 import {
   AlertController,
   IonButton,
@@ -22,7 +21,6 @@ export class SyncReviewComponent {
   readonly review = inject(SyncReviewService);
   readonly status = inject(SyncStatusService);
   private readonly alerts = inject(AlertController);
-  readonly native = Capacitor.isNativePlatform();
   readonly open = signal(false);
   readonly busy = signal(false);
   readonly error = signal('');

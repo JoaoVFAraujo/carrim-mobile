@@ -76,4 +76,20 @@ describe('sync pull reconciliation', () => {
         .map((st) => st.values[0]),
     ).toEqual([a, b]);
   });
+  it('reports incomplete when the server has more than the per-run page limit', async () => {
+    pull.mockResolvedValue({ changes: [], cursor: 'more', hasMore: true });
+    expect(await TestBed.inject(SyncPullService).run()).toBe(false);
+    expect(pull).toHaveBeenCalledTimes(20);
+    pull.mockResolvedValue({ changes: [], cursor: 'head', hasMore: false });
+    expect(await TestBed.inject(SyncPullService).run()).toBe(true);
+  });
+
+  it('reports incomplete when a local edit prevents committing the final import', async () => {
+    query.mockImplementation(async (_sql: string, values?: string[]) =>
+      values?.[0] === 'sync_import_pending' ? [{ value: '1' }] : [],
+    );
+    apply.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    expect(await TestBed.inject(SyncPullService).run()).toBe(false);
+    expect(apply).toHaveBeenCalledTimes(2);
+  });
 });

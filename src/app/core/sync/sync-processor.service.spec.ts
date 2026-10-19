@@ -5,6 +5,7 @@ import { RemoteImportConflict } from '../database/remote-import-conflict';
 import { DatabaseService } from '../database/database.service';
 import { API_BASE_URL } from '../api/api-endpoint';
 import { SyncProcessorService } from './sync-processor.service';
+import { SyncStatusService } from './sync-status.service';
 import { SyncPullService } from './sync-pull.service';
 import { ShoppingSessionStore } from '../../features/shopping/services/shopping-session.store';
 import { SyncQueueService } from './sync-queue.service';
@@ -61,7 +62,7 @@ describe('sync processor', () => {
     });
     TestBed.configureTestingModule({
       providers: [
-        { provide: SyncPullService, useValue: { run: vi.fn() } },
+        { provide: SyncPullService, useValue: { run: vi.fn().mockResolvedValue(true) } },
         { provide: ShoppingSessionStore, useValue: { load: vi.fn() } },
         { provide: API_BASE_URL, useValue: 'https://api.example.com/api/v1' },
         {
@@ -121,14 +122,14 @@ describe('sync processor', () => {
     expect(applied).not.toHaveBeenCalled();
     expect(service.state()).toBe('ATTENTION');
   });
-  it('does not reserve operations offline or without native protected identity', async () => {
+  it('does not reserve operations offline, including in the browser', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     await service.run();
     expect(service.state()).toBe('OFFLINE');
     expect(claim).not.toHaveBeenCalled();
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(false);
     await service.run();
-    expect(service.state()).toBe('DISABLED');
+    expect(service.state()).toBe('OFFLINE');
     expect(push).not.toHaveBeenCalled();
   });
   it('serializes overlapping processor runs', async () => {
@@ -156,5 +157,39 @@ describe('sync processor', () => {
     expect(TestBed.inject(DatabaseService).transaction).not.toHaveBeenCalled();
     await service.run();
     expect(service.state()).toBe('READY');
+  });
+  it('does not show READY while an operation is waiting for its persisted retry', async () => {
+    claim.mockReset().mockResolvedValue(null);
+    vi.mocked(TestBed.inject(DatabaseService).query).mockImplementation(async (sql: string) =>
+      sql.includes("status IN ('PENDING','SYNCING')") ? [{ id: 'waiting' }] : [],
+    );
+    await service.run();
+    expect(service.state()).toBe('SYNCING');
+    expect(TestBed.inject(SyncPullService).run).not.toHaveBeenCalled();
+  });
+  it('keeps conflicts in ATTENTION when dependent operations are still pending', async () => {
+    claim.mockReset().mockResolvedValue(null);
+    vi.mocked(TestBed.inject(DatabaseService).query).mockImplementation(async (sql: string) =>
+      sql.includes("status = 'FAILED'") || sql.includes("status IN ('PENDING','SYNCING')")
+        ? [{ id: 'blocked' }]
+        : [],
+    );
+    await service.run();
+    expect(service.state()).toBe('ATTENTION');
+    expect(TestBed.inject(SyncStatusService).message()).toContain('pausada');
+    expect(TestBed.inject(SyncStatusService).lastSyncedAt()).toBeNull();
+    expect(TestBed.inject(SyncPullService).run).not.toHaveBeenCalled();
+  });
+  it('confirms synchronization only after the remote backlog was fully imported', async () => {
+    claim.mockReset().mockResolvedValue(null);
+    vi.mocked(TestBed.inject(SyncPullService).run).mockResolvedValueOnce(false);
+    TestBed.inject(SyncStatusService).lastSyncedAt.set(1);
+    await service.run();
+    expect(service.state()).toBe('SYNCING');
+    expect(TestBed.inject(SyncStatusService).lastSyncedAt()).toBeNull();
+    expect(TestBed.inject(ShoppingSessionStore).load).not.toHaveBeenCalled();
+    await service.run();
+    expect(service.state()).toBe('READY');
+    expect(TestBed.inject(SyncStatusService).lastSyncedAt()).not.toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { RemoteImportConflict } from './remote-import-conflict';
-import { Injectable } from '@angular/core';
+import { Injectable, type OnDestroy } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import type {
   SQLiteConnection,
@@ -17,8 +17,54 @@ import { checkoutTotalSchema } from './migrations/008-checkout-total';
 import { syncRetrySchema } from './migrations/009-sync-retry';
 import { syncRequestSchema } from './migrations/010-sync-request';
 
+export class LocalDatabaseInUse extends Error {
+  constructor() {
+    super(
+      'O Carrim já está aberto em outra aba. Continue nela ou feche-a antes de tentar novamente.',
+    );
+  }
+}
+
 @Injectable({ providedIn: 'root' })
-export class DatabaseService {
+export class DatabaseService implements OnDestroy {
+  private readonly localWriteListeners = new Set<() => void>();
+
+  onLocalWrite(listener: () => void): () => void {
+    this.localWriteListeners.add(listener);
+    return () => this.localWriteListeners.delete(listener);
+  }
+
+  private notifyLocalWrite(statements: capSQLiteSet[]): void {
+    if (statements.some((st) => /\bINSERT\s+INTO\s+sync_queue\b/i.test(st.statement ?? '')))
+      this.localWriteListeners.forEach((listener) => listener());
+  }
+
+  private releaseWebDatabase?: () => void;
+
+  private async claimWebDatabase(): Promise<void> {
+    if (!navigator.locks)
+      throw new Error('Este navegador não oferece proteção para o banco local.');
+    const acquired = await new Promise<boolean>((resolve, reject) => {
+      void navigator.locks
+        .request('carrim-sqlite-writer', { ifAvailable: true }, (lock) => {
+          if (!lock) {
+            resolve(false);
+            return;
+          }
+          resolve(true);
+          return new Promise<void>((release) => {
+            this.releaseWebDatabase = release;
+          });
+        })
+        .catch(reject);
+    });
+    if (!acquired) throw new LocalDatabaseInUse();
+  }
+
+  ngOnDestroy(): void {
+    this.releaseWebDatabase?.();
+  }
+
   private connection?: SQLiteConnection;
   private database?: SQLiteDBConnection;
   private opening?: Promise<void>;
@@ -119,11 +165,12 @@ export class DatabaseService {
   }
 
   async transaction(statements: capSQLiteSet[]): Promise<void> {
-    return this.serial(async () => {
+    await this.serial(async () => {
       await this.open();
       await this.database!.executeSet(statements, true);
       if (!Capacitor.isNativePlatform()) await this.connection!.saveToStore('carrim');
     });
+    this.notifyLocalWrite(statements);
   }
 
   /** Compare and mutate under the same local writer lock, including native sync/import. */
@@ -131,7 +178,7 @@ export class DatabaseService {
     checks: { statement: string; values: (string | number | null)[]; expected: unknown[] }[],
     statements: capSQLiteSet[],
   ): Promise<void> {
-    return this.serial(async () => {
+    await this.serial(async () => {
       await this.open();
       for (const check of checks) {
         const actual = await this.database!.query(check.statement, check.values);
@@ -141,6 +188,7 @@ export class DatabaseService {
       await this.database!.executeSet(statements, true);
       if (!Capacitor.isNativePlatform()) await this.connection!.saveToStore('carrim');
     });
+    this.notifyLocalWrite(statements);
   }
 
   private serial<T>(work: () => Promise<T>): Promise<T> {
@@ -152,6 +200,8 @@ export class DatabaseService {
   private async open(): Promise<void> {
     if (!this.opening) {
       this.opening = this.initialize().catch(async (error: unknown) => {
+        this.releaseWebDatabase?.();
+        this.releaseWebDatabase = undefined;
         this.opening = undefined;
         await this.connection?.closeConnection('carrim', false).catch(() => undefined);
         this.database = undefined;
@@ -162,6 +212,7 @@ export class DatabaseService {
   }
 
   private async initialize(): Promise<void> {
+    if (!Capacitor.isNativePlatform()) await this.claimWebDatabase();
     const { CapacitorSQLite, SQLiteConnection } = await import('@capacitor-community/sqlite');
     this.connection = new SQLiteConnection(CapacitorSQLite);
     if (!Capacitor.isNativePlatform()) {

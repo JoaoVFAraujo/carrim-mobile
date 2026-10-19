@@ -1,5 +1,4 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
-import { Capacitor } from '@capacitor/core';
 import { API_BASE_URL } from '../api/api-endpoint';
 import { RemoteImportConflict } from '../database/remote-import-conflict';
 import { DatabaseService } from '../database/database.service';
@@ -24,7 +23,7 @@ export class SyncProcessorService {
   private started = false;
 
   start(): void {
-    if (this.started || !Capacitor.isNativePlatform() || !this.base) return;
+    if (this.started || !this.base) return;
     this.started = true;
     const run = () => {
       void this.run().catch(() => {
@@ -34,9 +33,14 @@ export class SyncProcessorService {
         );
       });
     };
+    const unsubscribe = this.db.onLocalWrite(() => {
+      this.status.lastSyncedAt.set(null);
+      run();
+    });
     const timer = setInterval(run, 2000);
     window.addEventListener('online', run);
     this.destroy.onDestroy(() => {
+      unsubscribe();
       clearInterval(timer);
       window.removeEventListener('online', run);
     });
@@ -50,11 +54,12 @@ export class SyncProcessorService {
     return this.pending;
   }
   private async process(): Promise<void> {
-    if (!Capacitor.isNativePlatform() || !this.base) {
+    if (!this.base) {
       this.state.set('DISABLED');
       return;
     }
     if (!navigator.onLine) {
+      this.status.message.set('Sem conexão. Suas compras serão enviadas quando a conexão voltar.');
       this.state.set('OFFLINE');
       return;
     }
@@ -77,8 +82,25 @@ export class SyncProcessorService {
           "SELECT id FROM sync_queue WHERE status = 'FAILED' LIMIT 1",
         );
         if (!failed.length) {
+          const waitingBeforePull = await this.db.query(
+            "SELECT id FROM sync_queue WHERE status IN ('PENDING','SYNCING') LIMIT 1",
+          );
+          if (waitingBeforePull.length) {
+            this.status.message.set(
+              'Há alterações aguardando envio. Suas compras estão salvas neste aparelho.',
+            );
+            this.state.set('SYNCING');
+            return;
+          }
           try {
-            await this.pull.run();
+            if (!(await this.pull.run())) {
+              this.status.lastSyncedAt.set(null);
+              this.status.message.set(
+                'Recebendo alterações do servidor. Suas compras locais estão preservadas.',
+              );
+              this.state.set('SYNCING');
+              return;
+            }
             await this.store.load();
           } catch (error) {
             if (error instanceof RemoteImportConflict) {
@@ -100,6 +122,17 @@ export class SyncProcessorService {
             return;
           }
         }
+        const waiting = await this.db.query(
+          "SELECT id FROM sync_queue WHERE status IN ('PENDING','SYNCING') LIMIT 1",
+        );
+        if (waiting.length && !failed.length) {
+          this.status.message.set(
+            'Há alterações aguardando envio. Suas compras estão salvas neste aparelho.',
+          );
+          this.state.set('SYNCING');
+          return;
+        }
+        if (!failed.length) this.status.lastSyncedAt.set(Date.now());
         this.status.message.set(
           failed.length
             ? 'A sincronização está pausada. Há uma operação que precisa de revisão; suas compras locais foram preservadas.'
@@ -132,6 +165,9 @@ export class SyncProcessorService {
         await this.queue.failed(
           entry,
           error instanceof SyncTransportError ? error.transient : true,
+        );
+        this.status.message.set(
+          'Envio pendente. Suas compras estão salvas e a conexão será tentada novamente.',
         );
         this.state.set('ATTENTION');
         return;

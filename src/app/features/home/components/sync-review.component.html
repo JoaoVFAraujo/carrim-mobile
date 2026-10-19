@@ -1,4 +1,4 @@
-@if (native || status.message()) {
+@if (status.message()) {
   <ion-button fill="clear" (click)="show()" [disabled]="busy()">Revisar sincronização</ion-button>
 }
 <ion-modal [isOpen]="open()" [canDismiss]="!busy()" (didDismiss)="open.set(false)">

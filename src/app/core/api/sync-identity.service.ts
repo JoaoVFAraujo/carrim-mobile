@@ -1,19 +1,21 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { DatabaseService } from '../database/database.service';
 import { AnonymousIdentityService } from './anonymous-identity.service';
+import { WebIdentityService } from './web-identity.service';
 import { CredentialVault } from './credential-vault';
 
 /** Mandatory identity boundary for the future outbox worker, including token renewal. */
 @Injectable({ providedIn: 'root' })
 export class SyncIdentityService {
+  private readonly injector = inject(Injector);
   private readonly database = inject(DatabaseService);
   private readonly vault = inject(CredentialVault);
   private readonly identity = inject(AnonymousIdentityService);
 
   async accessToken(rejectedToken?: string): Promise<string> {
     if (!Capacitor.isNativePlatform())
-      throw new Error('A sincronização exige identidade persistente protegida neste dispositivo.');
+      return this.injector.get(WebIdentityService).accessToken(rejectedToken);
     const previous = await this.readIdentity();
     // Check before bootstrap: missing/replaced credentials must not create a new owner
     // for a database already bound to an installation.

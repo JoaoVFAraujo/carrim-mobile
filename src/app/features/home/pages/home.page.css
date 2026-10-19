@@ -278,3 +278,8 @@ h1 {
     display: none;
   }
 }
+
+.sync-confirmation {
+  color: var(--ion-color-primary);
+  font-size: 0.875rem;
+}

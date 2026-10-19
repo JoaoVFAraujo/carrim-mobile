@@ -2,7 +2,7 @@
 
 Aplicativo de supermercado offline-first, com compras, catálogo, orçamento e Histórico no SQLite. Manifest **0.0.2**, Android versionCode **2**. Não há release V1.0.0 publicada.
 
-Sync nativo push/pull está integrado e inicia com API HTTPS configurada. Sem endpoint e no navegador, compras continuam locais. Conflitos pausam sync preservando dados; a revisão assistida compara a alteração local com o servidor antes de uma reaplicação explícita. Testes físicos ainda pendentes.
+Sync push/pull funciona no navegador e no app nativo. No navegador, /api/v1 deve ser servido na mesma origem; no nativo, configurar a API HTTPS. Cada alteração salva SQLite e fila atomicamente e desperta o envio, com recuperação automática após indisponibilidade. Conflitos pausam sync preservando dados; a revisão assistida compara a alteração local com o servidor antes de uma reaplicação explícita. Testes físicos ainda pendentes.
 
 O Carrinho permite definir/editar/remover o limite e cancelar a compra com confirmação. Alterações ficam no SQLite e na fila na mesma transação; cancelamento preserva itens encerrados e não gera histórico de preços.
 
@@ -42,7 +42,7 @@ npm run verify:sqlite
 npm run build
 ```
 
-SQLite real de teste é isolado; scripts verificam migrations V1–V10, constraints, transações, fila, importação e preservação. O teste integrado com HTTP exige API em 8082 e PostgreSQL **local isolado**, com Flyway V1–V6; ele cria dados, não prepara o servidor e não deve apontar para banco pessoal/produção.
+SQLite real de teste é isolado; scripts verificam migrations V1–V10, constraints, transações, fila, importação e preservação. O teste integrado usa HTTP, PostgreSQL **local isolado** e SQLite reais nos modos web e nativo; cria dados e não deve apontar para banco pessoal/produção. No backend, scripts/verify-local-postgres.ps1 -MobileSync prepara banco/API em portas temporárias, executa os testes e encerra seus processos. Ajustar -MobileRoot se o checkout estiver em outro caminho. Para uma API isolada já iniciada, CARRIM_LIVE_API aceita somente http://127.0.0.1:PORTA ou http://localhost:PORTA (padrão 8082).
 
 ```powershell
 $env:CARRIM_LIVE_SYNC = '1'
@@ -65,9 +65,11 @@ Remove-Item Env:CARRIM_API_URL
 
 O domínio acima é ilustrativo. configure:api gera public/api-config.json, ignorado pelo Git e incluído no build. Não guardar token/prova/senha nesse arquivo. O arquivo gerado pode persistir após remover a variável: conferir configuração antes de cada build; para gerar app sem endpoint, remover somente esse arquivo gerado, sem tocar nos dados do app.
 
-Não existe domínio/HTTPS público configurado nesta retomada. Homologação deve validar TLS e CORS/origens WebView conforme o guia de Segurança. Navegador continua sem sync persistente mesmo com configuração, pois identidade web só dura em memória.
+Não existe domínio/HTTPS público configurado nesta retomada. Homologação deve validar TLS e CORS/origens WebView conforme o guia de Segurança. Em produção web, o proxy deve encaminhar /api/v1 à API preservando a origem pública e informando HTTPS por uma configuração confiável. A API recusa bootstrap web sem HTTPS no perfil prod. Não usar CORS amplo nem endpoint web de outra origem.
 
 JDK **21 completo** para Android (API usa JDK 25); SDK/plataformas 35 e 36, Build Tools 35/36, Gradle 8.14.3 e plugin 8.13.0. APK debug, instalação e roteiro no [guia Android](docs/VALIDACAO-ANDROID.md). iOS não foi gerado/validado; exige macOS/Xcode.
+
+No navegador, usar uma aba por origem: Web Locks impede instâncias SQLite/IndexedDB concorrentes. Recarregar mantém a identidade e os dados; apagar o cookie num banco vinculado pausa a conexão, sem criar outro proprietário. O Início informa confirmação ou pendências de envio. Todas as entidades de negócio são sincronizadas; fila, cursor e metadados são controles internos de cada ambiente. Histórico de preços é derivado da finalização nos dois bancos.
 
 ## Organização e cuidados
 
@@ -76,7 +78,7 @@ JDK **21 completo** para Android (API usa JDK 25); SDK/plataformas 35 e 36, Buil
 - Tema em src/app/theme/variables.css e estilos globais em src/styles.css.
 - Signals e HTML separado; componentes/APIs Ionic/Angular primeiro, Tailwind tw: depois, CSS manual quando necessário.
 - Câmera só após ação do usuário; negar permissão mantém cadastro manual.
-- Credenciais no Keystore/Keychain; nunca em SQLite/Web Storage/logs. Não limpar identidade/banco nem desinstalar para resolver conflito.
+- No nativo, credenciais no Keystore/Keychain. Na web, prova em cookie HttpOnly/SameSite=Strict (Secure e prefixo __Host- no HTTPS), Bearer só em memória. Nunca em SQLite/Web Storage/logs. Não limpar identidade/banco nem desinstalar para resolver conflito.
 
 CI em [.github/workflows/verify.yml](.github/workflows/verify.yml) executa testes, lint, formatação, SQLite, build, cap sync e assembleDebug; live opt-in não roda por padrão. Não publica nem assina release. Build mantém aviso inicial acima de 1 MB; evidências e limites no roadmap.
 
