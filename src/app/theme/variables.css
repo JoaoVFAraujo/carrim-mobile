@@ -138,6 +138,7 @@ ion-select[mode='md'][fill='outline'] {
   --border-color: var(--carrim-field-border);
   --border-width: 1px;
   --highlight-color-focused: var(--ion-color-primary);
+  --highlight-color-valid: var(--ion-color-primary);
 }
 ion-input[mode='md'][fill='outline']:focus-within,
 ion-select[mode='md'][fill='outline']:focus-within {
