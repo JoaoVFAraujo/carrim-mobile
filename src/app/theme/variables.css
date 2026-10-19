@@ -57,6 +57,9 @@ ion-card {
   line-height: 1.2;
   margin: 0;
 }
+.feature-card .empty-content {
+  padding: 20px;
+}
 .feature-card .card-description {
   color: #dce9dc;
   font-size: 14px;
@@ -100,6 +103,7 @@ ion-progress-bar {
 }
 
 ion-tab-button {
+  max-width: none;
   --color: #626b66;
   --color-selected: #205e46;
 }
@@ -112,14 +116,21 @@ ion-tab-button ion-label {
 ion-tab-button.tab-selected {
   font-weight: 600;
 }
-ion-tab-button.tab-selected::after {
+.main-tab-bar {
+  position: relative;
+}
+.main-tab-bar::after {
   content: '';
   position: absolute;
-  bottom: 3px;
-  width: 22px;
+  left: 0;
+  bottom: var(--ion-safe-area-bottom, 0px);
+  width: 25%;
   height: 3px;
   border-radius: 3px;
   background: #246b50;
+  pointer-events: none;
+  transform: translateX(calc(var(--active-tab, 0) * 100%));
+  transition: transform var(--motion-duration) var(--motion-ease);
 }
 .cart-tab-count {
   position: absolute;

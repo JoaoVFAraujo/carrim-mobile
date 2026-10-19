@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { IonIcon } from '@ionic/angular';
+import { IonCard, IonCardContent, IonIcon } from '@ionic/angular';
 
 @Component({
   selector: 'app-empty-state',
-  imports: [IonIcon],
+  imports: [IonCard, IonCardContent, IonIcon],
   templateUrl: './empty-state.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

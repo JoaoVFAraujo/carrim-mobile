@@ -51,7 +51,8 @@ Compras agrupadas por período, com mercado, data, linhas e total. Segmento Toda
 - Usar componentes Ionic para tabs, cards, botões, inputs, progress, toast, alert e modal. Estados vazios/carregamento/erro concretos, sem negócio fictício.
 - Miniaturas, logos e cesta nas imagens são ilustrações. Não pressupor catálogo de fotos, parceria ou autorização de marcas; usar placeholders até haver assets adequados.
 - Atenção de sync deve dizer que compras foram preservadas e orientar revisão, sem expor token, SQL ou internals.
-- Haptics/transições úteis são melhorias a validar; respeitar redução de movimento. Não adicioná-las como requisito já entregue.
+- Movimento: cápsula deslizante no filtro do Histórico, entrada suave ao trocar período/aba e adicionar itens, feedback de toque e progresso com transição. Indicador inferior ocupa toda a largura de uma aba e desliza entre as quatro posições. Durações curtas (140/260 ms), sem atrasar comandos ou persistência. A expansão do Histórico anima altura quando o navegador suporta, com entrada suave como alternativa; o controle continua sendo details nativo.
+- Redução de movimento desativa as animações CSS acrescentadas; a configuração inicial do Ionic também respeita essa preferência. Haptics e validação física de movimento continuam pendentes.
 - Revisar telas pequenas (320/390 px), safe areas, fonte ampliada, teclado, orientação, navegação assistiva e acesso à ação principal.
 
 Os PNGs foram copiados sem edição, mantendo os quatro originais e nomes para rastreabilidade. A pasta pessoal permanece intacta. Revisões de layout entram neste guia; estado e prioridade ficam no [roadmap](https://github.com/JoaoVFAraujo/carrim-api/blob/main/docs/ROADMAP.md), sem novos documentos visuais por versão.
@@ -82,6 +83,7 @@ As outras três abas foram recompostas na sequência:
 - Tipografia de sistema, ícones maiores nas abas e indicador da aba ativa. Capturas locais em 390/320 px, abertura/fechamento dos itens do Histórico, filtro, edição de quantidade e navegação conferidos. Não houve rolagem horizontal das páginas na amostra; preço e nome continuam editáveis na ficha.
 
 Os estados sem compra do Início e do scanner também usam o verde profundo dos cards de destaque, texto claro e botão claro. No Início, a cesta fica à direita da mensagem, evitando o card sálvia com imagem central que destoava da referência. Os cabeçalhos principais são alinhados à esquerda tanto em Material quanto no modo visual iOS; isso não força o modo iOS no Android.
+Os estados vazios de Histórico e Carrinho compartilham agora esse mesmo card verde, com ação clara e contraste de texto. A mudança de período não mantém duas listas simultâneas ou altera compras; apenas anima a entrada da lista filtrada.
 
 A conferência visual do usuário, fotos reais do catálogo, leitor de tela, fonte ampliada e aparelho continuam pendentes. Não declarar equivalência exata às imagens nem avançar para distribuição apenas pelos testes funcionais.
 

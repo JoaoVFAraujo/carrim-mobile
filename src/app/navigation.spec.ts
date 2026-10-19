@@ -7,6 +7,7 @@ import { appConfig } from './app.config';
 import { provideIonicAngular } from '@ionic/angular';
 import { BARCODE_SCANNER, SCANNER_APP } from './features/scanner/services/barcode-scanner.service';
 import { NATIVE_CREDENTIAL_STORAGE } from './core/api/credential-vault';
+import { vi } from 'vitest';
 
 describe('Tab navigation', () => {
   it('keeps all four tabs available through empty pages and direct URLs', async () => {
@@ -43,18 +44,24 @@ describe('Tab navigation', () => {
     const router = TestBed.inject(Router);
     const page: HTMLElement = fixture.nativeElement;
 
-    for (const [path, selector, message] of [
+    for (const [index, [path, selector, message]] of [
       ['/tabs/home', 'app-home', 'Pronto para começar?'],
       ['/tabs/scanner', 'app-scanner', 'Comece uma compra para escanear'],
       ['/tabs/cart', 'app-cart', 'Seu carrinho está vazio'],
       ['/tabs/history', 'app-history', 'Nenhuma compra finalizada ainda'],
-    ]) {
+    ].entries()) {
       await router.navigateByUrl(path);
       await fixture.whenStable();
       fixture.detectChanges();
       expect(router.url).toBe(path);
       expect(page.querySelector(selector)?.textContent).toContain(message);
       expect(page.querySelectorAll('ion-tab-button').length).toBe(4);
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(page.querySelector('ion-tab-bar')?.style.getPropertyValue('--active-tab')).toBe(
+          String(index),
+        );
+      });
     }
 
     await router.navigateByUrl('/');

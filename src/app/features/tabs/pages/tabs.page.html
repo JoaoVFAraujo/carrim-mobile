@@ -1,5 +1,10 @@
-<ion-tabs>
-  <ion-tab-bar slot="bottom" aria-label="Navegação principal">
+<ion-tabs (ionTabsDidChange)="selectTab($event.tab)">
+  <ion-tab-bar
+    class="main-tab-bar"
+    [style.--active-tab]="activeTabIndex()"
+    slot="bottom"
+    aria-label="Navegação principal"
+  >
     <ion-tab-button tab="home" href="/tabs/home">
       <ion-icon name="home-outline" aria-hidden="true" />
       <ion-label>Início</ion-label>
