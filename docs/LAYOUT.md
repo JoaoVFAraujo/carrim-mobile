@@ -46,6 +46,7 @@ Compras agrupadas por período, com mercado, data, linhas e total. Segmento Toda
 
 - Prioridade: componentes/APIs Ionic e Angular, Tailwind tw:, CSS manual quando necessário. Customização Ionic por variáveis/parts públicos, sem seletores internos frágeis.
 - Angular standalone, Signals para estado e templates HTML separados. Não forçar modo iOS no Android.
+- Campos e seletores usam outline, borda de 1 px, raio de 12 px e foco verde. Apenas ion-input/ion-select usam modo Material para manter o outline também no iOS (fill é exclusivo de md no Ionic); o restante do app preserva o modo da plataforma. Quantidade agrupada e campos nativos dos alertas de limite/caixa seguem a mesma borda, com foco visível.
 - Quatro abas fixas: Início, Escanear, Carrinho e Histórico, inclusive sem compra ativa.
 - Usar componentes Ionic para tabs, cards, botões, inputs, progress, toast, alert e modal. Estados vazios/carregamento/erro concretos, sem negócio fictício.
 - Miniaturas, logos e cesta nas imagens são ilustrações. Não pressupor catálogo de fotos, parceria ou autorização de marcas; usar placeholders até haver assets adequados.

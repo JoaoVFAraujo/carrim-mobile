@@ -233,6 +233,7 @@
         @if (!editingId) {
           <section aria-label="Catálogo local">
             <ion-input
+              mode="md"
               type="search"
               label="Buscar no catálogo local"
               labelPlacement="stacked"
@@ -291,6 +292,7 @@
           </section>
         }
         <ion-input
+          mode="md"
           label="Nome do produto"
           labelPlacement="stacked"
           fill="outline"
@@ -300,6 +302,8 @@
           [disabled]="saving()"
         />
         <ion-select
+          mode="md"
+          fill="outline"
           label="Vendido por"
           labelPlacement="stacked"
           interface="popover"
@@ -312,6 +316,8 @@
         </ion-select>
         @if (measurementType === 'UNIT') {
           <ion-select
+            mode="md"
+            fill="outline"
             label="Preço"
             labelPlacement="stacked"
             interface="popover"
@@ -324,6 +330,7 @@
           </ion-select>
           @if (pricingType === 'BUNDLE') {
             <ion-input
+              mode="md"
               label="Unidades na promoção"
               labelPlacement="stacked"
               fill="outline"
@@ -337,6 +344,7 @@
           }
         }
         <ion-input
+          mode="md"
           [label]="
             measurementType === 'WEIGHT'
               ? 'Preço por kg'
@@ -355,6 +363,7 @@
         />
         @if (measurementType === 'WEIGHT') {
           <ion-input
+            mode="md"
             label="Peso (kg)"
             labelPlacement="stacked"
             fill="outline"
@@ -368,6 +377,7 @@
           />
         } @else {
           <ion-input
+            mode="md"
             [label]="pricingType === 'BUNDLE' ? 'Quantidade total de unidades' : 'Quantidade'"
             labelPlacement="stacked"
             fill="outline"

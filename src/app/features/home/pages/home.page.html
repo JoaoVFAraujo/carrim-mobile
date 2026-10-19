@@ -139,6 +139,8 @@
         <p class="tw:mt-0">Onde você vai comprar hoje?</p>
         @if (store.supermarkets().length) {
           <ion-select
+            mode="md"
+            fill="outline"
             label="Supermercado"
             labelPlacement="stacked"
             interface="action-sheet"
@@ -154,6 +156,7 @@
         }
         @if (!supermarketId) {
           <ion-input
+            mode="md"
             label="Nome do supermercado"
             labelPlacement="stacked"
             fill="outline"
@@ -165,6 +168,7 @@
           />
         }
         <ion-input
+          mode="md"
           label="Limite de gastos (opcional)"
           labelPlacement="stacked"
           fill="outline"

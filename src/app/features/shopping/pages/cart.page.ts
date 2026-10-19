@@ -325,6 +325,7 @@ export class CartPage {
         inputs: [
           {
             name: 'checkoutTotal',
+            cssClass: 'carrim-outline-input',
             type: 'text',
             placeholder: 'Total do caixa (opcional)',
             attributes: { inputmode: 'decimal', 'aria-label': 'Total do caixa (opcional)' },
@@ -390,6 +391,7 @@ export class CartPage {
         inputs: [
           {
             name: 'budget',
+            cssClass: 'carrim-outline-input',
             type: 'text',
             value: budget === null ? '' : (budget / 100).toFixed(2).replace('.', ','),
             attributes: { inputmode: 'decimal', 'aria-label': 'Limite de gastos em reais' },

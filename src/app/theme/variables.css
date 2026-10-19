@@ -1,4 +1,5 @@
 :root {
+  --carrim-field-border: #7a8b80;
   --carrim-hero-background: radial-gradient(ellipse at top right, #256d4c, #124b38);
   --ion-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --ion-color-primary: #246b50;
@@ -131,9 +132,40 @@ ion-tab-button.tab-selected::after {
   color: white;
 }
 
-ion-input,
-ion-select {
+ion-input[mode='md'][fill='outline'],
+ion-select[mode='md'][fill='outline'] {
   --border-radius: 12px;
+  --border-color: var(--carrim-field-border);
+  --border-width: 1px;
+  --highlight-color-focused: var(--ion-color-primary);
+  --highlight-color-valid: var(--ion-color-primary);
+}
+ion-input[mode='md'][fill='outline']:focus-within,
+ion-select[mode='md'][fill='outline']:focus-within {
+  --border-color: var(--ion-color-primary);
+  --border-width: 2px;
+}
+.quantity-stepper:focus-within {
+  border-color: var(--ion-color-primary);
+  box-shadow: inset 0 0 0 1px var(--ion-color-primary);
+}
+.quantity-stepper input:focus-visible {
+  outline: none;
+}
+/* Alert inputs are native fields styled through Ionic's public cssClass API. */
+ion-alert input.carrim-outline-input[type='text'] {
+  border: 1px solid var(--carrim-field-border);
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 48px;
+  box-sizing: border-box;
+  background: transparent;
+  color: var(--ion-text-color);
+}
+ion-alert input.carrim-outline-input[type='text']:focus {
+  border-color: var(--ion-color-primary);
+  box-shadow: inset 0 0 0 1px var(--ion-color-primary);
+  outline: none;
 }
 
 /* Shared review surfaces. */

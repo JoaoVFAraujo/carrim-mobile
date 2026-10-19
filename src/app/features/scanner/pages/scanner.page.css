@@ -188,7 +188,6 @@
 .product-fields ion-input {
   --padding-start: 12px;
   --padding-end: 10px;
-  --border-color: #dce2dc;
   font-size: 19px;
 }
 .quantity-field label {
@@ -200,7 +199,7 @@
   display: flex;
   align-items: center;
   min-height: 56px;
-  border: 1px solid #dce2dc;
+  border: 1px solid var(--carrim-field-border);
   border-radius: 12px;
   padding: 3px;
 }
@@ -236,10 +235,6 @@
   --border-radius: 14px;
   --background: linear-gradient(110deg, #276f56, #2c775d);
   font-size: 16px;
-}
-.quantity-stepper input:focus-visible {
-  outline: 2px solid #246b50;
-  border-radius: 4px;
 }
 @media (max-width: 350px) {
   .product-sheet-content {
