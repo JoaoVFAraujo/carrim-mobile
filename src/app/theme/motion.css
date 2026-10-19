@@ -1,0 +1,103 @@
+:root {
+  --motion-fast: 140ms;
+  --motion-duration: 260ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes surface-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Cached Ionic pages restart their CSS animation when shown again. */
+main,
+.motion-enter {
+  animation: surface-enter var(--motion-duration) var(--motion-ease) both;
+}
+ion-button::part(native) {
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast),
+    color var(--motion-fast);
+}
+ion-button:not([disabled]):active::part(native) {
+  transform: scale(0.98);
+}
+ion-tab-button::part(native) {
+  transition:
+    color var(--motion-fast),
+    background-color var(--motion-duration);
+}
+.period-filter ion-segment-button::part(native) {
+  transition: color var(--motion-duration) var(--motion-ease);
+}
+ion-tab-button.tab-selected::part(native) {
+  background-color: #eaf0e655;
+}
+ion-tab-button ion-icon {
+  transition: transform var(--motion-duration) var(--motion-ease);
+}
+ion-tab-button.tab-selected ion-icon {
+  transform: translateY(-2px);
+}
+ion-progress-bar::part(progress) {
+  transition: transform var(--motion-duration) var(--motion-ease);
+}
+.recent-row,
+.cart-product,
+.purchase-record {
+  transition:
+    box-shadow var(--motion-duration),
+    border-color var(--motion-duration);
+}
+.record-chevron {
+  transition: transform var(--motion-duration) var(--motion-ease);
+}
+.purchase-record[open] .record-details {
+  animation: surface-enter var(--motion-duration) var(--motion-ease);
+}
+@supports (interpolate-size: allow-keywords) and selector(details::details-content) {
+  .purchase-record {
+    interpolate-size: allow-keywords;
+  }
+  .purchase-record::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition:
+      block-size var(--motion-duration) var(--motion-ease),
+      content-visibility var(--motion-duration) allow-discrete;
+  }
+  .purchase-record[open]::details-content {
+    block-size: auto;
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .recent-row:hover,
+  .cart-product:hover,
+  .purchase-record:hover {
+    box-shadow: 0 5px 18px #173d2f0d;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-duration: 0ms;
+  }
+  main,
+  .motion-enter,
+  .purchase-record[open] .record-details {
+    animation: none;
+  }
+  .purchase-record::details-content,
+  ion-progress-bar::part(progress) {
+    transition: none;
+  }
+  ion-button:not([disabled]):active::part(native),
+  ion-tab-button.tab-selected ion-icon {
+    transform: none;
+  }
+}

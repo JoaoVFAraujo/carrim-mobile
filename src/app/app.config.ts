@@ -20,7 +20,9 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => inject(SyncProcessorService).start()),
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection(),
-    provideIonicAngular(),
+    provideIonicAngular({
+      animated: !(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false),
+    }),
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     provideRouter(routes),
   ],

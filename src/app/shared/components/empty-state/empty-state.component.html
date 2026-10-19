@@ -1,10 +1,8 @@
-<section
-  class="tw:flex tw:flex-col tw:items-center tw:rounded-3xl tw:bg-[#eef3ec] tw:px-5 tw:py-7 tw:text-center"
->
-  <ion-icon [icon]="icon()" color="primary" aria-hidden="true" class="tw:text-6xl" />
-  <h2 class="tw:mt-4 tw:mb-0 tw:text-xl tw:font-semibold">{{ title() }}</h2>
-  <p class="tw:mt-3 tw:mb-0 tw:max-w-sm tw:text-base tw:leading-relaxed tw:text-gray-600">
-    {{ description() }}
-  </p>
-  <div class="tw:mt-4"><ng-content /></div>
-</section>
+<ion-card class="feature-card" animate.enter="motion-enter">
+  <ion-card-content class="empty-content">
+    <span class="card-icon"><ion-icon [icon]="icon()" aria-hidden="true" /></span>
+    <h2>{{ title() }}</h2>
+    <p class="card-description">{{ description() }}</p>
+    <div class="tw:flex tw:flex-wrap tw:gap-2"><ng-content /></div>
+  </ion-card-content>
+</ion-card>

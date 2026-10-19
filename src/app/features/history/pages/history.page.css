@@ -17,23 +17,37 @@
   font-size: 16px;
 }
 .period-filter {
+  position: relative;
   background: #eaf0e6;
   border-radius: 20px;
   padding: 3px;
-  min-height: 42px;
   margin-bottom: 26px;
 }
+.period-filter::before {
+  content: '';
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  width: calc((100% - 6px) / 2);
+  border-radius: 17px;
+  background: #246b50;
+  pointer-events: none;
+  transition: transform var(--motion-duration) var(--motion-ease);
+}
+.period-filter.month-active::before {
+  transform: translateX(100%);
+}
 .period-filter ion-segment-button {
-  --background-checked: #246b50;
+  position: relative;
+  z-index: 1;
+  --background: transparent;
+  --background-checked: transparent;
   --border-radius: 17px;
   --indicator-color: transparent;
-  --indicator-height: 100%;
-  --indicator-box-shadow: none;
   --color: #18212a;
   --color-checked: #fff;
   --padding-top: 0;
   --padding-bottom: 0;
-  min-height: 36px;
+  min-height: 44px;
   letter-spacing: 0;
   font-size: 15px;
   text-transform: none;

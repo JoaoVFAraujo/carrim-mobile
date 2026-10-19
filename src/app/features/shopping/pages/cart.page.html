@@ -74,7 +74,7 @@
       }
       <section class="cart-products tw:grid tw:gap-2" aria-label="Produtos da compra">
         @for (item of store.items(); track item.id) {
-          <article class="cart-product">
+          <article class="cart-product" animate.enter="motion-enter">
             <div class="product-thumbnail" aria-hidden="true">
               <ion-icon
                 class="tw:text-[32px]"
@@ -190,7 +190,7 @@
         title="Seu carrinho está vazio"
         description="Comece uma compra para adicionar produtos e acompanhar o total antes de chegar ao caixa."
       >
-        <ion-button routerLink="/tabs/home" fill="outline">Ir para o início</ion-button>
+        <ion-button routerLink="/tabs/home" color="light">Ir para o início</ion-button>
       </app-empty-state>
     }
   </main>
