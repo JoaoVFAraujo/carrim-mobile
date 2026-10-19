@@ -17,6 +17,9 @@
     @if (syncStatus.message()) {
       <p class="attention-banner" role="status">{{ syncStatus.message() }}</p>
     }
+    @if (!syncStatus.message() && syncStatus.lastSyncedAt()) {
+      <p class="sync-confirmation" role="status">Compras sincronizadas com o servidor.</p>
+    }
     <app-sync-review />
     @if (store.loading()) {
       <ion-skeleton-text [animated]="true" class="tw:h-64 tw:rounded-3xl" />

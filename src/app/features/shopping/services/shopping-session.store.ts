@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { DatabaseService } from '../../../core/database/database.service';
+import { DatabaseService, LocalDatabaseInUse } from '../../../core/database/database.service';
 import { ActiveShoppingSession, Supermarket } from '../models/shopping-session';
 import { ShoppingItem, itemSubtotalCents } from '../models/shopping-item';
 import { CompletedShopping } from '../models/completed-shopping';
@@ -443,7 +443,13 @@ export class ShoppingSessionStore {
     this.loading.set(true);
     this.error.set('');
     this.loadingPromise = this.refresh()
-      .catch(() => this.error.set('Não conseguimos abrir seus dados locais. Tente novamente.'))
+      .catch((error) =>
+        this.error.set(
+          error instanceof LocalDatabaseInUse
+            ? error.message
+            : 'Não conseguimos abrir seus dados locais. Tente novamente.',
+        ),
+      )
       .finally(() => {
         this.loading.set(false);
         this.loadingPromise = undefined;

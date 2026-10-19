@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { DatabaseService } from '../database/database.service';
 import { AnonymousIdentityService } from './anonymous-identity.service';
 import { CredentialVault } from './credential-vault';
+import { WebIdentityService } from './web-identity.service';
 import { SyncIdentityService } from './sync-identity.service';
 
 const installationId = 'a20e47cf-a002-4b01-a001-000000000001';
@@ -21,6 +22,10 @@ describe('sync identity boundary', () => {
     obtain = vi.fn().mockResolvedValue('token');
     TestBed.configureTestingModule({
       providers: [
+        {
+          provide: WebIdentityService,
+          useValue: { accessToken: () => Promise.resolve('web-token') },
+        },
         { provide: DatabaseService, useValue: { verifySyncOwner: verify } },
         { provide: CredentialVault, useValue: { read: async () => stored } },
         { provide: AnonymousIdentityService, useValue: { accessToken: obtain } },
@@ -39,9 +44,9 @@ describe('sync identity boundary', () => {
     expect(verify.mock.invocationCallOrder[0]).toBeLessThan(obtain.mock.invocationCallOrder[0]);
     expect(obtain).toHaveBeenCalledWith('rejected');
   });
-  it('blocks browser synchronization without authentication or SQLite changes', async () => {
+  it('delegates browser synchronization to the HttpOnly identity boundary', async () => {
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(false);
-    await expect(service.accessToken()).rejects.toThrow('identidade persistente');
+    expect(await service.accessToken()).toBe('web-token');
     expect(obtain).not.toHaveBeenCalled();
     expect(verify).not.toHaveBeenCalled();
   });

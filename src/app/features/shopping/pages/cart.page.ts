@@ -326,7 +326,7 @@ export class CartPage {
       const alert: HTMLIonAlertElement = await this.alerts.create({
         header: 'Finalizar compra?',
         message:
-          'A compra será salva neste aparelho e ficará disponível no Histórico. Seus itens não poderão mais ser alterados. O total do caixa é opcional e serve apenas para comparação.',
+          'A compra será salva neste aparelho, enviada ao servidor quando houver conexão e ficará disponível no Histórico. Seus itens não poderão mais ser alterados. O total do caixa é opcional e serve apenas para comparação.',
         inputs: [
           {
             name: 'checkoutTotal',

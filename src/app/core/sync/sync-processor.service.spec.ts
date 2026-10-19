@@ -121,14 +121,14 @@ describe('sync processor', () => {
     expect(applied).not.toHaveBeenCalled();
     expect(service.state()).toBe('ATTENTION');
   });
-  it('does not reserve operations offline or without native protected identity', async () => {
+  it('does not reserve operations offline, including in the browser', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     await service.run();
     expect(service.state()).toBe('OFFLINE');
     expect(claim).not.toHaveBeenCalled();
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(false);
     await service.run();
-    expect(service.state()).toBe('DISABLED');
+    expect(service.state()).toBe('OFFLINE');
     expect(push).not.toHaveBeenCalled();
   });
   it('serializes overlapping processor runs', async () => {
@@ -156,5 +156,13 @@ describe('sync processor', () => {
     expect(TestBed.inject(DatabaseService).transaction).not.toHaveBeenCalled();
     await service.run();
     expect(service.state()).toBe('READY');
+  });
+  it('does not show READY while an operation is waiting for its persisted retry', async () => {
+    claim.mockReset().mockResolvedValue(null);
+    vi.mocked(TestBed.inject(DatabaseService).query).mockImplementation(async (sql: string) =>
+      sql.includes("status IN ('PENDING','SYNCING')") ? [{ id: 'waiting' }] : [],
+    );
+    await service.run();
+    expect(service.state()).toBe('SYNCING');
   });
 });

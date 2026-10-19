@@ -8,6 +8,7 @@ import { provideIonicAngular } from '@ionic/angular';
 import { BARCODE_SCANNER, SCANNER_APP } from './features/scanner/services/barcode-scanner.service';
 import { NATIVE_CREDENTIAL_STORAGE } from './core/api/credential-vault';
 import { vi } from 'vitest';
+import { SyncProcessorService } from './core/sync/sync-processor.service';
 
 describe('Tab navigation', () => {
   it('keeps all four tabs available through empty pages and direct URLs', async () => {
@@ -15,6 +16,7 @@ describe('Tab navigation', () => {
       imports: [App],
       providers: [
         ...appConfig.providers,
+        { provide: SyncProcessorService, useValue: { start: () => undefined } },
         provideIonicAngular({ animated: false }),
         {
           provide: ShoppingSessionStore,

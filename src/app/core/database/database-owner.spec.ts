@@ -56,4 +56,25 @@ describe('persistent local owner', () => {
     await expect(service.verifySyncOwner('a', 'owner', true)).rejects.toThrow('recuperado');
     expect(execute).not.toHaveBeenCalled();
   });
+  it('notifies the worker only after a committed outbox write and supports unsubscription', async () => {
+    execute.mockResolvedValue(undefined);
+    const listener = vi.fn();
+    const release = service.onLocalWrite(listener);
+    await service.transaction([{ statement: 'INSERT INTO sync_queue VALUES (?)', values: ['op'] }]);
+    expect(listener).toHaveBeenCalledTimes(1);
+    execute.mockRejectedValueOnce(new Error('rollback'));
+    await expect(
+      service.transaction([{ statement: 'INSERT INTO sync_queue VALUES (?)', values: ['failed'] }]),
+    ).rejects.toThrow();
+    expect(listener).toHaveBeenCalledTimes(1);
+    await service.transaction([
+      { statement: 'UPDATE sync_queue SET status=?', values: ['SYNCED'] },
+    ]);
+    expect(listener).toHaveBeenCalledTimes(1);
+    release();
+    await service.transaction([
+      { statement: 'INSERT INTO sync_queue VALUES (?)', values: ['next'] },
+    ]);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
 });
