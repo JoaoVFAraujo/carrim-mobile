@@ -74,7 +74,7 @@ No navegador, usar uma aba por origem: Web Locks impede instâncias SQLite/Index
 ## Organização e cuidados
 
 - core/database: conexão, migrations e vínculo de proprietário; core/api e core/sync: identidade, HTTP, fila e pull.
-- features: páginas e estado por funcionalidade; shared: componentes realmente reutilizados.
+- features: páginas e estado por funcionalidade; ShoppingSessionStore mantém signals, validações e ordenação das ações; ShoppingRepository concentra consultas e transações SQLite de compras/itens/preços junto à fila. shared: componentes realmente reutilizados.
 - Tema em src/app/theme/variables.css e estilos globais em src/styles.css.
 - Signals e HTML separado; componentes/APIs Ionic/Angular primeiro, Tailwind tw: depois, CSS manual quando necessário.
 - Câmera só após ação do usuário; negar permissão mantém cadastro manual.

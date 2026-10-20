@@ -64,12 +64,12 @@ for (const invalid of [-1, 0.5, 100000001]) {
 }
 
 // Execute the actual application SQL, so checks cover changes to its persistence statements.
-const store = await readFile(
-  new URL('../src/app/features/shopping/services/shopping-session.store.ts', import.meta.url),
+const repository = await readFile(
+  new URL('../src/app/features/shopping/services/shopping.repository.ts', import.meta.url),
   'utf8',
 );
-const templates = [...store.matchAll(/statement:\s*`([^`]+)`/g)].map((match) => match[1]);
-const strings = [...store.matchAll(/statement:\s*'([^']+)'/g)].map((match) => match[1]);
+const templates = [...repository.matchAll(/statement:\s*`([^`]+)`/g)].map((match) => match[1]);
+const strings = [...repository.matchAll(/statement:\s*'([^']+)'/g)].map((match) => match[1]);
 const productSql = templates.find((sql) => sql.startsWith('INSERT INTO products'));
 const itemSql = strings.find((sql) => sql.startsWith('INSERT INTO shopping_items'));
 const insertRegularItem = (values) => db.run(itemSql, [...values, 'REGULAR', null]);
@@ -125,7 +125,7 @@ assert.equal(scalar('SELECT COUNT(*) FROM products'), 1);
 assert.equal(scalar('SELECT id FROM products'), 'p');
 
 // Group only the same session/name/price/barcode configuration using application SQL.
-const matchingSql = [...store.matchAll(/`([^`]+)`/g)]
+const matchingSql = [...repository.matchAll(/`([^`]+)`/g)]
   .map((match) => match[1])
   .find((sql) => sql.includes('WHERE session_id = ? AND name = ?'));
 const updateItemSql = strings.find((sql) => sql.startsWith('UPDATE shopping_items'));
@@ -223,7 +223,7 @@ assert.equal(scalar("SELECT weight_grams FROM price_history WHERE item_id = 'ban
 db.run("UPDATE price_history SET recorded_at_ms = 6 WHERE item_id = 'banana'");
 db.run("UPDATE price_history SET recorded_at_ms = 7 WHERE item_id = 'milk-bundle'");
 assert.equal(scalar("SELECT bundle_quantity FROM price_history WHERE item_id = 'milk-bundle'"), 3);
-const historySql = [...store.matchAll(/`([^`]+)`/g)]
+const historySql = [...repository.matchAll(/`([^`]+)`/g)]
   .map((match) => match[1])
   .find((sql) => sql.includes('AS totalCents'));
 const shoppingHistory = db.prepare(historySql);
