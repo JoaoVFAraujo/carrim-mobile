@@ -71,6 +71,8 @@ JDK **21 completo** para Android (API usa JDK 25); SDK/plataformas 35 e 36, Buil
 
 No navegador, usar uma aba por origem: Web Locks impede instâncias SQLite/IndexedDB concorrentes. Recarregar mantém a identidade e os dados; apagar o cookie num banco vinculado pausa a conexão, sem criar outro proprietário. O Início informa confirmação ou pendências de envio. Todas as entidades de negócio são sincronizadas; fila, cursor e metadados são controles internos de cada ambiente. Histórico de preços é derivado da finalização nos dois bancos.
 
+O agendador usa um único timer: após sincronizar, consulta novamente em 15/30/60 segundos se não houver novidades; atividade recebida reinicia o intervalo. Alterações locais, foco/retorno ao app e retorno da conexão despertam o envio, sem ignorar next_attempt_at_ms. Sem rede, não mantém polling; comandos FAILED e importações pausadas aguardam revisão. Documento oculto ou app nativo inativo pausa novos envios/páginas; uma requisição já em andamento pode terminar e ter a confirmação salva. O processador retoma pendências ao voltar ao primeiro plano. Testes unitários de ciclo de vida substituem o plugin e não comprovam comportamento físico Android.
+
 ## Organização e cuidados
 
 - core/database: conexão, migrations e vínculo de proprietário; core/api e core/sync: identidade, HTTP, fila e pull.

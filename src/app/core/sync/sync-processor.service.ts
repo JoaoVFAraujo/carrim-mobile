@@ -1,12 +1,18 @@
-import { DestroyRef, Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { API_BASE_URL } from '../api/api-endpoint';
 import { RemoteImportConflict } from '../database/remote-import-conflict';
 import { DatabaseService } from '../database/database.service';
+import { SyncSchedulerService, type SyncState } from './sync-scheduler.service';
 import { SyncStatusService } from './sync-status.service';
 import { SyncPullService } from './sync-pull.service';
 import { ShoppingSessionStore } from '../../features/shopping/services/shopping-session.store';
 import { QueuedOperation, SyncQueueService } from './sync-queue.service';
-import { SyncRequest, SyncTransportService, SyncTransportError } from './sync-transport.service';
+import {
+  SyncRequest,
+  SyncTransportService,
+  SyncTransportError,
+  SyncDispatchDeferred,
+} from './sync-transport.service';
 
 @Injectable({ providedIn: 'root' })
 export class SyncProcessorService {
@@ -17,35 +23,35 @@ export class SyncProcessorService {
   private readonly pull = inject(SyncPullService);
   private readonly store = inject(ShoppingSessionStore);
   private readonly base = inject(API_BASE_URL);
-  private readonly destroy = inject(DestroyRef);
-  readonly state = signal<'DISABLED' | 'OFFLINE' | 'SYNCING' | 'READY' | 'ATTENTION'>('DISABLED');
+  private readonly scheduler = inject(SyncSchedulerService);
+  readonly state = signal<SyncState>('DISABLED');
   private pending?: Promise<void>;
   private started = false;
 
   start(): void {
     if (this.started || !this.base) return;
     this.started = true;
-    const run = () => {
-      void this.run().catch(() => {
-        this.state.set('ATTENTION');
-        this.status.message.set(
-          'Não foi possível sincronizar agora. Suas compras locais foram preservadas.',
-        );
-      });
-    };
-    const unsubscribe = this.db.onLocalWrite(() => {
-      this.status.lastSyncedAt.set(null);
-      run();
-    });
-    const timer = setInterval(run, 2000);
-    window.addEventListener('online', run);
-    this.destroy.onDestroy(() => {
-      unsubscribe();
-      clearInterval(timer);
-      window.removeEventListener('online', run);
-    });
-    run();
+    this.scheduler.start(
+      async () => {
+        try {
+          await this.run();
+        } catch {
+          this.state.set('ATTENTION');
+          this.status.message.set(
+            'Não foi possível sincronizar agora. Suas compras locais foram preservadas.',
+          );
+        }
+      },
+      () => this.state(),
+    );
   }
+
+  private canContinue(): boolean {
+    if (!this.started || this.scheduler.foreground()) return true;
+    this.state.set('PAUSED');
+    return false;
+  }
+
   run(): Promise<void> {
     if (this.pending) return this.pending;
     this.pending = this.process().finally(() => {
@@ -58,6 +64,7 @@ export class SyncProcessorService {
       this.state.set('DISABLED');
       return;
     }
+    if (!this.canContinue()) return;
     if (!navigator.onLine) {
       this.status.message.set('Sem conexão. Suas compras serão enviadas quando a conexão voltar.');
       this.state.set('OFFLINE');
@@ -76,7 +83,12 @@ export class SyncProcessorService {
     }
     await this.queue.recover();
     for (let count = 0; count < 100; count++) {
+      if (!this.canContinue()) return;
       const entry = await this.queue.claim();
+      if (!this.canContinue()) {
+        if (entry) await this.queue.releaseUnsent(entry);
+        return;
+      }
       if (!entry) {
         const failed = await this.db.query(
           "SELECT id FROM sync_queue WHERE status = 'FAILED' LIMIT 1",
@@ -93,7 +105,9 @@ export class SyncProcessorService {
             return;
           }
           try {
-            if (!(await this.pull.run())) {
+            if (!this.canContinue()) return;
+            if (!(await this.pull.run(() => this.canContinue()))) {
+              if (!this.canContinue()) return;
               this.status.lastSyncedAt.set(null);
               this.status.message.set(
                 'Recebendo alterações do servidor. Suas compras locais estão preservadas.',
@@ -144,30 +158,45 @@ export class SyncProcessorService {
       this.state.set('SYNCING');
       try {
         const request = await this.request(entry);
-        const result = await this.transport.push(request);
+        if (!this.canContinue()) {
+          await this.queue.releaseUnsent(entry);
+          return;
+        }
+        const result = await this.transport.push(request, () => this.canContinue());
         if (result.status === 'APPLIED' || result.status === 'ALREADY_APPLIED') {
           await this.queue.applied(entry, Date.now(), {
             key: `remote_version:${entry.aggregate_type === 'SHOPPING_ITEM' ? 'SHOPPING_SESSION' : entry.aggregate_type}:${result.state!.snapshot.id}`,
             value: String(result.state!.snapshot.version),
           });
+          this.status.activityRevision.update((value) => value + 1);
         } else {
           if (result.status === 'CONFLICT') {
             await this.queue.conflict(entry, result.state);
             this.status.message.set(
               'Há alterações diferentes no servidor. A sincronização foi pausada sem substituir suas compras.',
             );
-          } else await this.queue.failed(entry, false);
+          } else {
+            await this.queue.failed(entry, false);
+            this.status.message.set(
+              'A sincronização está pausada. Há uma operação que precisa de revisão; suas compras locais foram preservadas.',
+            );
+          }
           this.state.set('ATTENTION');
           return;
         }
       } catch (error) {
+        if (error instanceof SyncDispatchDeferred) {
+          await this.queue.releaseUnsent(entry);
+          if (this.canContinue()) this.state.set('SYNCING');
+          return;
+        }
         // Unknown failures (identity/storage/network) retain the operation for recovery.
-        await this.queue.failed(
-          entry,
-          error instanceof SyncTransportError ? error.transient : true,
-        );
+        const transient = error instanceof SyncTransportError ? error.transient : true;
+        await this.queue.failed(entry, transient);
         this.status.message.set(
-          'Envio pendente. Suas compras estão salvas e a conexão será tentada novamente.',
+          transient
+            ? 'Envio pendente. Suas compras estão salvas e a conexão será tentada novamente.'
+            : 'A sincronização está pausada. Há uma operação que precisa de revisão; suas compras locais foram preservadas.',
         );
         this.state.set('ATTENTION');
         return;

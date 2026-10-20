@@ -5,6 +5,7 @@ import { RemoteImportConflict } from '../database/remote-import-conflict';
 import { DatabaseService } from '../database/database.service';
 import { API_BASE_URL } from '../api/api-endpoint';
 import { SyncProcessorService } from './sync-processor.service';
+import { SyncSchedulerService } from './sync-scheduler.service';
 import { SyncStatusService } from './sync-status.service';
 import { SyncPullService } from './sync-pull.service';
 import { ShoppingSessionStore } from '../../features/shopping/services/shopping-session.store';
@@ -23,6 +24,7 @@ describe('sync processor', () => {
     attempt_count: number;
   };
   let claim: ReturnType<typeof vi.fn>;
+  let releaseUnsent: ReturnType<typeof vi.fn>;
   let applied: ReturnType<typeof vi.fn>;
   let failed: ReturnType<typeof vi.fn>;
   let push: ReturnType<typeof vi.fn>;
@@ -49,6 +51,7 @@ describe('sync processor', () => {
       attempt_count: 1,
     };
     claim = vi.fn().mockResolvedValueOnce(entry).mockResolvedValue(null);
+    releaseUnsent = vi.fn().mockResolvedValue(undefined);
     applied = vi.fn().mockResolvedValue(undefined);
     failed = vi.fn().mockResolvedValue(undefined);
     push = vi.fn().mockResolvedValue({
@@ -67,7 +70,7 @@ describe('sync processor', () => {
         { provide: API_BASE_URL, useValue: 'https://api.example.com/api/v1' },
         {
           provide: SyncQueueService,
-          useValue: { claim, applied, failed, conflict: failed, recover: vi.fn() },
+          useValue: { claim, releaseUnsent, applied, failed, conflict: failed, recover: vi.fn() },
         },
         { provide: SyncTransportService, useValue: { push } },
         {
@@ -192,4 +195,72 @@ describe('sync processor', () => {
     expect(service.state()).toBe('READY');
     expect(TestBed.inject(SyncStatusService).lastSyncedAt()).not.toBeNull();
   });
+  it('finishes the in-flight acknowledgment but stops the batch when the app goes to background', async () => {
+    const outcome = {
+      operationId: 'op',
+      status: 'APPLIED',
+      state: {
+        aggregateType: 'SHOPPING_ITEM',
+        aggregateId: 'item',
+        snapshot: { id: 'session', version: 4 },
+      },
+    };
+    let foreground = true;
+    const scheduler = TestBed.inject(SyncSchedulerService);
+    vi.spyOn(scheduler, 'start').mockImplementation(() => undefined);
+    vi.spyOn(scheduler, 'foreground').mockImplementation(() => foreground);
+    push.mockImplementation(async () => {
+      foreground = false;
+      return outcome;
+    });
+    service.start();
+    await service.run();
+    expect(service.state()).toBe('PAUSED');
+    expect(claim).toHaveBeenCalledTimes(1);
+    expect(applied).toHaveBeenCalledTimes(1);
+    expect(TestBed.inject(SyncPullService).run).not.toHaveBeenCalled();
+    foreground = true;
+    await service.run();
+    expect(service.state()).toBe('READY');
+    expect(push).toHaveBeenCalledTimes(1);
+  });
+  it.each(['REJECTED', 'PERMANENT_HTTP'])(
+    'immediately explains %s before the scheduler pauses automatic attempts',
+    async (failure) => {
+      if (failure === 'REJECTED')
+        push.mockResolvedValueOnce({ operationId: 'op', status: 'REJECTED' });
+      else push.mockRejectedValueOnce(new SyncTransportError(false));
+      await service.run();
+      expect(failed).toHaveBeenCalledWith(entry, false);
+      expect(service.state()).toBe('ATTENTION');
+      expect(TestBed.inject(SyncStatusService).message()).toContain('revisão');
+    },
+  );
+  it.each(['claim', 'request'])(
+    'releases an unsent reservation if backgrounding happens during %s preparation',
+    async (phase) => {
+      let foreground = true;
+      const scheduler = TestBed.inject(SyncSchedulerService);
+      vi.spyOn(scheduler, 'start').mockImplementation(() => undefined);
+      vi.spyOn(scheduler, 'foreground').mockImplementation(() => foreground);
+      if (phase === 'claim')
+        claim.mockReset().mockImplementationOnce(async () => {
+          foreground = false;
+          return entry;
+        });
+      else
+        vi.mocked(TestBed.inject(DatabaseService).transaction).mockImplementationOnce(
+          async (statements) => {
+            entry.request_json = statements[0].values![0] as string;
+            foreground = false;
+          },
+        );
+      service.start();
+      await service.run();
+      expect(service.state()).toBe('PAUSED');
+      expect(releaseUnsent).toHaveBeenCalledWith(entry);
+      expect(push).not.toHaveBeenCalled();
+      expect(failed).not.toHaveBeenCalled();
+    },
+  );
 });

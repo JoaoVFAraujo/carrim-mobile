@@ -42,6 +42,18 @@ export class SyncQueueService {
     return rows[0] ?? null;
   }
 
+  /** Only for a dispatch deferred before sending; keep its frozen request and operation ID. */
+  async releaseUnsent(entry: QueuedOperation, now = Date.now()): Promise<void> {
+    await this.database.transaction([
+      {
+        statement: `UPDATE sync_queue SET status='PENDING',attempt_count=MAX(attempt_count-1,0),
+        processing_started_at_ms=NULL,lease_token=NULL,updated_at_ms=?
+        WHERE id=? AND status='SYNCING' AND lease_token=?`,
+        values: [now, entry.id, entry.lease_token],
+      },
+    ]);
+  }
+
   async applied(
     entry: QueuedOperation,
     now = Date.now(),

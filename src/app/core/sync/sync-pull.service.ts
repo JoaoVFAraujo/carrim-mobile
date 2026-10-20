@@ -1,13 +1,15 @@
 import { Injectable, inject } from '@angular/core';
+import { SyncStatusService } from './sync-status.service';
 import { DatabaseService } from '../database/database.service';
-import { SyncTransportService } from './sync-transport.service';
+import { SyncTransportService, SyncDispatchDeferred } from './sync-transport.service';
 import { snapshotStatements, RemoteImportConflict } from './remote-snapshot';
 
 @Injectable({ providedIn: 'root' })
 export class SyncPullService {
+  private readonly status = inject(SyncStatusService);
   private readonly db = inject(DatabaseService);
   private readonly transport = inject(SyncTransportService);
-  async run(): Promise<boolean> {
+  async run(shouldContinue: () => boolean = () => true): Promise<boolean> {
     // Do not apply server state over any local pending edit.
     const pending = await this.db.query("SELECT id FROM sync_queue WHERE status!='SYNCED' LIMIT 1");
     if (pending.length) return false;
@@ -17,7 +19,14 @@ export class SyncPullService {
     );
     let cursor = cursors[0]?.value;
     for (let count = 0; count < 20; count++) {
-      const page = await this.transport.pull(cursor);
+      if (!shouldContinue()) return false;
+      let page;
+      try {
+        page = await this.transport.pull(cursor, shouldContinue);
+      } catch (error) {
+        if (error instanceof SyncDispatchDeferred) return false;
+        throw error;
+      }
       // Stage pages first: a session's latest snapshot may reference catalog entries
       // whose journal events occur on later pages. Import dependencies together only
       // after reaching the current head, including after an interrupted bootstrap.
@@ -75,6 +84,7 @@ export class SyncPullService {
             values: ['0', 'sync_import_pending'],
           });
           if (!(await this.db.applyRemotePage(imports, cursor))) return false;
+          this.status.activityRevision.update((value) => value + 1);
         }
         return true;
       }
