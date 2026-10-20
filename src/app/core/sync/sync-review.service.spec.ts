@@ -144,4 +144,17 @@ describe('explicit conflict review in real SQLite', () => {
     ).toHaveLength(1);
     sql.close();
   });
+  it('notifies the scheduler after a confirmed conflict replaces FAILED with a new pending command', async () => {
+    const { review, database, query, row, sql } = await setup();
+    const wake = vi.fn();
+    const release = database.onLocalWrite(wake);
+    await review.load();
+    expect(wake).not.toHaveBeenCalled();
+    await review.confirm();
+    expect(wake).toHaveBeenCalledTimes(1);
+    const [pending] = query("SELECT id,status FROM sync_queue WHERE status='PENDING'").values;
+    expect(pending['id']).not.toBe(row['id']);
+    release();
+    sql.close();
+  });
 });

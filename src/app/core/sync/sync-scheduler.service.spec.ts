@@ -322,4 +322,26 @@ describe('foreground adaptive sync scheduling', () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1);
     expect(vi.getTimerCount()).toBe(0);
   });
+  it('does not spin on a pending queue when a remote import is paused', async () => {
+    paused = true;
+    state = 'ATTENTION';
+    head = { status: 'PENDING', next_attempt_at_ms: null };
+    start();
+    await flush();
+    await vi.advanceTimersByTimeAsync(60000);
+    expect(cycle).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('wakes a previously failed queue immediately after an approved review notification', async () => {
+    head = { status: 'FAILED', next_attempt_at_ms: null };
+    state = 'ATTENTION';
+    start();
+    await flush();
+    expect(vi.getTimerCount()).toBe(0);
+    head = { status: 'PENDING', next_attempt_at_ms: null };
+    state = 'SYNCING';
+    write();
+    await flush();
+    expect(cycle).toHaveBeenCalledTimes(2);
+  });
 });

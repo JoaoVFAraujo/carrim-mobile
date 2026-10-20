@@ -34,8 +34,11 @@ export class DatabaseService implements OnDestroy {
     return () => this.localWriteListeners.delete(listener);
   }
 
-  private notifyLocalWrite(statements: capSQLiteSet[]): void {
-    if (statements.some((st) => /\bINSERT\s+INTO\s+sync_queue\b/i.test(st.statement ?? '')))
+  private notifyLocalWrite(statements: capSQLiteSet[], outboxChanged = false): void {
+    if (
+      outboxChanged ||
+      statements.some((st) => /\bINSERT\s+INTO\s+sync_queue\b/i.test(st.statement ?? ''))
+    )
       this.localWriteListeners.forEach((listener) => listener());
   }
 
@@ -177,6 +180,7 @@ export class DatabaseService implements OnDestroy {
   async checkedTransaction(
     checks: { statement: string; values: (string | number | null)[]; expected: unknown[] }[],
     statements: capSQLiteSet[],
+    outboxChanged = false,
   ): Promise<void> {
     await this.serial(async () => {
       await this.open();
@@ -188,7 +192,7 @@ export class DatabaseService implements OnDestroy {
       await this.database!.executeSet(statements, true);
       if (!Capacitor.isNativePlatform()) await this.connection!.saveToStore('carrim');
     });
-    this.notifyLocalWrite(statements);
+    this.notifyLocalWrite(statements, outboxChanged);
   }
 
   private serial<T>(work: () => Promise<T>): Promise<T> {

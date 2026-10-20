@@ -163,6 +163,11 @@ export class SyncSchedulerService {
 
   private async nextDelay(changed: boolean): Promise<number | null> {
     if (!navigator.onLine) return null;
+    const paused = await this.db.query<{ value: string }>(
+      'SELECT value FROM app_metadata WHERE key=?',
+      ['sync_pull_paused'],
+    );
+    if (paused[0]?.value === '1') return null;
     const [head] = await this.db.query<{
       status: string;
       next_attempt_at_ms: number | null;
@@ -179,13 +184,7 @@ export class SyncSchedulerService {
         1000,
         (head.processing_started_at_ms ?? head.updated_at_ms) + 120_000 - Date.now(),
       );
-    if (this.state!() === 'ATTENTION') {
-      const paused = await this.db.query<{ value: string }>(
-        'SELECT value FROM app_metadata WHERE key=?',
-        ['sync_pull_paused'],
-      );
-      return paused[0]?.value === '1' ? null : this.backoff();
-    }
+    if (this.state!() === 'ATTENTION') return this.backoff();
     if (this.state!() === 'SYNCING') return 1000;
     if (this.state!() !== 'READY') return null;
     this.failureIndex = 0;

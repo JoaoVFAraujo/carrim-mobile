@@ -178,27 +178,31 @@ export class SyncReviewService {
       operationId: newId,
       baseVersion: review.remote.snapshot.version,
     };
-    await this.db.checkedTransaction(review.checks, [
-      {
-        statement: 'INSERT INTO app_metadata(key,value) VALUES (?,?)',
-        values: [
-          `sync_review:${now}:${newId}`,
-          JSON.stringify({
-            createdAt: now,
-            local: review.view.local,
-            remote: review.view.remote,
-            original: review.entry,
-            observations: review.checks,
-            server: review.remote,
-            replacement,
-          }),
-        ],
-      },
-      {
-        statement: `UPDATE sync_queue SET id=?,status='PENDING',attempt_count=0,next_attempt_at_ms=NULL,processing_started_at_ms=NULL,lease_token=NULL,last_error=NULL,request_json=?,updated_at_ms=? WHERE id=? AND status='FAILED' AND last_error='CONFLICT'`,
-        values: [newId, JSON.stringify(replacement), now, review.entry.id],
-      },
-    ]);
+    await this.db.checkedTransaction(
+      review.checks,
+      [
+        {
+          statement: 'INSERT INTO app_metadata(key,value) VALUES (?,?)',
+          values: [
+            `sync_review:${now}:${newId}`,
+            JSON.stringify({
+              createdAt: now,
+              local: review.view.local,
+              remote: review.view.remote,
+              original: review.entry,
+              observations: review.checks,
+              server: review.remote,
+              replacement,
+            }),
+          ],
+        },
+        {
+          statement: `UPDATE sync_queue SET id=?,status='PENDING',attempt_count=0,next_attempt_at_ms=NULL,processing_started_at_ms=NULL,lease_token=NULL,last_error=NULL,request_json=?,updated_at_ms=? WHERE id=? AND status='FAILED' AND last_error='CONFLICT'`,
+          values: [newId, JSON.stringify(replacement), now, review.entry.id],
+        },
+      ],
+      true,
+    ); // Wake the worker only after the approved replacement is committed.
     this.pending = undefined;
     this.view.set(null);
     this.status.message.set(
