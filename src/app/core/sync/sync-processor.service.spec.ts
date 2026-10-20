@@ -24,6 +24,7 @@ describe('sync processor', () => {
     attempt_count: number;
   };
   let claim: ReturnType<typeof vi.fn>;
+  let releaseUnsent: ReturnType<typeof vi.fn>;
   let applied: ReturnType<typeof vi.fn>;
   let failed: ReturnType<typeof vi.fn>;
   let push: ReturnType<typeof vi.fn>;
@@ -50,6 +51,7 @@ describe('sync processor', () => {
       attempt_count: 1,
     };
     claim = vi.fn().mockResolvedValueOnce(entry).mockResolvedValue(null);
+    releaseUnsent = vi.fn().mockResolvedValue(undefined);
     applied = vi.fn().mockResolvedValue(undefined);
     failed = vi.fn().mockResolvedValue(undefined);
     push = vi.fn().mockResolvedValue({
@@ -68,7 +70,7 @@ describe('sync processor', () => {
         { provide: API_BASE_URL, useValue: 'https://api.example.com/api/v1' },
         {
           provide: SyncQueueService,
-          useValue: { claim, applied, failed, conflict: failed, recover: vi.fn() },
+          useValue: { claim, releaseUnsent, applied, failed, conflict: failed, recover: vi.fn() },
         },
         { provide: SyncTransportService, useValue: { push } },
         {
@@ -232,6 +234,33 @@ describe('sync processor', () => {
       expect(failed).toHaveBeenCalledWith(entry, false);
       expect(service.state()).toBe('ATTENTION');
       expect(TestBed.inject(SyncStatusService).message()).toContain('revisão');
+    },
+  );
+  it.each(['claim', 'request'])(
+    'releases an unsent reservation if backgrounding happens during %s preparation',
+    async (phase) => {
+      let foreground = true;
+      const scheduler = TestBed.inject(SyncSchedulerService);
+      vi.spyOn(scheduler, 'start').mockImplementation(() => undefined);
+      vi.spyOn(scheduler, 'foreground').mockImplementation(() => foreground);
+      if (phase === 'claim')
+        claim.mockReset().mockImplementationOnce(async () => {
+          foreground = false;
+          return entry;
+        });
+      else
+        vi.mocked(TestBed.inject(DatabaseService).transaction).mockImplementationOnce(
+          async (statements) => {
+            entry.request_json = statements[0].values![0] as string;
+            foreground = false;
+          },
+        );
+      service.start();
+      await service.run();
+      expect(service.state()).toBe('PAUSED');
+      expect(releaseUnsent).toHaveBeenCalledWith(entry);
+      expect(push).not.toHaveBeenCalled();
+      expect(failed).not.toHaveBeenCalled();
     },
   );
 });

@@ -293,8 +293,17 @@ const queueSource = await readFile(
 const queueStatements = [...queueSource.matchAll(/statement:\s*`([^`]+)`/g)]
   .map((x) => x[1])
   .filter((sql) => sql.startsWith('UPDATE sync_queue') && !sql.includes("last_error='CONFLICT'"));
-assert.equal(queueStatements.length, 4);
-const [claimSql, appliedSql, failedSql, recoverSql] = queueStatements;
+assert.equal(queueStatements.length, 5);
+const claimSql = queueStatements.find((sql) =>
+  /attempt_count\s*=\s*attempt_count\s*\+\s*1/.test(sql),
+);
+const releaseSql = queueStatements.find((sql) => sql.includes('MAX(attempt_count-1,0)'));
+const appliedSql = queueStatements.find((sql) => sql.includes("status = 'SYNCED'"));
+const failedSql = queueStatements.find((sql) => sql.includes('last_error = ?'));
+const recoverSql = queueStatements.find((sql) =>
+  sql.includes('COALESCE(processing_started_at_ms, updated_at_ms)'),
+);
+assert.ok(claimSql && releaseSql && appliedSql && failedSql && recoverSql);
 for (const [id, sequence] of [
   ['first', 1],
   ['second', 2],
@@ -329,13 +338,23 @@ assert.equal(scalar("SELECT status FROM sync_queue WHERE id = 'first'"), 'SYNCIN
 db.run(appliedSql, [122102, 'first', 'lease-3']);
 db.run(claimSql, [122103, 122103, 'lease-4', 122103]);
 assert.equal(scalar("SELECT lease_token FROM sync_queue WHERE id = 'second'"), 'lease-4');
-db.run(failedSql, ['FAILED', 122104, null, 'PERMANENT', 'second', 'lease-4']);
+
+const frozenRequest = JSON.stringify({ operationId: 'second', payload: { name: 'Preserved' } });
+db.run('UPDATE sync_queue SET request_json=? WHERE id=?', [frozenRequest, 'second']);
+db.run(releaseSql, [122103, 'second', 'lease-4']);
+assert.equal(scalar("SELECT status FROM sync_queue WHERE id = 'second'"), 'PENDING');
+assert.equal(scalar("SELECT attempt_count FROM sync_queue WHERE id = 'second'"), 0);
+db.run(claimSql, [122103, 122103, 'lease-4b', 122103]);
+assert.equal(scalar("SELECT request_json FROM sync_queue WHERE id = 'second'"), frozenRequest);
+db.run(releaseSql, [122103, 'second', 'lease-4']);
+assert.equal(scalar("SELECT lease_token FROM sync_queue WHERE id = 'second'"), 'lease-4b');
+db.run(failedSql, ['FAILED', 122104, null, 'PERMANENT', 'second', 'lease-4b']);
 db.run(claimSql, [999999, 999999, 'no-retry', 999999]);
 assert.equal(scalar("SELECT status FROM sync_queue WHERE id = 'second'"), 'FAILED');
 assert.equal(scalar('SELECT id FROM sync_queue WHERE sequence_number = 1'), 'first');
 db.close();
 console.log(
-  'Sync queue verified: migration preservation, atomic claims, ordering, persisted retries/restart, stale recovery, lease isolation, permanent failure.',
+  'Sync queue verified: migration preservation, atomic claims, ordering, persisted retries/restart, stale recovery, lease isolation, unsent reservation release, permanent failure.',
 );
 // Import current remote snapshots into a fresh local database, without generating outbox operations.
 db = new SQL.Database();

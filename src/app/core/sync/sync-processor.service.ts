@@ -7,7 +7,12 @@ import { SyncStatusService } from './sync-status.service';
 import { SyncPullService } from './sync-pull.service';
 import { ShoppingSessionStore } from '../../features/shopping/services/shopping-session.store';
 import { QueuedOperation, SyncQueueService } from './sync-queue.service';
-import { SyncRequest, SyncTransportService, SyncTransportError } from './sync-transport.service';
+import {
+  SyncRequest,
+  SyncTransportService,
+  SyncTransportError,
+  SyncDispatchDeferred,
+} from './sync-transport.service';
 
 @Injectable({ providedIn: 'root' })
 export class SyncProcessorService {
@@ -80,6 +85,10 @@ export class SyncProcessorService {
     for (let count = 0; count < 100; count++) {
       if (!this.canContinue()) return;
       const entry = await this.queue.claim();
+      if (!this.canContinue()) {
+        if (entry) await this.queue.releaseUnsent(entry);
+        return;
+      }
       if (!entry) {
         const failed = await this.db.query(
           "SELECT id FROM sync_queue WHERE status = 'FAILED' LIMIT 1",
@@ -149,7 +158,11 @@ export class SyncProcessorService {
       this.state.set('SYNCING');
       try {
         const request = await this.request(entry);
-        const result = await this.transport.push(request);
+        if (!this.canContinue()) {
+          await this.queue.releaseUnsent(entry);
+          return;
+        }
+        const result = await this.transport.push(request, () => this.canContinue());
         if (result.status === 'APPLIED' || result.status === 'ALREADY_APPLIED') {
           await this.queue.applied(entry, Date.now(), {
             key: `remote_version:${entry.aggregate_type === 'SHOPPING_ITEM' ? 'SHOPPING_SESSION' : entry.aggregate_type}:${result.state!.snapshot.id}`,
@@ -172,6 +185,11 @@ export class SyncProcessorService {
           return;
         }
       } catch (error) {
+        if (error instanceof SyncDispatchDeferred) {
+          await this.queue.releaseUnsent(entry);
+          if (this.canContinue()) this.state.set('SYNCING');
+          return;
+        }
         // Unknown failures (identity/storage/network) retain the operation for recovery.
         const transient = error instanceof SyncTransportError ? error.transient : true;
         await this.queue.failed(entry, transient);

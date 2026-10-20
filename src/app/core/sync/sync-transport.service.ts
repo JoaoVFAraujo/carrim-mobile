@@ -29,6 +29,13 @@ export class SyncTransportError extends Error {
   }
 }
 
+/** No business request was dispatched in this attempt; foreground processing may resume it. */
+export class SyncDispatchDeferred extends Error {
+  constructor() {
+    super('Sincronização adiada enquanto o app está em segundo plano.');
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class SyncTransportService {
   private readonly base = inject(API_BASE_URL);
@@ -73,10 +80,13 @@ export class SyncTransportService {
   }
   async pull(
     cursor?: string,
+    shouldContinue: () => boolean = () => true,
   ): Promise<{ changes: RemoteSnapshot[]; cursor: string; hasMore: boolean }> {
     const url = apiEndpoint(this.base, '/sync/pull');
+    if (!shouldContinue()) throw new SyncDispatchDeferred();
     let token = await this.identity.accessToken();
     for (let attempt = 0; attempt < 2; attempt++) {
+      if (!shouldContinue()) throw new SyncDispatchDeferred();
       try {
         const page = await firstValueFrom(
           this.http.get<{ changes: RemoteSnapshot[]; cursor: string; hasMore: boolean }>(url, {
@@ -100,6 +110,7 @@ export class SyncTransportService {
         return page;
       } catch (error) {
         if (error instanceof HttpErrorResponse && error.status === 401 && attempt === 0) {
+          if (!shouldContinue()) throw new SyncDispatchDeferred();
           token = await this.identity.accessToken(token);
           continue;
         }
@@ -108,10 +119,15 @@ export class SyncTransportService {
     }
     throw new SyncTransportError(true);
   }
-  async push(request: SyncRequest): Promise<SyncOutcome> {
+  async push(
+    request: SyncRequest,
+    shouldContinue: () => boolean = () => true,
+  ): Promise<SyncOutcome> {
     const url = apiEndpoint(this.base, '/sync/push');
+    if (!shouldContinue()) throw new SyncDispatchDeferred();
     let token = await this.identity.accessToken();
     for (let attempt = 0; attempt < 2; attempt++) {
+      if (!shouldContinue()) throw new SyncDispatchDeferred();
       try {
         const values = await firstValueFrom(
           this.http.post<SyncOutcome[]>(
@@ -150,6 +166,7 @@ export class SyncTransportService {
         return result;
       } catch (error) {
         if (error instanceof HttpErrorResponse && error.status === 401 && attempt === 0) {
+          if (!shouldContinue()) throw new SyncDispatchDeferred();
           token = await this.identity.accessToken(token);
           continue;
         }

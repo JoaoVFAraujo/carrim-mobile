@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SyncStatusService } from './sync-status.service';
 import { DatabaseService } from '../database/database.service';
-import { SyncTransportService } from './sync-transport.service';
+import { SyncTransportService, SyncDispatchDeferred } from './sync-transport.service';
 import { snapshotStatements, RemoteImportConflict } from './remote-snapshot';
 
 @Injectable({ providedIn: 'root' })
@@ -20,7 +20,13 @@ export class SyncPullService {
     let cursor = cursors[0]?.value;
     for (let count = 0; count < 20; count++) {
       if (!shouldContinue()) return false;
-      const page = await this.transport.pull(cursor);
+      let page;
+      try {
+        page = await this.transport.pull(cursor, shouldContinue);
+      } catch (error) {
+        if (error instanceof SyncDispatchDeferred) return false;
+        throw error;
+      }
       // Stage pages first: a session's latest snapshot may reference catalog entries
       // whose journal events occur on later pages. Import dependencies together only
       // after reaching the current head, including after an interrupted bootstrap.

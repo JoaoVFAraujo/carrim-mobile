@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { DatabaseService } from '../database/database.service';
 import { SyncPullService } from './sync-pull.service';
-import { SyncTransportService } from './sync-transport.service';
+import { SyncTransportService, SyncDispatchDeferred } from './sync-transport.service';
 
 describe('sync pull reconciliation', () => {
   let pull: ReturnType<typeof vi.fn>;
@@ -36,7 +36,7 @@ describe('sync pull reconciliation', () => {
     query.mockResolvedValueOnce([]).mockResolvedValueOnce([{ value: 'old' }]);
     pull.mockResolvedValueOnce({ changes: [], cursor: 'page-one', hasMore: true });
     await TestBed.inject(SyncPullService).run();
-    expect(pull.mock.calls).toEqual([['old'], ['page-one']]);
+    expect(pull.mock.calls.map((call) => call[0])).toEqual(['old', 'page-one']);
     expect(apply.mock.calls).toEqual([
       [[], 'page-one'],
       [[], 'next'],
@@ -101,5 +101,10 @@ describe('sync pull reconciliation', () => {
     expect(await TestBed.inject(SyncPullService).run(() => foreground)).toBe(false);
     expect(pull).toHaveBeenCalledTimes(1);
     expect(apply).toHaveBeenCalledWith([], 'page-one');
+  });
+  it('keeps the import incomplete when HTTP dispatch is deferred during authentication', async () => {
+    pull.mockRejectedValueOnce(new SyncDispatchDeferred());
+    expect(await TestBed.inject(SyncPullService).run()).toBe(false);
+    expect(apply).not.toHaveBeenCalled();
   });
 });
