@@ -92,4 +92,14 @@ describe('sync pull reconciliation', () => {
     expect(await TestBed.inject(SyncPullService).run()).toBe(false);
     expect(apply).toHaveBeenCalledTimes(2);
   });
+  it('stages the in-flight page and defers later HTTP pages after backgrounding', async () => {
+    let foreground = true;
+    pull.mockImplementationOnce(async () => {
+      foreground = false;
+      return { changes: [], cursor: 'page-one', hasMore: true };
+    });
+    expect(await TestBed.inject(SyncPullService).run(() => foreground)).toBe(false);
+    expect(pull).toHaveBeenCalledTimes(1);
+    expect(apply).toHaveBeenCalledWith([], 'page-one');
+  });
 });

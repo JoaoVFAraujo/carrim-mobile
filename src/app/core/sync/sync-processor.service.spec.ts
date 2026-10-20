@@ -5,6 +5,7 @@ import { RemoteImportConflict } from '../database/remote-import-conflict';
 import { DatabaseService } from '../database/database.service';
 import { API_BASE_URL } from '../api/api-endpoint';
 import { SyncProcessorService } from './sync-processor.service';
+import { SyncSchedulerService } from './sync-scheduler.service';
 import { SyncStatusService } from './sync-status.service';
 import { SyncPullService } from './sync-pull.service';
 import { ShoppingSessionStore } from '../../features/shopping/services/shopping-session.store';
@@ -192,4 +193,45 @@ describe('sync processor', () => {
     expect(service.state()).toBe('READY');
     expect(TestBed.inject(SyncStatusService).lastSyncedAt()).not.toBeNull();
   });
+  it('finishes the in-flight acknowledgment but stops the batch when the app goes to background', async () => {
+    const outcome = {
+      operationId: 'op',
+      status: 'APPLIED',
+      state: {
+        aggregateType: 'SHOPPING_ITEM',
+        aggregateId: 'item',
+        snapshot: { id: 'session', version: 4 },
+      },
+    };
+    let foreground = true;
+    const scheduler = TestBed.inject(SyncSchedulerService);
+    vi.spyOn(scheduler, 'start').mockImplementation(() => undefined);
+    vi.spyOn(scheduler, 'foreground').mockImplementation(() => foreground);
+    push.mockImplementation(async () => {
+      foreground = false;
+      return outcome;
+    });
+    service.start();
+    await service.run();
+    expect(service.state()).toBe('PAUSED');
+    expect(claim).toHaveBeenCalledTimes(1);
+    expect(applied).toHaveBeenCalledTimes(1);
+    expect(TestBed.inject(SyncPullService).run).not.toHaveBeenCalled();
+    foreground = true;
+    await service.run();
+    expect(service.state()).toBe('READY');
+    expect(push).toHaveBeenCalledTimes(1);
+  });
+  it.each(['REJECTED', 'PERMANENT_HTTP'])(
+    'immediately explains %s before the scheduler pauses automatic attempts',
+    async (failure) => {
+      if (failure === 'REJECTED')
+        push.mockResolvedValueOnce({ operationId: 'op', status: 'REJECTED' });
+      else push.mockRejectedValueOnce(new SyncTransportError(false));
+      await service.run();
+      expect(failed).toHaveBeenCalledWith(entry, false);
+      expect(service.state()).toBe('ATTENTION');
+      expect(TestBed.inject(SyncStatusService).message()).toContain('revisão');
+    },
+  );
 });
