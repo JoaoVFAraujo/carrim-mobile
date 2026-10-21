@@ -16,6 +16,7 @@ import { bundleItemsSchema } from './migrations/007-bundle-items';
 import { checkoutTotalSchema } from './migrations/008-checkout-total';
 import { syncRetrySchema } from './migrations/009-sync-retry';
 import { syncRequestSchema } from './migrations/010-sync-request';
+import { productPhotosSchema } from './migrations/011-product-photos';
 
 export class LocalDatabaseInUse extends Error {
   constructor() {
@@ -305,8 +306,14 @@ export class DatabaseService implements OnDestroy {
         syncRequestSchema.map((statement) => ({ statement, values: [] })),
         true,
       );
-    } else if (version !== 10) {
+    } else if (version !== 10 && version !== 11) {
       throw new Error('Versão do banco não suportada.');
+    }
+    if ([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(version)) {
+      await this.database.executeSet(
+        productPhotosSchema.map((statement) => ({ statement, values: [] })),
+        true,
+      );
     }
     await this.database.run('INSERT OR IGNORE INTO app_metadata(key, value) VALUES (?, ?)', [
       'installation_id',

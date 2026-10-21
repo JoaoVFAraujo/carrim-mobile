@@ -31,10 +31,18 @@ import { ProductCatalogService } from '../services/product-catalog.service';
 import { CatalogLookupService, CatalogSuggestion } from '../services/catalog-lookup.service';
 import { LastProductPrice, parseBarcode } from '../models/catalog-product';
 import { parseItemPrice, parseItemQuantity } from '../../shopping/models/shopping-item';
+import { ProductPhotoService } from '../../../core/photos/product-photo.service';
+import { ProductPhotoComponent } from '../../../shared/components/product-photo/product-photo.component';
+import {
+  PhotoEditorComponent,
+  type PhotoEdit,
+} from '../../../shared/components/photo-editor/photo-editor.component';
 
 @Component({
   selector: 'app-scanner',
   imports: [
+    ProductPhotoComponent,
+    PhotoEditorComponent,
     MaskitoDirective,
     IonContent,
     IonCard,
@@ -80,6 +88,13 @@ export class ScannerPage {
   readonly suggestion = signal<CatalogSuggestion | null>(null);
   readonly lookupNotice = signal('');
   readonly imageFailed = signal(false);
+  readonly photoEdit = signal<PhotoEdit | null>(null);
+  readonly photoPreparing = signal(false);
+  private readonly photos = inject(ProductPhotoService);
+  photoPreview(): string | null {
+    const edit = this.photoEdit();
+    return edit?.kind === 'SET' ? 'data:image/jpeg;base64,' + edit.photo.imageBase64 : null;
+  }
   code = '';
   productCode = '';
   name = '';
@@ -125,7 +140,13 @@ export class ScannerPage {
   }
 
   async scan(): Promise<void> {
-    if (!this.store.active() || this.scanner.busy() || this.loadingProduct() || this.modalOpen())
+    if (
+      !this.store.active() ||
+      this.saving() ||
+      this.scanner.busy() ||
+      this.loadingProduct() ||
+      this.modalOpen()
+    )
       return;
     this.error.set('');
     const request = this.request;
@@ -143,12 +164,21 @@ export class ScannerPage {
 
   async lookup(value = this.code): Promise<void> {
     const session = this.store.active();
-    if (!session || this.loadingProduct() || this.modalOpen() || this.scanner.busy()) return;
+    if (
+      !session ||
+      this.saving() ||
+      this.loadingProduct() ||
+      this.modalOpen() ||
+      this.scanner.busy()
+    )
+      return;
     const request = ++this.request;
     this.lookupAbort = new AbortController();
     this.pendingCode = '';
     this.error.set('');
     this.suggestion.set(null);
+    this.photoEdit.set(null);
+    this.photoPreparing.set(false);
     this.lookupNotice.set('');
     this.loadingProduct.set(true);
     try {
@@ -244,17 +274,24 @@ export class ScannerPage {
   }
 
   async save(): Promise<void> {
-    if (this.saving()) return;
+    if (this.saving() || this.photoPreparing()) return;
+    const form = {
+      sessionId: this.sessionId,
+      request: this.request,
+      code: this.productCode,
+      name: this.name,
+      price: this.price,
+      quantity: this.quantity,
+      photo: this.photoEdit(),
+      source: this.suggestion()?.source,
+    };
     this.saving.set(true);
     this.formError.set('');
     try {
-      const sessionId = this.sessionId;
+      const sessionId = form.sessionId;
       if (this.store.active()?.id !== sessionId)
         throw new Error('Comece uma compra antes de adicionar produtos.');
-      if (
-        this.suggestion()?.source === 'PERSONAL' &&
-        !(await this.catalog.find(this.productCode))
-      ) {
+      if (form.source === 'PERSONAL' && !(await this.catalog.find(form.code))) {
         this.formError.set(
           'Este produto já está no servidor. Aguarde a sincronização do catálogo antes de adicionar para evitar um cadastro duplicado.',
         );
@@ -263,14 +300,28 @@ export class ScannerPage {
       if (this.store.active()?.id !== sessionId)
         throw new Error('Comece uma compra antes de adicionar produtos.');
       await this.store.saveItem(
-        this.name,
-        parseItemPrice(this.price),
-        parseItemQuantity(this.quantity),
+        form.name,
+        parseItemPrice(form.price),
+        parseItemQuantity(form.quantity),
         undefined,
-        this.productCode,
+        form.code,
       );
-      this.modalOpen.set(false);
-      this.code = '';
+      const target = { barcode: form.code, itemId: null, name: form.name };
+      try {
+        const edit = form.photo;
+        if (edit?.kind === 'SET') await this.photos.save(edit.photo, target);
+        else if (edit?.kind === 'REMOVE') await this.photos.remove(target);
+        else if (edit?.kind === 'RESTORE') await this.photos.restoreCatalog(target);
+        else void this.photos.cacheCatalog(target).catch(() => undefined);
+      } catch {
+        this.error.set(
+          'Produto salvo. Não foi possível salvar a foto; tente novamente na edição do Carrinho.',
+        );
+      }
+      if (form.request === this.request) {
+        this.modalOpen.set(false);
+        this.code = '';
+      }
     } catch (error) {
       this.formError.set(
         error instanceof Error && /Informe|Comece/.test(error.message)

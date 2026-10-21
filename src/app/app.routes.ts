@@ -3,6 +3,11 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'tabs/home' },
   {
+    path: 'admin/fotos',
+    loadComponent: () =>
+      import('./features/photo-admin/pages/photo-admin.page').then((m) => m.PhotoAdminPage),
+  },
+  {
     path: 'tabs',
     loadComponent: () => import('./features/tabs/pages/tabs.page').then((m) => m.TabsPage),
     children: [

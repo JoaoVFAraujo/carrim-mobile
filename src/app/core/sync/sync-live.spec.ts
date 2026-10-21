@@ -26,7 +26,14 @@ import { bundleItemsSchema } from '../database/migrations/007-bundle-items';
 import { checkoutTotalSchema } from '../database/migrations/008-checkout-total';
 import { syncRetrySchema } from '../database/migrations/009-sync-retry';
 import { syncRequestSchema } from '../database/migrations/010-sync-request';
+import { productPhotosSchema } from '../database/migrations/011-product-photos';
 import { CatalogLookupService } from '../../features/scanner/services/catalog-lookup.service';
+import { ProductPhotoService } from '../photos/product-photo.service';
+import { SyncSchedulerService } from './sync-scheduler.service';
+
+// Tiny generated JPEG fixture; no external service or personal photo is used.
+const photoFixture =
+  '/9j/4AAQSkZJRgABAgAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAADAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD5/ooooA//2Q==';
 
 // Opt in against an isolated local API; the native plugins are replaced, not the
 // processor, mapping, ownership boundary, HTTP protocol or SQLite statements.
@@ -56,6 +63,7 @@ describe.skipIf(env['CARRIM_LIVE_SYNC'] !== '1')('live offline/online sync', () 
         checkoutTotalSchema,
         syncRetrySchema,
         syncRequestSchema,
+        productPhotosSchema,
       ])
         schema.forEach((sql) => local.run(sql));
       const query = (sql: string, values: unknown[] = []) => {
@@ -89,6 +97,7 @@ describe.skipIf(env['CARRIM_LIVE_SYNC'] !== '1')('live offline/online sync', () 
       });
       let vault: string | null = null;
       let loseResponse = true;
+      let losePhotoResponse = true;
       let cookie: string | undefined;
       let accessToken = '';
       let installationId = '';
@@ -109,8 +118,16 @@ describe.skipIf(env['CARRIM_LIVE_SYNC'] !== '1')('live offline/online sync', () 
               redirect: 'error',
             })
               .then(async (response) => {
-                const text = await response.text();
-                const body = text ? JSON.parse(text) : null;
+                let body;
+                if (req.responseType === 'blob') {
+                  const bytes = await response.arrayBuffer();
+                  body = new Blob([bytes], { type: response.headers.get('content-type') ?? '' });
+                  // jsdom's Blob lacks arrayBuffer; the native/browser transport is real HTTP.
+                  Object.defineProperty(body, 'arrayBuffer', { value: async () => bytes });
+                } else {
+                  const text = await response.text();
+                  body = text ? JSON.parse(text) : null;
+                }
                 const setCookie = response.headers.get('set-cookie');
                 if (setCookie) cookie = setCookie.split(';')[0];
                 if (body?.accessToken) {
@@ -119,6 +136,14 @@ describe.skipIf(env['CARRIM_LIVE_SYNC'] !== '1')('live offline/online sync', () 
                 }
                 if (loseResponse && req.url.endsWith('/sync/push')) {
                   loseResponse = false;
+                  throw new HttpErrorResponse({ status: 0 });
+                }
+                if (
+                  losePhotoResponse &&
+                  req.method === 'PUT' &&
+                  /^\/api\/v1\/products\/photos\/[a-f0-9-]+$/.test(req.url)
+                ) {
+                  losePhotoResponse = false;
                   throw new HttpErrorResponse({ status: 0 });
                 }
                 if (!response.ok)
@@ -150,12 +175,32 @@ describe.skipIf(env['CARRIM_LIVE_SYNC'] !== '1')('live offline/online sync', () 
       });
       const store = TestBed.inject(ShoppingSessionStore),
         processor = TestBed.inject(SyncProcessorService);
+      // Native lifecycle is a mocked plugin boundary; production still requires foreground.
+      vi.spyOn(TestBed.inject(SyncSchedulerService), 'foreground').mockReturnValue(true);
+      const photos = TestBed.inject(ProductPhotoService);
       await store.load();
       await store.create('', 'Offline ' + crypto.randomUUID(), 20000);
       const session = store.active()!.id;
       await store.saveItem('Rice', 799, 2, undefined, '0789600112233');
       await store.saveWeightItem('Coffee', 699, 824);
       await store.saveBundleItem('Promotion', 3, 1000, 6);
+      const productPhotoTarget = { barcode: '0789600112233', itemId: null, name: 'Rice' };
+      const manualPhotoTarget = {
+        barcode: null,
+        itemId: store.items().find((item) => item.name === 'Coffee')!.id,
+        name: 'Coffee',
+      };
+      const preparedPhoto = {
+        imageBase64: photoFixture,
+        contentType: 'image/jpeg' as const,
+        width: 2,
+        height: 3,
+      };
+      await photos.save(preparedPhoto, productPhotoTarget);
+      await photos.save(preparedPhoto, manualPhotoTarget);
+      await photos.flush();
+      expect(photos.pendingCount()).toBe(4);
+      expect((await photos.get(manualPhotoTarget))?.imageUrl).toContain(photoFixture);
       expect(store.totalCents()).toBe(4174);
       await store.complete(4200);
       await processor.run();
@@ -178,6 +223,52 @@ describe.skipIf(env['CARRIM_LIVE_SYNC'] !== '1')('live offline/online sync', () 
       ).toEqual([]);
       expect(processor.state()).toBe('READY');
       expect(query("SELECT id FROM sync_queue WHERE status!='SYNCED'").values).toHaveLength(0);
+      // These uploads occur only after the offline purchase is already completed remotely.
+      await photos.flush();
+      expect(
+        query('SELECT request_json FROM photo_outbox WHERE request_json IS NOT NULL').values.length,
+      ).toBeGreaterThan(0);
+      local.run('UPDATE photo_outbox SET next_attempt_at_ms=0');
+      await photos.flush();
+      expect(photos.pendingCount()).toBe(0);
+      const storedPhoto = (await photos.get(productPhotoTarget))!;
+      const storedManualPhoto = (await photos.get(manualPhotoTarget))!;
+      expect(storedPhoto.status).toBe('PENDING');
+      expect(storedManualPhoto.itemId).toBe(manualPhotoTarget.itemId);
+      expect(storedManualPhoto.barcode).toBeNull();
+      expect(storedManualPhoto.imageUrl).toMatch(/^data:image\/jpeg;base64,/);
+      const ownPhotos = await fetch(liveBase + '/api/v1/products/photos/mine', {
+        headers: { Authorization: 'Bearer ' + accessToken },
+      }).then((r) => r.json());
+      expect(ownPhotos).toHaveLength(2); // Response loss/replay never creates a second file.
+      const stranger = await fetch(liveBase + '/api/v1/auth/anonymous', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          installationId: crypto.randomUUID(),
+          installationSecret: 'A'.repeat(43),
+          devicePlatform: 'ANDROID',
+          appVersion: '0.0.2',
+        }),
+      }).then((r) => r.json());
+      const strangerHeaders = { Authorization: 'Bearer ' + stranger.accessToken };
+      expect(
+        (
+          await fetch(liveBase + '/api/v1/products/photos/' + storedPhoto.id + '/content', {
+            headers: strangerHeaders,
+          })
+        ).status,
+      ).toBe(404);
+      expect(
+        (
+          await fetch(liveBase + '/api/v1/products/photos/approved/' + productPhotoTarget.barcode, {
+            headers: strangerHeaders,
+          })
+        ).status,
+      ).toBe(404);
+      expect(
+        (await fetch(liveBase + '/api/v1/photo-admin/photos', { headers: strangerHeaders })).status,
+      ).toBe(401);
       const queueBeforeLookup = query('SELECT id FROM sync_queue').values;
       const productBeforeLookup = query('SELECT id, name FROM products').values;
       const suggestion = await TestBed.inject(CatalogLookupService).lookup(
@@ -336,6 +427,15 @@ describe.skipIf(env['CARRIM_LIVE_SYNC'] !== '1')('live offline/online sync', () 
       ).toHaveLength(1);
 
       expect(query("SELECT id FROM sync_queue WHERE status!='SYNCED'").values).toHaveLength(0);
+      await photos.remove(productPhotoTarget);
+      await photos.flush();
+      expect(photos.pendingCount()).toBe(0);
+      expect(await photos.get(productPhotoTarget)).toBeNull();
+      expect(await photos.hidden(productPhotoTarget)).toBe(true);
+      const removedPhoto = await fetch(liveBase + '/api/v1/products/photos/' + storedPhoto.id, {
+        headers: { Authorization: 'Bearer ' + accessToken },
+      }).then((r) => r.json());
+      expect(removedPhoto.status).toBe('DELETED');
       local.close();
     },
     60000,

@@ -1,0 +1,90 @@
+<section aria-label="Foto do produto" class="photo-editor" [class.no-preview]="!showPreview()">
+  @if (showPreview()) {
+    <div class="photo-preview">
+      <app-product-photo [name]="name()" [fallbackUrl]="preview()" />
+    </div>
+  }
+  <div class="photo-actions">
+    @if (capture.native) {
+      <ion-button
+        type="button"
+        fill="outline"
+        [disabled]="disabled() || busy()"
+        (click)="take('CAMERA')"
+        >Tirar foto</ion-button
+      >
+      <ion-button
+        type="button"
+        fill="outline"
+        [disabled]="disabled() || busy()"
+        (click)="take('GALLERY')"
+        >Escolher da galeria</ion-button
+      >
+    } @else {
+      <label class="file-label" [class.disabled]="disabled() || busy()">
+        {{ preview() ? 'Trocar foto' : 'Escolher foto' }}
+        <input
+          type="file"
+          accept="image/jpeg,image/png"
+          [disabled]="disabled() || busy()"
+          (change)="select($event)"
+        />
+      </label>
+    }
+    @if (preview()) {
+      <ion-button type="button" fill="clear" [disabled]="disabled() || busy()" (click)="remove()"
+        >Remover foto</ion-button
+      >
+    }
+    @if (barcode()) {
+      <ion-button type="button" fill="clear" [disabled]="disabled() || busy()" (click)="restore()"
+        >Usar foto do catálogo</ion-button
+      >
+    }
+    @if (capture.recovered()) {
+      <ion-button
+        type="button"
+        fill="outline"
+        [disabled]="disabled() || busy()"
+        (click)="useRecovered()"
+        >Usar foto recuperada da câmera</ion-button
+      >
+    }
+  </div>
+  <p class="photo-help">
+    Confira a prévia. Sua foto aparece para você; os demais clientes só a verão após aprovação.
+  </p>
+  @if (existing()?.source === 'OPEN_FOOD_FACTS' && !draft() && !removed()) {
+    <p class="photo-help">
+      Imagem de
+      <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer"
+        >Open Food Facts</a
+      >, adaptada em tamanho/formato, sob
+      <a
+        href="https://creativecommons.org/licenses/by-sa/3.0/"
+        target="_blank"
+        rel="noopener noreferrer"
+        >CC BY-SA 3.0</a
+      >.
+    </p>
+  }
+  @if (existing()?.source === 'USER' && !draft() && !removed()) {
+    <p class="photo-help" role="status">
+      {{
+        existing()?.status === 'APPROVED'
+          ? 'Foto aprovada para o catálogo.'
+          : existing()?.status === 'REJECTED'
+            ? 'Foto não aprovada para publicação. Você pode substituí-la.'
+            : !existing()?.contentHash
+              ? 'Foto salva neste aparelho. Envio pendente.'
+              : 'Foto aguardando aprovação para o catálogo.'
+      }}
+    </p>
+  }
+  @if (busy()) {
+    <p role="status">Preparando foto…</p>
+  }
+  @if (message()) {
+    <p role="status">{{ message() }}</p>
+  }
+</section>

@@ -105,7 +105,7 @@ export class ShoppingRepository {
       [sessionId],
     );
   }
-  async saveItem(input: ShoppingItemWrite): Promise<void> {
+  async saveItem(input: ShoppingItemWrite): Promise<string> {
     const {
       sessionId,
       name: trimmed,
@@ -226,6 +226,7 @@ export class ShoppingRepository {
         existingId ? 'UPDATE' : 'CREATE',
       ),
     ]);
+    return id;
   }
 
   async removeItem(sessionId: string, id: string): Promise<void> {

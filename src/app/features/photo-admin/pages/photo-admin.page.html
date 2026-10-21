@@ -1,0 +1,145 @@
+<ion-header class="ion-no-border page-header"
+  ><ion-toolbar><ion-title>Revisão de fotos</ion-title></ion-toolbar></ion-header
+>
+<ion-content class="ion-padding">
+  <main>
+    <ion-button fill="clear" routerLink="/tabs/home">Voltar ao Carrim</ion-button>
+    @if (!signedIn()) {
+      <section class="admin-intro">
+        <h1>Aprovar antes de publicar</h1>
+        <p>Somente fotos aprovadas por você ficam disponíveis para os demais clientes.</p>
+      </section>
+      <form (ngSubmit)="login()">
+        <ion-input
+          mode="md"
+          fill="outline"
+          label="Chave de administração"
+          labelPlacement="stacked"
+          type="password"
+          name="adminKey"
+          autocomplete="off"
+          [(ngModel)]="key"
+          [disabled]="busy()"
+        />
+        <p class="help">
+          A chave é configurada no servidor e fica somente na memória desta sessão.
+        </p>
+        <ion-button type="submit" expand="block" [disabled]="busy() || !key">{{
+          busy() ? 'Entrando…' : 'Entrar'
+        }}</ion-button>
+      </form>
+    } @else {
+      <div class="admin-tools">
+        <ion-select
+          mode="md"
+          fill="outline"
+          label="Situação"
+          labelPlacement="stacked"
+          name="status"
+          [(ngModel)]="status"
+          [disabled]="busy()"
+          (ionChange)="filter()"
+          ><ion-select-option value="PENDING">Aguardando aprovação</ion-select-option
+          ><ion-select-option value="APPROVED">Aprovadas</ion-select-option
+          ><ion-select-option value="REJECTED">Rejeitadas</ion-select-option></ion-select
+        >
+        <ion-button fill="outline" [disabled]="busy()" (click)="load()">Atualizar</ion-button
+        ><ion-button fill="clear" (click)="logout()">Sair</ion-button>
+      </div>
+      @if (busy()) {
+        <p role="status">Carregando revisão…</p>
+      }
+      <section class="review-grid" aria-label="Fotos para revisão">
+        @for (row of rows(); track row.id) {
+          <article class="review-card">
+            <div class="review-image">
+              @if (row.imageUrl) {
+                <img [src]="row.imageUrl" [alt]="row.name" width="240" height="180" />
+              } @else {
+                <p>Prévia indisponível</p>
+              }
+            </div>
+            <ion-button fill="clear" [disabled]="busy() || !row.imageUrl" (click)="preview.set(row)"
+              >Ampliar foto</ion-button
+            >
+            <h2>{{ row.name }}</h2>
+            <p>{{ row.barcode ? 'Código ' + row.barcode : 'Item sem código de barras' }}</p>
+            <p class="help">
+              {{
+                row.status === 'PENDING'
+                  ? 'Visível somente para quem enviou.'
+                  : row.status === 'APPROVED'
+                    ? 'Publicação aprovada.'
+                    : 'Não publicada.'
+              }}
+            </p>
+            @if (row.status !== 'REJECTED') {
+              <ion-input
+                mode="md"
+                fill="outline"
+                label="Observação da revisão (opcional)"
+                labelPlacement="stacked"
+                [name]="'reason-' + row.id"
+                [(ngModel)]="row.reason"
+                [maxlength]="200"
+                [disabled]="busy()"
+              />
+              <div class="review-actions">
+                @if (row.status === 'PENDING') {
+                  <ion-button [disabled]="busy() || !row.imageUrl" (click)="decide(row, 'APPROVE')"
+                    >Aprovar</ion-button
+                  >
+                }
+                <ion-button
+                  fill="outline"
+                  color="danger"
+                  [disabled]="busy() || !row.imageUrl"
+                  (click)="decide(row, 'REJECT')"
+                  >{{ row.status === 'APPROVED' ? 'Retirar publicação' : 'Rejeitar' }}</ion-button
+                >
+              </div>
+            }
+          </article>
+        } @empty {
+          @if (!busy()) {
+            <p>Nenhuma foto nesta situação.</p>
+          }
+        }
+      </section>
+      <nav class="pagination" aria-label="Paginação de fotos">
+        <ion-button fill="outline" [disabled]="busy() || offset === 0" (click)="page(-1)"
+          >Anterior</ion-button
+        ><span>Página {{ offset / 20 + 1 }}</span
+        ><ion-button fill="outline" [disabled]="busy() || rows().length < 20" (click)="page(1)"
+          >Próxima</ion-button
+        >
+      </nav>
+    }
+    @if (error()) {
+      <p role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+      <p role="status">{{ notice() }}</p>
+    }
+  </main>
+</ion-content>
+<ion-modal [isOpen]="preview() !== null" (didDismiss)="preview.set(null)">
+  <ng-template>
+    <ion-header class="ion-no-border"
+      ><ion-toolbar><ion-title>Conferir imagem</ion-title></ion-toolbar></ion-header
+    >
+    <ion-content class="ion-padding">
+      <div class="photo-preview">
+        <h2>{{ preview()?.name }}</h2>
+        <img
+          class="expanded-photo"
+          [src]="preview()?.imageUrl"
+          [alt]="preview()?.name || 'Foto do produto'"
+        />
+        <ion-button expand="block" fill="outline" (click)="preview.set(null)"
+          >Voltar à revisão</ion-button
+        >
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>

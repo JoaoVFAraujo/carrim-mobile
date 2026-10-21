@@ -150,6 +150,9 @@
 .product-thumbnail {
   width: 76px;
   height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  overflow: hidden;
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -157,11 +160,6 @@
   border-radius: 14px;
   color: #73917b;
   font-size: 38px;
-}
-.product-thumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
 }
 .product-description {
   min-width: 0;

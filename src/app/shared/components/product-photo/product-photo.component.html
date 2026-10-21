@@ -1,0 +1,12 @@
+@if (image() && !failed()) {
+  <img
+    [src]="image()"
+    [alt]="name()"
+    width="80"
+    height="88"
+    referrerpolicy="no-referrer"
+    (error)="failed.set(true)"
+  />
+} @else {
+  <ion-icon [icon]="icon()" aria-hidden="true" />
+}
