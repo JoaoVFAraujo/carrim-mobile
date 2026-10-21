@@ -26,6 +26,7 @@ import { bundleItemsSchema } from '../database/migrations/007-bundle-items';
 import { checkoutTotalSchema } from '../database/migrations/008-checkout-total';
 import { syncRetrySchema } from '../database/migrations/009-sync-retry';
 import { syncRequestSchema } from '../database/migrations/010-sync-request';
+import { CatalogLookupService } from '../../features/scanner/services/catalog-lookup.service';
 
 // Opt in against an isolated local API; the native plugins are replaced, not the
 // processor, mapping, ownership boundary, HTTP protocol or SQLite statements.
@@ -177,6 +178,21 @@ describe.skipIf(env['CARRIM_LIVE_SYNC'] !== '1')('live offline/online sync', () 
       ).toEqual([]);
       expect(processor.state()).toBe('READY');
       expect(query("SELECT id FROM sync_queue WHERE status!='SYNCED'").values).toHaveLength(0);
+      const queueBeforeLookup = query('SELECT id FROM sync_queue').values;
+      const productBeforeLookup = query('SELECT id, name FROM products').values;
+      const suggestion = await TestBed.inject(CatalogLookupService).lookup(
+        '0789600112233',
+        new AbortController().signal,
+      );
+      expect(suggestion).toMatchObject({
+        status: 'FOUND',
+        source: 'PERSONAL',
+        name: 'Rice',
+        measurementType: 'UNIT',
+      });
+      expect(query('SELECT id FROM sync_queue').values).toEqual(queueBeforeLookup);
+      expect(query('SELECT id, name FROM products').values).toEqual(productBeforeLookup);
+      expect(seen.has('GET /api/v1/products/lookup/0789600112233')).toBe(true);
       const identity = { accessToken };
       if (platform === 'web') {
         expect(vault).toBeNull();

@@ -44,6 +44,8 @@ Compras agrupadas por período, com mercado, data, linhas e total. Segmento Toda
 
 ## Implementação e aceitação
 
+Na consulta de código desconhecido, mostrar “Buscando produto…” com alternativa Cadastrar sem esperar. A ficha mantém tipografia, cores, outline e máscara atuais; a sugestão externa usa título “Confira o produto”, campos editáveis, conteúdo da embalagem sem alterar quantidade, preço vazio e foto opcional com placeholder em falha. Identificar Open Food Facts/ODbL e CC BY-SA 3.0 para foto, com links oficiais; não apresentar a sugestão como dado garantido. Nome/código confirmado são locais; fotos não são guardadas offline. Navegar, mudar compra ou escolher manual invalida resultados atrasados. Se o produto pessoal existe no servidor mas ainda não no SQLite, aguardar sincronização evita duplicar sua identidade.
+
 - Prioridade: componentes/APIs Ionic e Angular, Tailwind tw:, CSS manual quando necessário. Customização Ionic por variáveis/parts públicos, sem seletores internos frágeis.
 - Angular standalone, Signals para estado e templates HTML separados. Não forçar modo iOS no Android.
 - Campos e seletores usam outline, borda de 1 px, raio de 12 px e foco verde. Apenas ion-input/ion-select usam modo Material para manter o outline também no iOS (fill é exclusivo de md no Ionic); o restante do app preserva o modo da plataforma. Quantidade agrupada e campos nativos dos alertas de limite/caixa seguem a mesma borda, com foco visível.

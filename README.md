@@ -12,6 +12,8 @@ No Início nativo, Revisar sincronização permite reaplicar UPDATE de catálogo
 
 ## Documentação essencial
 
+O scanner consulta primeiro SQLite e, para código desconhecido, o backend autenticado em `/products/lookup/{code}`. Quando disponível, a sugestão Open Food Facts preenche nome, marca/conteúdo e foto opcional para conferência. Preço de hoje e confirmação continuam obrigatórios; consulta não grava produto/item. Ausência, falha ou limite preservam cadastro manual. Foto não é persistida offline; produto confirmado usa o mesmo SQLite/fila/sync. O APK anterior não contém esta entrega; API nativa HTTPS e teste físico da integração continuam pendentes.
+
 | Assunto                                | Fonte principal                                                                     |
 | -------------------------------------- | ----------------------------------------------------------------------------------- |
 | Produto, regras e arquitetura          | [Projeto](https://github.com/JoaoVFAraujo/carrim-api/blob/main/docs/PROJETO.md)     |

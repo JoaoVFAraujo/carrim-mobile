@@ -66,6 +66,24 @@
           >{{ loadingProduct() ? 'Consultando…' : 'Consultar código' }}</ion-button
         >
       </form>
+      @if (loadingProduct()) {
+        <div role="status" aria-live="polite" aria-busy="true">
+          <p>Buscando produto… Você pode continuar sem esperar.</p>
+          <ion-button fill="outline" (click)="useManualEntry()">Cadastrar sem esperar</ion-button>
+        </div>
+      }
+      <p class="price-reminder">
+        Sugestões de
+        <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer"
+          >Open Food Facts</a
+        >, sob
+        <a
+          href="https://opendatacommons.org/licenses/odbl/1-0/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >ODbL</a
+        >. Nem todos os produtos estão disponíveis.
+      </p>
       @if (error()) {
         <p role="alert" class="tw:text-red-800">{{ error() }}</p>
       }
@@ -109,7 +127,15 @@
   <ng-template>
     <div class="product-sheet-content">
       <div class="sheet-heading">
-        <h2>{{ known() ? 'Produto encontrado' : 'Novo produto' }}</h2>
+        <h2>
+          {{
+            suggestion()?.source === 'OPEN_FOOD_FACTS'
+              ? 'Confira o produto'
+              : known()
+                ? 'Produto encontrado'
+                : 'Novo produto'
+          }}
+        </h2>
         <ion-button
           fill="clear"
           [disabled]="saving()"
@@ -119,12 +145,35 @@
         /></ion-button>
       </div>
       <form (ngSubmit)="save()">
+        @if (lookupNotice()) {
+          <p class="price-reminder" role="status">{{ lookupNotice() }}</p>
+        }
         <div class="product-summary">
-          <span class="product-thumbnail" aria-hidden="true"
-            ><ion-icon [icon]="productIcon"
-          /></span>
+          <span class="product-thumbnail" aria-hidden="true">
+            @if (suggestion()?.imageUrl; as image) {
+              @if (!imageFailed()) {
+                <img
+                  [src]="image"
+                  alt=""
+                  width="76"
+                  height="80"
+                  referrerpolicy="no-referrer"
+                  (error)="imageFailed.set(true)"
+                />
+              } @else {
+                <ion-icon [icon]="productIcon" />
+              }
+            } @else {
+              <ion-icon [icon]="productIcon" />
+            }
+          </span>
           <div class="product-description">
             <h3>{{ name || 'Cadastre este produto' }}</h3>
+            @if (suggestion(); as candidate) {
+              @if (candidate.brand || candidate.quantity) {
+                <p>{{ candidate.brand }} {{ candidate.quantity }}</p>
+              }
+            }
             @if (lastPrice(); as previous) {
               <p>
                 Último preço:
@@ -145,6 +194,25 @@
             }
           </div>
         </div>
+        @if (suggestion()?.source === 'OPEN_FOOD_FACTS') {
+          <p class="price-reminder">
+            Dados de
+            <a [href]="suggestion()?.sourceUrl" target="_blank" rel="noopener noreferrer"
+              >Open Food Facts</a
+            >
+            (<a [href]="suggestion()?.licenseUrl" target="_blank" rel="noopener noreferrer">ODbL</a
+            >).
+            @if (suggestion()?.imageUrl) {
+              Foto dos colaboradores, sem edição, sob
+              <a
+                href="https://creativecommons.org/licenses/by-sa/3.0/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >CC BY-SA 3.0</a
+              >.
+            }
+          </p>
+        }
         @if (!known() || editingName()) {
           <ion-input
             mode="md"
