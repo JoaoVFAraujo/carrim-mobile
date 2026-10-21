@@ -73,6 +73,8 @@ Ao falhar, registrar esperado/obtido, corrigir em branch fix e repetir o trecho 
 
 ## Fotos e moderação no aparelho
 
+Registro de 21/10/2026: APK desta entrega compilado com JDK 21/Gradle 8.14.3, assinatura v2 verificada e instalado com atualização preservando dados no Moto G73 conectado. MainActivity iniciada e processo permaneceu ativo. A tela estava apagada durante a captura; isso não confirma layout, câmera, galeria ou aceitação do fluxo físico. Versão 0.0.2/code 2, sem API HTTPS nativa configurada. SHA-256 do APK: `5E715EAE5CA25B69933ACBD31843ECA15A32CFD46062BEA91B028BF291766533`. PR da entrega: [mobile #32](https://github.com/JoaoVFAraujo/carrim-mobile/pull/32), com [API #22](https://github.com/JoaoVFAraujo/carrim-api/pull/22).
+
 - Fotografar e selecionar JPEG/PNG por ação explícita; cancelar/recusar sem perder produto ou foto anterior.
 - Conferir prévia alta/larga/quadrada, substituir uma foto externa, remover e restaurar explicitamente.
 - Modo avião: foto aparece no Carrinho, sobrevive ao fechamento/reabertura e aguarda envio; compra continua e pode finalizar.
