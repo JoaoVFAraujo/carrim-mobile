@@ -326,6 +326,86 @@ describe('offline product photos and separate media queue', () => {
     await service.flush();
     expect(raw("SELECT * FROM photo_outbox WHERE status!='SUPERSEDED'")).toEqual([]);
   });
+  it.each([true, false])(
+    'restores the catalogue after acknowledging an explicit restore (online=%s)',
+    async (online) => {
+      const { service, transport, request, photo, success, raw } = await setup();
+      await service.save(prepared, target);
+      transport.enabled = true;
+      success();
+      await service.flush();
+      const personalId = (await service.get(target))!.id;
+      const approved = photo(crypto.randomUUID(), { status: 'APPROVED', own: false });
+      const accept = request.getMockImplementation()!;
+      request.mockImplementation(
+        async (method: string, path: string, body: Record<string, unknown>) => {
+          if (method === 'GET' && path === '/products/photos/approved/' + target.barcode)
+            return approved;
+          return accept(method, path, body);
+        },
+      );
+      request.mockClear();
+      transport.enabled = online;
+      await service.restoreCatalog(target);
+      if (!online) {
+        expect(request).not.toHaveBeenCalled();
+        expect(await service.get(target)).toBeNull();
+        transport.enabled = true;
+      }
+      await service.flush();
+      expect((await service.get(target))?.id).toBe(approved.id);
+      expect((await service.get(target))?.id).not.toBe(personalId);
+      expect(
+        request.mock.calls.filter(
+          (call) => call[1] === '/products/photos/approved/' + target.barcode,
+        ),
+      ).toHaveLength(1);
+      expect(raw("SELECT * FROM photo_outbox WHERE status!='SUPERSEDED'")).toEqual([]);
+      await service.flush();
+      expect(
+        request.mock.calls.filter(
+          (call) => call[1] === '/products/photos/approved/' + target.barcode,
+        ),
+      ).toHaveLength(1);
+    },
+  );
+
+  it('does not restore a removed photo after its hidden preference is acknowledged', async () => {
+    const { service, request, success } = await setup(true);
+    success();
+    await service.remove(target);
+    await service.flush();
+    expect(await service.hidden(target)).toBe(true);
+    expect(request.mock.calls.some((call) => call[1].includes('/approved/'))).toBe(false);
+  });
+
+  it.each(['remove', 'replace'])(
+    'preserves a newer %s decision made while a catalogue restore is in flight',
+    async (decision) => {
+      const { service, request, success } = await setup(true);
+      success();
+      const accept = request.getMockImplementation()!;
+      request.mockImplementation(
+        async (method: string, path: string, body: Record<string, unknown>) => {
+          if (
+            method === 'PUT' &&
+            path.includes('/preferences/') &&
+            body['photoId'] === null &&
+            body['hidden'] === false
+          ) {
+            if (decision === 'remove') await service.remove(target);
+            else await service.save(prepared, target);
+          }
+          return accept(method, path, body);
+        },
+      );
+      await service.restoreCatalog(target);
+      await service.flush();
+      if (decision === 'remove') expect(await service.hidden(target)).toBe(true);
+      else expect(await service.get(target)).toMatchObject({ own: true, source: 'USER' });
+      expect(request.mock.calls.some((call) => call[1].includes('/approved/'))).toBe(false);
+    },
+  );
   it('does not retry or contact the server while backgrounded', async () => {
     const { service, foreground, request } = await setup(true);
     foreground.mockReturnValue(false);
@@ -501,7 +581,7 @@ describe('offline product photos and separate media queue', () => {
 
   it('receives hidden preferences beyond the first page without replacing pending local intent', async () => {
     const { service, request, raw } = await setup(true);
-    const preferences = Array.from({ length: 101 }, (_, index) => {
+    const preferences = Array.from({ length: 201 }, (_, index) => {
       const barcode = String(10000000 + index);
       return {
         key: 'barcode:' + barcode,
@@ -526,9 +606,51 @@ describe('offline product photos and separate media queue', () => {
       },
     );
     await service.refresh(undefined, true);
-    expect(raw('SELECT target_key FROM photo_preferences')).toHaveLength(101);
-    expect(await service.hidden({ barcode: preferences[100].barcode, itemId: null })).toBe(true);
+    expect(raw('SELECT target_key FROM photo_preferences')).toHaveLength(201);
+    expect(await service.hidden({ barcode: preferences[200].barcode, itemId: null })).toBe(true);
+    expect(request.mock.calls.map((call) => call[4]?.offset)).toEqual([0, 100, 200]);
+  });
+
+  it('stops pagination if the server repeats a full page instead of advancing', async () => {
+    const { service, request, raw } = await setup(true);
+    const preferences = Array.from({ length: 100 }, (_, index) => {
+      const barcode = String(10000000 + index);
+      return {
+        key: 'barcode:' + barcode,
+        barcode,
+        itemId: null,
+        photoId: null,
+        hidden: true,
+        version: 0,
+      };
+    });
+    request.mockResolvedValue(preferences);
+    await service.refresh(undefined, true);
     expect(request.mock.calls.map((call) => call[4]?.offset)).toEqual([0, 100]);
+    expect(raw('SELECT target_key FROM photo_preferences')).toHaveLength(100);
+  });
+
+  it('does not start another preference page after the app leaves the foreground', async () => {
+    const { service, repo, request, foreground } = await setup(true);
+    const preferences = Array.from({ length: 100 }, (_, index) => {
+      const barcode = String(10000000 + index);
+      return {
+        key: 'barcode:' + barcode,
+        barcode,
+        itemId: null,
+        photoId: null,
+        hidden: true,
+        version: 0,
+      };
+    });
+    const importPreference = repo.importPreference.bind(repo);
+    vi.spyOn(repo, 'importPreference').mockImplementation(async (preference) => {
+      await importPreference(preference);
+      if (preference.key === preferences[99].key) foreground.mockReturnValue(false);
+    });
+    request.mockResolvedValue(preferences);
+    await service.refresh(undefined, true);
+    expect(request).toHaveBeenCalledTimes(1);
   });
 });
 

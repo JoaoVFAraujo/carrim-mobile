@@ -139,7 +139,6 @@ export class ProductPhotoService {
     });
     this.lastCatalogRefresh.delete(photoKey(target));
     this.lastTargetRefresh.delete(photoKey(target));
-    await this.cacheCatalog(target);
     void this.flush();
   }
 
@@ -433,6 +432,12 @@ export class ProductPhotoService {
       )
         throw new PhotoTransportError(422);
       await this.repository.applied(job, result);
+      if (!body.hidden && body.photoId === null) {
+        // Restore is durable: only look up the catalogue after its explicit
+        // preference is acknowledged, including an offline decision sent later.
+        this.lastCatalogRefresh.delete(job.target_key);
+        await this.cacheCatalog(this.watched.get(job.target_key) ?? target);
+      }
     }
     await this.changed();
   }
@@ -463,7 +468,10 @@ export class ProductPhotoService {
   private async refreshAll(): Promise<void> {
     if (!this.ready()) return;
     try {
-      for (let offset = 0; offset < 200; offset += 100) {
+      const seen = new Set<string>();
+      // Match the API's maximum offset, stop on a short page, and reject repeats
+      // so an invalid or changing server response cannot create an endless loop.
+      pages: for (let offset = 0; offset <= 1000000 && this.ready(); offset += 100) {
         const raw = await this.transport.request(
           'GET',
           '/products/photos/preferences',
@@ -473,7 +481,10 @@ export class ProductPhotoService {
         );
         if (!Array.isArray(raw) || raw.length > 100) throw new Error('Invalid preferences');
         for (const item of raw) {
+          if (!this.ready()) break pages;
           const p = validatePreference(item);
+          if (seen.has(p.key)) break pages;
+          seen.add(p.key);
           if (await this.repository.pending(p)) continue;
           const available = !p.photoId || (await this.hydrate(p.photoId));
           // A server preference can outlive public approval. Keep its version

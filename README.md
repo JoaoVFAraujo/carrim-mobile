@@ -85,7 +85,7 @@ Banco nativo/web guarda JPEG base64 limitado em tabela própria por compatibilid
 
 Ferramentas Angular CLI/build 22.2.3 e override Vite 8.3.4 corrigem os avisos conhecidos identificados nesta entrega; `npm audit` não apontou vulnerabilidades no conjunto validado. A versão do aplicativo permanece 0.0.2 e isso não representa uma release de produção.
 
-Validação em 21/10/2026: 244 testes passaram com HTTP/PostgreSQL/SQLite isolados, além de lint, formatação, SQLite real e build. Navegador confirmou miniaturas altas/largas/quadradas, cancelamento da troca, persistência após reabrir e aprovação administrativa. Outro proprietário recebeu somente a foto aprovada. O build mantém o aviso de bundle inicial de aproximadamente 1,20 MB. Câmera e fluxo completo no aparelho continuam sujeitos ao roteiro Android.
+Validação em 21/10/2026: 251 testes passaram com HTTP/PostgreSQL/SQLite isolados, além de lint, formatação, SQLite real e build. Navegador confirmou miniaturas altas/largas/quadradas, cancelamento da troca, persistência após reabrir e aprovação administrativa. Outro proprietário recebeu somente a foto aprovada. O build mantém o aviso de bundle inicial de aproximadamente 1,20 MB. Câmera e fluxo completo no aparelho continuam sujeitos ao roteiro Android.
 
 ## Organização e cuidados
 
