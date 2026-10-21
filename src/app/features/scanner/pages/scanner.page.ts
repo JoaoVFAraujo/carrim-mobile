@@ -28,6 +28,7 @@ import {
 } from 'ionicons/icons';
 import { BarcodeScannerService } from '../services/barcode-scanner.service';
 import { ProductCatalogService } from '../services/product-catalog.service';
+import { CatalogLookupService, CatalogSuggestion } from '../services/catalog-lookup.service';
 import { LastProductPrice, parseBarcode } from '../models/catalog-product';
 import { parseItemPrice, parseItemQuantity } from '../../shopping/models/shopping-item';
 
@@ -67,6 +68,7 @@ export class ScannerPage {
   readonly store = inject(ShoppingSessionStore);
   readonly scanner = inject(BarcodeScannerService);
   private readonly catalog = inject(ProductCatalogService);
+  private readonly onlineCatalog = inject(CatalogLookupService);
   private readonly toasts = inject(ToastController);
   readonly loadingProduct = signal(false);
   readonly saving = signal(false);
@@ -75,6 +77,9 @@ export class ScannerPage {
   readonly error = signal('');
   readonly formError = signal('');
   readonly lastPrice = signal<LastProductPrice | null>(null);
+  readonly suggestion = signal<CatalogSuggestion | null>(null);
+  readonly lookupNotice = signal('');
+  readonly imageFailed = signal(false);
   code = '';
   productCode = '';
   name = '';
@@ -83,6 +88,8 @@ export class ScannerPage {
   private request = 0;
   private sessionId = '';
   private resumeCamera = false;
+  private lookupAbort?: AbortController;
+  private pendingCode = '';
 
   ionViewWillEnter(): void {
     void this.store.load();
@@ -90,6 +97,8 @@ export class ScannerPage {
 
   ionViewWillLeave(): void {
     ++this.request;
+    this.lookupAbort?.abort();
+    this.loadingProduct.set(false);
     this.resumeCamera = false;
     this.scanner.cancel();
     this.modalOpen.set(false);
@@ -97,7 +106,14 @@ export class ScannerPage {
 
   @HostListener('document:visibilitychange')
   onVisibilityChange(): void {
-    if (document.hidden) this.scanner.cancel();
+    if (document.hidden) {
+      this.scanner.cancel();
+      if (this.loadingProduct()) {
+        ++this.request;
+        this.lookupAbort?.abort();
+        this.loadingProduct.set(false);
+      }
+    }
   }
 
   @HostListener('document:ionBackButton', ['$event'])
@@ -129,19 +145,46 @@ export class ScannerPage {
     const session = this.store.active();
     if (!session || this.loadingProduct() || this.modalOpen() || this.scanner.busy()) return;
     const request = ++this.request;
+    this.lookupAbort = new AbortController();
+    this.pendingCode = '';
     this.error.set('');
+    this.suggestion.set(null);
+    this.lookupNotice.set('');
     this.loadingProduct.set(true);
     try {
       const code = parseBarcode(value);
-      const product = await this.catalog.find(code);
+      this.pendingCode = code;
+      let product = await this.catalog.find(code);
+      if (request !== this.request || this.store.active()?.id !== session.id) return;
+      let suggestion = product
+        ? null
+        : await this.onlineCatalog.lookup(code, this.lookupAbort.signal);
+      if (request !== this.request || this.store.active()?.id !== session.id) return;
+      if (suggestion?.measurementType === 'WEIGHT') {
+        this.error.set(
+          'Este produto é vendido por peso. Adicione pelo Carrinho para informar o peso e o preço por kg.',
+        );
+        return;
+      }
+      if (suggestion?.status === 'FOUND') {
+        const received = await this.catalog.find(code);
+        if (request !== this.request || this.store.active()?.id !== session.id) return;
+        if (received) {
+          product = received;
+          suggestion = null;
+        }
+      }
       const lastPrice = product ? await this.catalog.lastPrice(code, session.supermarketId) : null;
       if (request !== this.request || this.store.active()?.id !== session.id) return;
       this.sessionId = session.id;
       this.productCode = code;
-      this.name = product?.name ?? '';
+      this.name = product?.name ?? suggestion?.name ?? '';
       this.price = '';
       this.quantity = '1';
-      this.known.set(product !== null);
+      this.known.set(product !== null || suggestion?.status === 'FOUND');
+      this.suggestion.set(suggestion?.status === 'FOUND' ? suggestion : null);
+      this.imageFailed.set(false);
+      this.lookupNotice.set(suggestion ? this.suggestionNotice(suggestion.status) : '');
       this.editingName.set(false);
       this.lastPrice.set(lastPrice);
       this.formError.set('');
@@ -154,8 +197,39 @@ export class ScannerPage {
             : 'Não foi possível consultar seus produtos locais. Tente novamente.',
         );
     } finally {
-      this.loadingProduct.set(false);
+      if (request === this.request) this.loadingProduct.set(false);
     }
+  }
+
+  useManualEntry(): void {
+    const session = this.store.active();
+    if (!session || !this.loadingProduct() || !this.pendingCode) return;
+    ++this.request;
+    this.lookupAbort?.abort();
+    this.loadingProduct.set(false);
+    this.sessionId = session.id;
+    this.productCode = this.pendingCode;
+    this.name = this.price = '';
+    this.quantity = '1';
+    this.known.set(false);
+    this.suggestion.set(null);
+    this.lastPrice.set(null);
+    this.editingName.set(false);
+    this.formError.set('');
+    this.lookupNotice.set('Preencha os dados da embalagem para continuar.');
+    this.modalOpen.set(true);
+  }
+
+  private suggestionNotice(status: CatalogSuggestion['status']): string {
+    return {
+      FOUND: 'Confira os dados da embalagem e informe o preço de hoje.',
+      NOT_FOUND: 'Produto não encontrado no catálogo online. Cadastre os dados da embalagem.',
+      UNAVAILABLE: 'O catálogo online está indisponível. Você pode cadastrar o produto agora.',
+      RATE_LIMITED:
+        'O catálogo online atingiu o limite de consultas. Você pode cadastrar o produto agora.',
+      DISABLED:
+        'Consulta online não habilitada. Cadastre o produto para reconhecer depois offline.',
+    }[status];
   }
 
   changeQuantity(delta: -1 | 1): void {
@@ -174,7 +248,19 @@ export class ScannerPage {
     this.saving.set(true);
     this.formError.set('');
     try {
-      if (this.store.active()?.id !== this.sessionId)
+      const sessionId = this.sessionId;
+      if (this.store.active()?.id !== sessionId)
+        throw new Error('Comece uma compra antes de adicionar produtos.');
+      if (
+        this.suggestion()?.source === 'PERSONAL' &&
+        !(await this.catalog.find(this.productCode))
+      ) {
+        this.formError.set(
+          'Este produto já está no servidor. Aguarde a sincronização do catálogo antes de adicionar para evitar um cadastro duplicado.',
+        );
+        return;
+      }
+      if (this.store.active()?.id !== sessionId)
         throw new Error('Comece uma compra antes de adicionar produtos.');
       await this.store.saveItem(
         this.name,
