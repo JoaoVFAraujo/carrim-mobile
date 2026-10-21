@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL, apiEndpoint } from '../api/api-endpoint';
 import { SyncIdentityService } from '../api/sync-identity.service';
+import { authenticationUnavailable } from '../api/authentication-unavailable.error';
 import { photoByteLimit } from './photo-models';
 
 export class PhotoTransportError extends Error {
@@ -74,8 +75,8 @@ export class PhotoTransportService {
     let token: string;
     try {
       token = await this.identity.accessToken();
-    } catch {
-      throw new PhotoTransportError(403);
+    } catch (error) {
+      throw this.identityFailure(error);
     }
     for (let attempt = 0; attempt < 2; attempt++) {
       if (!canContinue()) throw new PhotoTransportError(0);
@@ -100,8 +101,8 @@ export class PhotoTransportService {
         if (error instanceof HttpErrorResponse && error.status === 401 && attempt === 0) {
           try {
             token = await this.identity.accessToken(token);
-          } catch {
-            throw new PhotoTransportError(403);
+          } catch (error) {
+            throw this.identityFailure(error);
           }
           continue;
         }
@@ -109,5 +110,13 @@ export class PhotoTransportService {
       }
     }
     throw new PhotoTransportError(401);
+  }
+
+  private identityFailure(error: unknown): PhotoTransportError {
+    const unavailable = authenticationUnavailable(error);
+    if (unavailable) return new PhotoTransportError(unavailable.status);
+    // Invalid proof, ownership, configuration and unknown local failures remain
+    // closed. Never pass the identity response body or diagnostic text to UI.
+    return new PhotoTransportError(403);
   }
 }

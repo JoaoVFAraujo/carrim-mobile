@@ -348,4 +348,32 @@ describe('cart catalog reuse', () => {
     await page.save();
     expect(saveItem).toHaveBeenCalledWith('Coffee', 1800, 1, undefined, '0789600112233');
   });
+  it.each(['SET', 'REMOVE', 'RESTORE'] as const)(
+    'targets the saved manual item for %s after clearing a catalog selection',
+    async (kind) => {
+      const { page, saveItem } = setup();
+      const itemId = 'a0000000-0000-4000-8000-000000000002';
+      saveItem.mockResolvedValue(itemId);
+      page.openItem();
+      await page.selectCatalogProduct({ id: 'p', name: 'Coffee', barcode: '0789600112233' });
+      page.clearCatalogProduct();
+      page.name = 'Produto manual';
+      page.price = '2,99';
+      const photo = {
+        imageBase64: '/9j/2Q==',
+        contentType: 'image/jpeg' as const,
+        width: 1,
+        height: 1,
+      };
+      page.photoEdit.set(kind === 'SET' ? { kind, photo } : { kind });
+      await page.save();
+      const target = { barcode: null, itemId, name: 'Produto manual' };
+      const photos = TestBed.inject(ProductPhotoService);
+      expect(page.editingBarcode()).toBeNull();
+      expect(saveItem).toHaveBeenCalledWith('Produto manual', 299, 1, undefined, undefined);
+      if (kind === 'SET') expect(photos.save).toHaveBeenCalledWith(photo, target);
+      else if (kind === 'REMOVE') expect(photos.remove).toHaveBeenCalledWith(target);
+      else expect(photos.restoreCatalog).toHaveBeenCalledWith(target);
+    },
+  );
 });

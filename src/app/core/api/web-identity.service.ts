@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { DatabaseService } from '../database/database.service';
 import { API_BASE_URL, apiEndpoint } from './api-endpoint';
+import { authenticationUnavailable } from './authentication-unavailable.error';
 
 interface WebIdentity {
   installationId: string;
@@ -33,7 +34,7 @@ export class WebIdentityService {
   }
 
   private async obtain(rejectedToken?: string): Promise<string> {
-    if (this.base !== '/api/v1') throw new Error('A conexï¿½o web exige API na mesma origem.');
+    if (this.base !== '/api/v1') throw new Error('A conexão web exige API na mesma origem.');
     const rows = await this.db.query<{ value: string }>(
       'SELECT value FROM app_metadata WHERE key=?',
       ['sync_owner'],
@@ -45,7 +46,7 @@ export class WebIdentityService {
         if (!owner || !uuid.test(owner.installationId) || !uuid.test(owner.userId))
           throw new Error();
       } catch {
-        throw new Error('O vï¿½nculo das compras precisa ser recuperado antes de sincronizar.');
+        throw new Error('O vínculo das compras precisa ser recuperado antes de sincronizar.');
       }
     }
     if (
@@ -97,10 +98,11 @@ export class WebIdentityService {
       await this.db.verifySyncOwner(value.installationId, value.userId, true);
       this.cached = value;
       return value.accessToken;
-    } catch {
-      throw new Error(
-        'Nï¿½o foi possï¿½vel confirmar a conexï¿½o. As compras locais foram preservadas.',
-      );
+    } catch (error) {
+      const unavailable = authenticationUnavailable(error);
+      if (unavailable) throw unavailable;
+      // eslint-disable-next-line preserve-caught-error -- Original HTTP errors may contain credentials and response bodies.
+      throw new Error('Não foi possível confirmar a conexão. As compras locais foram preservadas.');
     }
   }
 }

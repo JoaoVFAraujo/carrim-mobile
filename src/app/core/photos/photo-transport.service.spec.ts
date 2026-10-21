@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { vi } from 'vitest';
+import { TimeoutError } from 'rxjs';
 import { API_BASE_URL } from '../api/api-endpoint';
 import { SyncIdentityService } from '../api/sync-identity.service';
+import { AuthenticationUnavailableError } from '../api/authentication-unavailable.error';
 import { PhotoTransportService } from './photo-transport.service';
 
 describe('photo HTTP ownership and transport boundaries', () => {
@@ -90,6 +92,76 @@ describe('photo HTTP ownership and transport boundaries', () => {
     accessToken.mockRejectedValue(new Error('private diagnostic detail'));
     await expect(service.request('GET', '/products/photos/' + id)).rejects.toMatchObject({
       status: 403,
+      message: 'Não foi possível sincronizar a foto agora.',
+    });
+  });
+
+  it.each([0, 408, 429, 500, 503])(
+    'retains transient identity HTTP failure %s for the durable retry queue',
+    async (status) => {
+      const { service, accessToken } = setup();
+      accessToken.mockRejectedValue(
+        new HttpErrorResponse({ status, error: { secret: 'private' } }),
+      );
+      await expect(service.request('PUT', '/products/photos/' + id, {})).rejects.toMatchObject({
+        status,
+        transient: true,
+        message: 'Não foi possível sincronizar a foto agora.',
+      });
+    },
+  );
+
+  it('retains an identity preparation timeout for retry without dispatching media', async () => {
+    const { service, accessToken } = setup();
+    accessToken.mockRejectedValue(new TimeoutError());
+    await expect(service.request('PUT', '/products/photos/' + id, {})).rejects.toMatchObject({
+      status: 408,
+      transient: true,
+    });
+  });
+
+  it.each([401, 403, 404, 409])(
+    'does not retry identity rejection or configuration HTTP failure %s',
+    async (status) => {
+      const { service, accessToken } = setup();
+      accessToken.mockRejectedValue(
+        new HttpErrorResponse({ status, error: { secret: 'private' } }),
+      );
+      await expect(service.request('PUT', '/products/photos/' + id, {})).rejects.toMatchObject({
+        status: 403,
+        transient: false,
+      });
+    },
+  );
+
+  it.each([
+    new TimeoutError(),
+    new HttpErrorResponse({ status: 503 }),
+    new AuthenticationUnavailableError(429),
+  ])('retains a transient identity renewal failure after a media 401', async (failure) => {
+    const { service, http, accessToken } = setup();
+    accessToken.mockResolvedValueOnce('old-token').mockRejectedValue(failure);
+    const pending = service.request('PUT', '/products/photos/' + id, {});
+    const rejected = expect(pending).rejects.toMatchObject({ transient: true });
+    await vi.waitFor(() => expect(accessToken).toHaveBeenCalledTimes(1));
+    http
+      .expectOne('/api/v1/products/photos/' + id)
+      .flush({}, { status: 401, statusText: 'Unauthorized' });
+    await rejected;
+    expect(accessToken).toHaveBeenCalledWith('old-token');
+    expect(accessToken).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    'A identidade não corresponde ao proprietário das compras locais.',
+    'A identidade salva precisa ser recuperada antes de sincronizar.',
+    'A conexão web exige API na mesma origem.',
+  ])('keeps ownership, proof and configuration errors permanent: %s', async (message) => {
+    const { service, accessToken } = setup();
+    accessToken.mockRejectedValue(new Error(message));
+    await expect(service.request('PUT', '/products/photos/' + id, {})).rejects.toMatchObject({
+      status: 403,
+      transient: false,
       message: 'Não foi possível sincronizar a foto agora.',
     });
   });

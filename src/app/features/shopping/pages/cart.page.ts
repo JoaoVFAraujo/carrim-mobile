@@ -355,6 +355,7 @@ export class CartPage {
   clearCatalogProduct(): void {
     ++this.catalogRequest;
     this.catalogBarcode = undefined;
+    this.editingBarcode.set(null);
     this.previousPrice.set(null);
     this.catalogResults.set([]);
     this.catalogLoading.set(false);
