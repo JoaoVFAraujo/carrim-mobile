@@ -72,7 +72,14 @@ describe('repeated products', () => {
     });
     const store = TestBed.inject(ShoppingSessionStore);
     store.active.set(session);
-    return { store, transaction };
+    return {
+      store,
+      transaction,
+      query,
+      importQuantity: (id: string, quantity: number) => {
+        saved = saved.map((item) => (item.id === id ? { ...item, quantity } : item));
+      },
+    };
   }
 
   it('preserves scanner identity without rewriting the catalog on quantity changes', async () => {
@@ -106,6 +113,99 @@ describe('repeated products', () => {
     await expect(store.changeQuantity(bundle, -1)).rejects.toThrow('quantidade');
     expect(store.items()[1].quantity).toBe(3);
   });
+
+  it('keeps the loaded cart visible during quantity changes and subsequent refreshes', async () => {
+    const { store } = setup();
+    await store.saveItem('Rice', 799, 1);
+    const id = store.items()[0].id;
+    const loading = vi.spyOn(store.loading, 'set');
+    await store.changeQuantity(id, 1);
+    await store.load(); // A sync refresh or tab entry must not tear down the cart either.
+    expect(loading).not.toHaveBeenCalledWith(true);
+    expect(store.items()[0].quantity).toBe(2);
+    expect(store.totalCents()).toBe(1598);
+  });
+
+  it('rereads quantities after a write that overtakes an already-running snapshot', async () => {
+    const { store, query, transaction } = setup();
+    await store.saveItem('Rice', 799, 1);
+    const id = store.items()[0].id;
+    const normalQuery = query.getMockImplementation()!;
+    let releaseHistory!: () => void;
+    let historyReached!: () => void;
+    const reached = new Promise<void>((resolve) => {
+      historyReached = resolve;
+    });
+    const release = new Promise<void>((resolve) => {
+      releaseHistory = resolve;
+    });
+    let hold = true;
+    query.mockImplementation(async (sql: string, values: unknown[]) => {
+      const result = await normalQuery(sql, values);
+      if (hold && sql.includes("WHERE s.status = 'COMPLETED'")) {
+        hold = false;
+        historyReached();
+        await release;
+      }
+      return result;
+    });
+    const background = store.load();
+    await reached; // The background snapshot has captured quantity 1.
+    const updating = store.saveItem('Rice', 799, 2, id);
+    await vi.waitFor(() => expect(transaction).toHaveBeenCalledTimes(2));
+    releaseHistory();
+    await Promise.all([background, updating]);
+    expect(store.items()[0].quantity).toBe(2);
+    expect(store.totalCents()).toBe(1598);
+    await store.changeQuantity(id, 1);
+    expect(store.items()[0].quantity).toBe(3);
+    expect(store.totalCents()).toBe(2397);
+  });
+
+  it.each([false, true])(
+    'waits for an imported quantity before applying a delta (read fails=%s)',
+    async (fails) => {
+      const { store, query, transaction, importQuantity } = setup();
+      await store.saveItem('Rice', 799, 1);
+      const id = store.items()[0].id;
+      importQuantity(id, 5); // Sync has committed to storage, but the displayed snapshot is still 1.
+      const normalQuery = query.getMockImplementation()!;
+      let historyReached!: () => void;
+      let releaseHistory!: () => void;
+      const reached = new Promise<void>((resolve) => {
+        historyReached = resolve;
+      });
+      const release = new Promise<void>((resolve) => {
+        releaseHistory = resolve;
+      });
+      let hold = true;
+      query.mockImplementation(async (sql: string, values: unknown[]) => {
+        const result = await normalQuery(sql, values);
+        if (hold && sql.includes("WHERE s.status = 'COMPLETED'")) {
+          hold = false;
+          historyReached();
+          await release;
+          if (fails) throw new Error('read unavailable');
+        }
+        return result;
+      });
+      const background = store.load();
+      await reached;
+      const incrementing = store.changeQuantity(id, 1);
+      await Promise.resolve();
+      releaseHistory();
+      if (fails) {
+        await expect(incrementing).rejects.toThrow('atualizar');
+        await background;
+        expect(transaction).toHaveBeenCalledTimes(1);
+        expect(store.error()).toContain('dados locais');
+      } else {
+        await Promise.all([background, incrementing]);
+        expect(store.items()[0].quantity).toBe(6);
+        expect(store.totalCents()).toBe(4794);
+      }
+    },
+  );
 
   it('preserves quantities on write failure and rejects weight or out-of-range changes', async () => {
     const { store, transaction } = setup();

@@ -1,9 +1,9 @@
 import { MaskitoDirective } from '@maskito/angular';
 import { brlMask, ionInputElement } from '../../../shared/brl-mask';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   IonButton,
   IonContent,
@@ -55,6 +55,8 @@ import { SyncReviewComponent } from '../components/sync-review.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomePage {
+  private readonly router = inject(Router);
+  private readonly shoppingModal = viewChild(IonModal);
   readonly brlMask = brlMask;
   readonly ionInputElement = ionInputElement;
   readonly syncStatus = inject(SyncStatusService);
@@ -87,7 +89,14 @@ export class HomePage {
     this.formError.set('');
     try {
       await this.store.create(this.supermarketId, this.supermarketName, parseBudget(this.budget));
+      const modal = this.shoppingModal();
+      if (modal) {
+        // Saving is complete. Close the overlay before Ionic caches the Home view.
+        modal.canDismiss = true;
+        await modal.dismiss();
+      }
       this.modalOpen.set(false);
+      await this.router.navigateByUrl('/tabs/cart');
     } catch (error) {
       this.formError.set(
         error instanceof Error && /Informe|Você já/.test(error.message)

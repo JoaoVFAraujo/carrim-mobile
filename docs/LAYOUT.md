@@ -109,3 +109,7 @@ Adicionar/Trocar foto abre câmera/galeria no nativo ou seleção JPEG/PNG no na
 A contribuição é pública somente após aprovação administrativa; a interface explica essa condição antes de confirmar. O painel /admin/fotos é separado das quatro abas de compra e protegido por chave de operador. Permite filtrar pendentes/aprovadas/rejeitadas, ampliar a prévia para conferência, aprovar, rejeitar e retirar publicação. A chave é ocultada na entrada e não vai para URLs ou armazenamento do navegador. Créditos/licenças de imagens externas continuam visíveis; adaptação de tamanho/formato é indicada quando houver importação.
 
 Revisão inclui fotos altas/largas/quadradas, fonte ampliada, teclado, nomes longos, ausência de imagem, permissões/cancelamento e retorno da captura após encerramento do processo. Capturas e aprovação do usuário no aparelho são verificações separadas da revisão de código.
+
+## Continuidade do fluxo de compra
+
+Depois de salvar uma nova compra, fechar o modal Ionic antes de abrir o Carrinho. Ao alterar quantidades ou receber atualizações de sincronização, manter o conteúdo atual montado; o carregamento completo aparece apenas antes da primeira leitura bem-sucedida. Falhas de leitura continuam visíveis e permitem nova tentativa.
