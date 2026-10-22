@@ -57,7 +57,11 @@ export class PhotoEditorComponent {
       this.photos.revision();
       const target = { barcode: this.barcode(), itemId: this.barcode() ? null : this.itemId() };
       const request = ++this.queryRequest;
-      if (!target.barcode && !target.itemId) return;
+      if (!target.barcode && !target.itemId) {
+        this.existing.set(null);
+        this.storedHidden.set(false);
+        return;
+      }
       void Promise.all([this.photos.get(target), this.photos.hidden(target)])
         .then(([photo, hidden]) => {
           if (request === this.queryRequest) {
