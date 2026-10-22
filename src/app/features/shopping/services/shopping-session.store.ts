@@ -122,7 +122,10 @@ export class ShoppingSessionStore {
 
   changeQuantity(itemId: string, direction: -1 | 1): Promise<void> {
     const sessionId = this.active()?.id;
-    const operation = this.itemWrites.then(() => {
+    const operation = this.itemWrites.then(async () => {
+      // Sync may have committed a newer quantity before its snapshot reaches signals.
+      await this.loadingPromise;
+      if (this.error()) throw new Error('Não foi possível atualizar a compra. Tente novamente.');
       if (!sessionId || this.active()?.id !== sessionId)
         throw new Error('Comece uma compra antes de alterar produtos.');
       const item = this.items().find((entry) => entry.id === itemId);
