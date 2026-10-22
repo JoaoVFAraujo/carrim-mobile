@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 import { DatabaseService } from '../database/database.service';
 import { API_BASE_URL } from './api-endpoint';
 import { WebIdentityService } from './web-identity.service';
+import { AuthenticationUnavailableError } from './authentication-unavailable.error';
 
 const installationId = 'a20e47cf-a002-4b01-a001-000000000001';
 const userId = 'a20e47cf-a002-4b01-a001-000000000002';
@@ -79,6 +80,7 @@ describe('persistent web identity', () => {
     expect(prepare.request.body).toEqual({ installationId });
     prepare.flush({ installationId: userId });
     expect(await pending).toBeInstanceOf(Error);
+    expect(await pending).not.toBeInstanceOf(AuthenticationUnavailableError);
     expect(verify).not.toHaveBeenCalled();
     http.expectNone('/api/v1/auth/web/token');
   });
@@ -89,6 +91,7 @@ describe('persistent web identity', () => {
     await tick();
     http.expectOne('/api/v1/auth/web/prepare').flush({}, { status: 409, statusText: 'Conflict' });
     expect(await pending).toBeInstanceOf(Error);
+    expect(await pending).not.toBeInstanceOf(AuthenticationUnavailableError);
     expect(verify).not.toHaveBeenCalled();
   });
 
@@ -103,6 +106,53 @@ describe('persistent web identity', () => {
     await tick();
     http.expectOne('/api/v1/auth/web/token').flush({ ...response, userId: installationId });
     expect(await pending).toBeInstanceOf(Error);
+    expect(await pending).not.toBeInstanceOf(AuthenticationUnavailableError);
     expect(verify).not.toHaveBeenCalledWith(installationId, installationId, true);
+  });
+
+  it.each([0, 408, 429, 503])(
+    'preserves retry status %s from web prepare and token renewal without leaking the response',
+    async (status) => {
+      const initial = service.accessToken().catch((error) => error);
+      await tick();
+      http
+        .expectOne('/api/v1/auth/web/prepare')
+        .flush({ private: token }, { status, statusText: 'Unavailable' });
+      const initialFailure = await initial;
+      expect(initialFailure).toBeInstanceOf(AuthenticationUnavailableError);
+      expect(initialFailure.status).toBe(status);
+      expect(initialFailure.error).toBeUndefined();
+      expect(initialFailure.cause).toBeUndefined();
+      expect(JSON.stringify(initialFailure)).not.toContain(token);
+
+      owner = JSON.stringify({ installationId, userId });
+      const renewed = service.accessToken(token).catch((error) => error);
+      await tick();
+      http.expectOne('/api/v1/auth/web/prepare').flush({ installationId });
+      await tick();
+      http
+        .expectOne('/api/v1/auth/web/token')
+        .flush({ private: token }, { status, statusText: 'Unavailable' });
+      const renewalFailure = await renewed;
+      expect(renewalFailure).toBeInstanceOf(AuthenticationUnavailableError);
+      expect(renewalFailure.status).toBe(status);
+      expect(renewalFailure.cause).toBeUndefined();
+      expect(JSON.stringify(renewalFailure)).not.toContain(token);
+      expect(verify).not.toHaveBeenCalledWith(installationId, userId, true);
+    },
+  );
+
+  it.each([401, 403, 409])('does not make web proof rejection %s retryable', async (status) => {
+    owner = JSON.stringify({ installationId, userId });
+    const pending = service.accessToken().catch((error) => error);
+    await tick();
+    http
+      .expectOne('/api/v1/auth/web/prepare')
+      .flush({ private: token }, { status, statusText: 'Rejected' });
+    const failure = await pending;
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure).not.toBeInstanceOf(AuthenticationUnavailableError);
+    expect(failure.message).not.toContain(token);
+    http.expectNone('/api/v1/auth/web/token');
   });
 });

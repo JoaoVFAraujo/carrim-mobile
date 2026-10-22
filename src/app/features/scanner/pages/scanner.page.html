@@ -149,24 +149,14 @@
           <p class="price-reminder" role="status">{{ lookupNotice() }}</p>
         }
         <div class="product-summary">
-          <span class="product-thumbnail" aria-hidden="true">
-            @if (suggestion()?.imageUrl; as image) {
-              @if (!imageFailed()) {
-                <img
-                  [src]="image"
-                  alt=""
-                  width="76"
-                  height="80"
-                  referrerpolicy="no-referrer"
-                  (error)="imageFailed.set(true)"
-                />
-              } @else {
-                <ion-icon [icon]="productIcon" />
-              }
-            } @else {
-              <ion-icon [icon]="productIcon" />
-            }
-          </span>
+          <span class="product-thumbnail" aria-hidden="true"
+            ><app-product-photo
+              [barcode]="productCode"
+              [name]="name || 'Produto'"
+              [fallbackUrl]="suggestion()?.imageUrl ?? null"
+              [overrideActive]="photoEdit()?.kind === 'SET' || photoEdit()?.kind === 'REMOVE'"
+              [overrideUrl]="photoPreview()"
+          /></span>
           <div class="product-description">
             <h3>{{ name || 'Cadastre este produto' }}</h3>
             @if (suggestion(); as candidate) {
@@ -202,7 +192,7 @@
             >
             (<a [href]="suggestion()?.licenseUrl" target="_blank" rel="noopener noreferrer">ODbL</a
             >).
-            @if (suggestion()?.imageUrl) {
+            @if (suggestion()?.imageUrl && photoEdit()?.kind !== 'SET') {
               Foto dos colaboradores, sem edição, sob
               <a
                 href="https://creativecommons.org/licenses/by-sa/3.0/"
@@ -226,6 +216,15 @@
             [disabled]="saving()"
           />
         }
+        <app-photo-editor
+          [barcode]="productCode"
+          [name]="name || 'Produto'"
+          [fallbackUrl]="suggestion()?.imageUrl ?? null"
+          [showPreview]="false"
+          [disabled]="saving()"
+          (changed)="photoEdit.set($event)"
+          (preparing)="photoPreparing.set($event)"
+        />
         <div class="product-fields">
           <ion-input
             [maskito]="brlMask"
@@ -275,7 +274,11 @@
         @if (formError()) {
           <p role="alert" class="tw:text-red-800">{{ formError() }}</p>
         }
-        <ion-button class="add-product" type="submit" expand="block" [disabled]="saving()"
+        <ion-button
+          class="add-product"
+          type="submit"
+          expand="block"
+          [disabled]="saving() || photoPreparing()"
           ><ion-icon slot="start" [icon]="cartIcon" aria-hidden="true" />{{
             saving() ? 'Salvando…' : 'Adicionar ao carrinho'
           }}</ion-button

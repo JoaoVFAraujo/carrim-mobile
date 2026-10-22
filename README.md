@@ -6,13 +6,13 @@ Sync push/pull funciona no navegador e no app nativo. No navegador, /api/v1 deve
 
 O Carrinho permite definir/editar/remover o limite e cancelar a compra com confirmação. Alterações ficam no SQLite e na fila na mesma transação; cancelamento preserva itens encerrados e não gera histórico de preços.
 
-A validação em 320/390 px não equivale à aprovação visual. Após a correção do Carrinho, Início, Escanear e Histórico foram recompostos pelas referências: cesta própria, hierarquia tipográfica, cartões expansíveis e ficha inferior de produto. Fotos do catálogo e conferência visual do usuário permanecem pendentes. Veja [Layout](docs/LAYOUT.md) antes de avançar para o APK de teste.
+A validação em 320/390 px não equivale à aprovação visual. Após a correção do Carrinho, Início, Escanear e Histórico foram recompostos pelas referências: cesta própria, hierarquia tipográfica, cartões expansíveis e ficha inferior de produto. Fotos persistentes na ficha/Carrinho estão implementadas; conferência visual do usuário e aparelho permanecem pendentes. Veja [Layout](docs/LAYOUT.md) antes de avançar para o APK de teste.
 
 No Início nativo, Revisar sincronização permite reaplicar UPDATE de catálogo/limite e alterações de itens de uma compra ainda ativa, após consultar o servidor com a identidade vinculada. A decisão guarda cópias locais e remotas e o pedido anterior, e cria um novo comando explícito; o pedido anterior nunca é reciclado automaticamente. Mudança local durante a revisão invalida a decisão. Compras encerradas, criação de cadastros conflitante e falhas de importação permanecem pausadas para análise, sem sobrescrita automática. As últimas revisões ficam acessíveis no mesmo painel.
 
 ## Documentação essencial
 
-O scanner consulta primeiro SQLite e, para código desconhecido, o backend autenticado em `/products/lookup/{code}`. Quando disponível, a sugestão Open Food Facts preenche nome, marca/conteúdo e foto opcional para conferência. Preço de hoje e confirmação continuam obrigatórios; consulta não grava produto/item. Ausência, falha ou limite preservam cadastro manual. Foto não é persistida offline; produto confirmado usa o mesmo SQLite/fila/sync. O APK anterior não contém esta entrega; API nativa HTTPS e teste físico da integração continuam pendentes.
+O scanner consulta primeiro SQLite e, para código desconhecido, o backend autenticado em `/products/lookup/{code}`. Quando disponível, a sugestão Open Food Facts preenche nome, marca/conteúdo e foto opcional para conferência. Preço de hoje e confirmação continuam obrigatórios; consulta não grava produto/item. Ausência, falha ou limite preservam cadastro manual. Fotos otimizadas ficam no SQLite e seguem por fila de mídia própria ao PostgreSQL. Autor vê sua foto pendente; outros clientes somente após aprovação no painel /admin/fotos. Câmera/galeria, troca, remoção e restauração explícita estão disponíveis. Produto confirmado usa o mesmo fluxo de compras, sem imagens no JSON de sync. API nativa HTTPS e teste físico completo continuam pendentes.
 
 | Assunto                                | Fonte principal                                                                     |
 | -------------------------------------- | ----------------------------------------------------------------------------------- |
@@ -44,7 +44,7 @@ npm run verify:sqlite
 npm run build
 ```
 
-SQLite real de teste é isolado; scripts verificam migrations V1–V10, constraints, transações, fila, importação e preservação. O teste integrado usa HTTP, PostgreSQL **local isolado** e SQLite reais nos modos web e nativo; cria dados e não deve apontar para banco pessoal/produção. No backend, scripts/verify-local-postgres.ps1 -MobileSync prepara banco/API em portas temporárias, executa os testes e encerra seus processos. Ajustar -MobileRoot se o checkout estiver em outro caminho. Para uma API isolada já iniciada, CARRIM_LIVE_API aceita somente http://127.0.0.1:PORTA ou http://localhost:PORTA (padrão 8082).
+SQLite real de teste é isolado; scripts verificam migrations V1–V11, constraints, transações, fila, importação e preservação. O teste integrado usa HTTP, PostgreSQL **local isolado** e SQLite reais nos modos web e nativo; cria dados e não deve apontar para banco pessoal/produção. No backend, scripts/verify-local-postgres.ps1 -MobileSync prepara banco/API em portas temporárias, executa os testes e encerra seus processos. Ajustar -MobileRoot se o checkout estiver em outro caminho. Para uma API isolada já iniciada, CARRIM_LIVE_API aceita somente http://127.0.0.1:PORTA ou http://localhost:PORTA (padrão 8082).
 
 ```powershell
 $env:CARRIM_LIVE_SYNC = '1'
@@ -74,6 +74,18 @@ JDK **21 completo** para Android (API usa JDK 25); SDK/plataformas 35 e 36, Buil
 No navegador, usar uma aba por origem: Web Locks impede instâncias SQLite/IndexedDB concorrentes. Recarregar mantém a identidade e os dados; apagar o cookie num banco vinculado pausa a conexão, sem criar outro proprietário. O Início informa confirmação ou pendências de envio. Todas as entidades de negócio são sincronizadas; fila, cursor e metadados são controles internos de cada ambiente. Histórico de preços é derivado da finalização nos dois bancos.
 
 O agendador usa um único timer: após sincronizar, consulta novamente em 15/30/60 segundos se não houver novidades; atividade recebida reinicia o intervalo. Alterações locais, foco/retorno ao app e retorno da conexão despertam o envio, sem ignorar next_attempt_at_ms. Sem rede, não mantém polling; comandos FAILED e importações pausadas aguardam revisão. Documento oculto ou app nativo inativo pausa novos envios/páginas; uma requisição já em andamento pode terminar e ter a confirmação salva. O processador retoma pendências ao voltar ao primeiro plano. Testes unitários de ciclo de vida substituem o plugin e não comprovam comportamento físico Android.
+
+## Fotos e administração
+
+O plugin oficial de câmera 8.2.6 permite tirar/selecionar fotos por ação do usuário; navegador usa seletor de arquivo JPEG/PNG. Prévia confirma a escolha ao salvar. Captura interrompida pelo Android pode ser recuperada como rascunho, sem upload automático. Arquivos recebem limites e reprocessamento local/servidor, removendo EXIF. Foto própria substitui a externa somente na escolha do autor enquanto a nova candidata aguarda aprovação.
+
+O painel `/admin/fotos` tem entrada por chave exclusiva de operador, mantida apenas em memória e removida ao sair. O servidor precisa de `CARRIM_PHOTO_ADMIN_TOKEN_SHA256` configurado; não existe chave padrão nem credencial no APK/SQLite/Web Storage. Fonte de configuração, geração e limites em Segurança/API do backend. Tokens normais de instalação não autenticam administração.
+
+Banco nativo/web guarda JPEG base64 limitado em tabela própria por compatibilidade de binding do driver; PostgreSQL usa BYTEA. A mídia tem fila independente, retries persistidos e preferências versionadas; falha de foto não bloqueia compras. A saída usa no máximo 1024 px/500 KiB; o cliente otimiza normalmente até 256 KiB. Há limites locais de 100 imagens/200 intenções ativas. Itens manuais removidos liberam os bytes mesmo offline e enfileiram a exclusão remota; preferências desses itens não são reimportadas. A seleção automática consulta a preferência do servidor antes de escolher a foto do catálogo. Cópias públicas retiradas são invalidadas ao reconectar; o app offline só aprende a retirada quando voltar à rede.
+
+Ferramentas Angular CLI/build 22.2.3 e override Vite 8.3.4 corrigem os avisos conhecidos identificados nesta entrega; `npm audit` não apontou vulnerabilidades no conjunto validado. A versão do aplicativo permanece 0.0.2 e isso não representa uma release de produção.
+
+Validação em 21/10/2026: 298 testes passaram com HTTP/PostgreSQL/SQLite isolados, além de lint, formatação, SQLite real e build. Navegador confirmou miniaturas altas/largas/quadradas, cancelamento da troca, persistência após reabrir e aprovação administrativa. Outro proprietário recebeu somente a foto aprovada. O build mantém o aviso de bundle inicial de aproximadamente 1,20 MB. Câmera e fluxo completo no aparelho continuam sujeitos ao roteiro Android.
 
 ## Organização e cuidados
 

@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL, apiEndpoint } from './api-endpoint';
 import { CredentialVault } from './credential-vault';
+import { authenticationUnavailable } from './authentication-unavailable.error';
 
 interface Identity {
   installationId: string;
@@ -94,8 +95,11 @@ export class AnonymousIdentityService {
           { credentials: 'omit', redirect: 'error', cache: 'no-store', timeout: 15_000 },
         ),
       );
-    } catch {
+    } catch (error) {
       // HttpErrorResponse contains the response body; do not expose it to UI/global logging.
+      const unavailable = authenticationUnavailable(error);
+      if (unavailable) throw unavailable;
+      // eslint-disable-next-line preserve-caught-error -- Original HTTP errors may contain credentials and response bodies.
       throw new Error('Não foi possível conectar com segurança. Tente novamente.');
     }
     const value = response as Partial<Identity> & { accountType?: string };

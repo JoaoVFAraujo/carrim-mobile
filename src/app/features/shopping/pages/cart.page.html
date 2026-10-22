@@ -76,8 +76,10 @@
         @for (item of store.items(); track item.id) {
           <article class="cart-product" animate.enter="motion-enter">
             <div class="product-thumbnail" aria-hidden="true">
-              <ion-icon
-                class="tw:text-[32px]"
+              <app-product-photo
+                [barcode]="item.barcode ?? null"
+                [itemId]="item.id"
+                [name]="item.name"
                 [icon]="item.measurementType === 'WEIGHT' ? icons.weight : icons.product"
               />
             </div>
@@ -396,10 +398,18 @@
             </p>
           }
         }
+        <app-photo-editor
+          [barcode]="editingBarcode()"
+          [itemId]="editingId ?? null"
+          [name]="name || 'Produto'"
+          [disabled]="saving()"
+          (changed)="photoEdit.set($event)"
+          (preparing)="photoPreparing.set($event)"
+        />
         @if (formError()) {
           <p role="alert" class="tw:text-red-800">{{ formError() }}</p>
         }
-        <ion-button type="submit" expand="block" [disabled]="saving()">{{
+        <ion-button type="submit" expand="block" [disabled]="saving() || photoPreparing()">{{
           saving() ? 'Salvando…' : 'Salvar produto'
         }}</ion-button>
         <ion-button

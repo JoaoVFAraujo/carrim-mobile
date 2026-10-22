@@ -8,6 +8,7 @@ import { CredentialVault, NATIVE_CREDENTIAL_STORAGE } from './credential-vault';
 import { AnonymousIdentityService } from './anonymous-identity.service';
 import { CarrimApiService } from './carrim-api.service';
 import { API_BASE_URL, apiEndpoint } from './api-endpoint';
+import { AuthenticationUnavailableError } from './authentication-unavailable.error';
 
 const installationId = 'a20e47cf-a002-4b01-a001-000000000001';
 const userId = 'a20e47cf-a002-4b01-a001-000000000002';
@@ -138,6 +139,49 @@ describe('API identity security', () => {
     expect(await retry).toBe(newToken);
   });
 
+  it.each([0, 408, 429, 503])(
+    'preserves retry status %s from native bootstrap and renewal without retaining its response',
+    async (status) => {
+      for (const renewing of [false, true]) {
+        stored = renewing
+          ? JSON.stringify({
+              installationId,
+              installationSecret: proof,
+              userId,
+              accessToken: oldToken,
+              expiresAt: response().expiresAt,
+            })
+          : null;
+        const pending = identity
+          .accessToken(renewing ? oldToken : undefined)
+          .catch((error) => error);
+        await tick();
+        http
+          .expectOne('/api/v1/auth/anonymous')
+          .flush({ secret: proof }, { status, statusText: 'Unavailable' });
+        const failure = await pending;
+        expect(failure).toBeInstanceOf(AuthenticationUnavailableError);
+        expect(failure.status).toBe(status);
+        expect(failure.error).toBeUndefined();
+        expect(failure.cause).toBeUndefined();
+        expect(JSON.stringify(failure)).not.toContain(proof);
+      }
+    },
+  );
+
+  it.each([401, 403, 409])('does not make native proof rejection %s retryable', async (status) => {
+    stored = JSON.stringify({ installationId, installationSecret: proof, userId });
+    const pending = identity.accessToken().catch((error) => error);
+    await tick();
+    http
+      .expectOne('/api/v1/auth/anonymous')
+      .flush({ secret: proof }, { status, statusText: 'Rejected' });
+    const failure = await pending;
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure).not.toBeInstanceOf(AuthenticationUnavailableError);
+    expect(failure.message).not.toContain(proof);
+  });
+
   it('refuses corrupt credentials without replacing their owner', async () => {
     stored = '{}';
     await expect(identity.accessToken()).rejects.toThrow('precisa ser recuperada');
@@ -158,6 +202,7 @@ describe('API identity security', () => {
     await tick();
     http.expectOne('/api/v1/auth/anonymous').flush({ ...response(), userId: installationId });
     await failure;
+    await expect(pending).rejects.not.toBeInstanceOf(AuthenticationUnavailableError);
     expect(write).not.toHaveBeenCalled();
   });
 

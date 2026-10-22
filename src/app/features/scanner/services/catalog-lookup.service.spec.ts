@@ -24,6 +24,21 @@ const response = () => ({
 });
 
 describe('read-only authenticated catalog lookup', () => {
+  it('accepts the approved Carrim catalog without trusting an external image or credit URL', async () => {
+    const { service, http, abort, accessToken } = setup();
+    const result = service.lookup(code, abort.signal);
+    await vi.waitFor(() => expect(accessToken).toHaveBeenCalled());
+    http
+      .expectOne(route)
+      .flush({ ...response(), source: 'CARRIM_APPROVED', name: 'Aveia aprovada' });
+    expect(await result).toMatchObject({
+      source: 'CARRIM_APPROVED',
+      name: 'Aveia aprovada',
+      imageUrl: null,
+      sourceUrl: null,
+      licenseUrl: null,
+    });
+  });
   function setup(base: string | null = '/api/v1') {
     const accessToken = vi.fn().mockResolvedValue('token');
     TestBed.configureTestingModule({

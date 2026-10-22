@@ -115,7 +115,7 @@ export class ShoppingSessionStore {
     quantity: number,
     itemId?: string,
     barcode?: string,
-  ): Promise<void> {
+  ): Promise<string> {
     return this.enqueueItem(name, unitPriceCents, quantity, itemId, barcode);
   }
 
@@ -141,8 +141,11 @@ export class ShoppingSessionStore {
         item.pricingType === 'BUNDLE' ? item.bundleQuantity! : undefined,
       );
     });
-    this.itemWrites = operation.catch(() => undefined);
-    return operation;
+    this.itemWrites = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return operation.then(() => undefined);
   }
 
   saveWeightItem(
@@ -151,7 +154,7 @@ export class ShoppingSessionStore {
     weightGrams: number,
     itemId?: string,
     barcode?: string,
-  ): Promise<void> {
+  ): Promise<string> {
     return this.enqueueItem(name, pricePerKgCents, 1, itemId, barcode, weightGrams);
   }
 
@@ -162,7 +165,7 @@ export class ShoppingSessionStore {
     quantity: number,
     itemId?: string,
     barcode?: string,
-  ): Promise<void> {
+  ): Promise<string> {
     return this.enqueueItem(
       name,
       bundlePriceCents,
@@ -182,7 +185,7 @@ export class ShoppingSessionStore {
     barcode?: string,
     weightGrams?: number,
     bundleQuantity?: number,
-  ): Promise<void> {
+  ): Promise<string> {
     const sessionId = this.active()?.id;
     const operation = this.itemWrites.then(() => {
       if (this.active()?.id !== sessionId)
@@ -198,7 +201,10 @@ export class ShoppingSessionStore {
       );
     });
     // Serialize additions so two confirmations see the quantity saved by the previous one.
-    this.itemWrites = operation.catch(() => undefined);
+    this.itemWrites = operation.then(
+      () => undefined,
+      () => undefined,
+    );
     return operation;
   }
 
@@ -210,7 +216,7 @@ export class ShoppingSessionStore {
     barcode?: string,
     weightGrams?: number,
     bundleQuantity?: number,
-  ): Promise<void> {
+  ): Promise<string> {
     const session = this.active();
     if (!session) throw new Error('Comece uma compra antes de adicionar produtos.');
     const trimmed = name.trim();
@@ -242,7 +248,7 @@ export class ShoppingSessionStore {
       barcode === undefined
         ? (this.items().find((item) => item.id === itemId)?.barcode ?? null)
         : parseBarcode(barcode);
-    await this.repository.saveItem({
+    const savedId = await this.repository.saveItem({
       sessionId: session.id,
       name: trimmed,
       unitPriceCents,
@@ -255,6 +261,7 @@ export class ShoppingSessionStore {
     });
     // A committed item must not be offered for a duplicate retry if only the read fails.
     await this.load();
+    return savedId;
   }
 
   async removeItem(id: string): Promise<void> {

@@ -41,6 +41,12 @@ import { ShoppingSessionStore } from '../services/shopping-session.store';
 import { parseBudget, parseCheckoutTotal } from '../models/shopping-session';
 import { ProductCatalogService } from '../../scanner/services/product-catalog.service';
 import { CatalogProduct, LastProductPrice } from '../../scanner/models/catalog-product';
+import { ProductPhotoService } from '../../../core/photos/product-photo.service';
+import { ProductPhotoComponent } from '../../../shared/components/product-photo/product-photo.component';
+import {
+  PhotoEditorComponent,
+  type PhotoEdit,
+} from '../../../shared/components/photo-editor/photo-editor.component';
 import {
   ShoppingItem,
   parseItemPrice,
@@ -52,6 +58,8 @@ import {
 @Component({
   selector: 'app-cart',
   imports: [
+    ProductPhotoComponent,
+    PhotoEditorComponent,
     MaskitoDirective,
     IonIcon,
     IonButtons,
@@ -112,6 +120,11 @@ export class CartPage {
   readonly saving = signal(false);
   readonly formError = signal('');
   readonly actionError = signal('');
+  readonly photoEdit = signal<PhotoEdit | null>(null);
+  readonly photoPreparing = signal(false);
+  readonly editingBarcode = signal<string | null>(null);
+  private readonly photos = inject(ProductPhotoService);
+  private formRevision = 0;
   editingId?: string;
   name = '';
   price = '';
@@ -181,7 +194,17 @@ export class CartPage {
     }
   }
 
+  ionViewWillLeave(): void {
+    ++this.formRevision;
+    this.modalOpen.set(false);
+  }
+
   openItem(item?: ShoppingItem): void {
+    if (this.saving()) return;
+    ++this.formRevision;
+    this.photoEdit.set(null);
+    this.photoPreparing.set(false);
+    this.editingBarcode.set(item?.barcode ?? null);
     ++this.catalogRequest;
     this.catalogResults.set([]);
     this.catalogLoading.set(false);
@@ -201,48 +224,80 @@ export class CartPage {
   }
 
   async save(): Promise<void> {
-    if (this.saving()) return;
+    if (this.saving() || this.photoPreparing()) return;
+    const form = {
+      revision: this.formRevision,
+      sessionId: this.store.active()?.id,
+      name: this.name,
+      price: this.price,
+      quantity: this.quantity,
+      weight: this.weight,
+      measurementType: this.measurementType,
+      pricingType: this.pricingType,
+      bundleQuantity: this.bundleQuantity,
+      editingId: this.editingId,
+      barcode: this.catalogBarcode,
+      photoBarcode: this.catalogBarcode ?? this.editingBarcode(),
+      photo: this.photoEdit(),
+    };
     this.saving.set(true);
     this.formError.set('');
     try {
-      if (this.measurementType === 'WEIGHT') {
-        await this.store.saveWeightItem(
-          this.name,
-          parseItemPrice(this.price),
-          parseWeightGrams(this.weight),
-          this.editingId,
-          this.catalogBarcode,
-        );
-      } else if (this.pricingType === 'BUNDLE') {
-        await this.store.saveBundleItem(
-          this.name,
-          parseItemQuantity(this.bundleQuantity),
-          parseItemPrice(this.price),
-          parseItemQuantity(this.quantity),
-          this.editingId,
-          this.catalogBarcode,
-        );
-      } else {
-        await this.store.saveItem(
-          this.name,
-          parseItemPrice(this.price),
-          parseItemQuantity(this.quantity),
-          this.editingId,
-          this.catalogBarcode,
+      if (!form.sessionId || this.store.active()?.id !== form.sessionId)
+        throw new Error('Comece uma compra antes de adicionar produtos.');
+      const savedId =
+        form.measurementType === 'WEIGHT'
+          ? await this.store.saveWeightItem(
+              form.name,
+              parseItemPrice(form.price),
+              parseWeightGrams(form.weight),
+              form.editingId,
+              form.barcode,
+            )
+          : form.pricingType === 'BUNDLE'
+            ? await this.store.saveBundleItem(
+                form.name,
+                parseItemQuantity(form.bundleQuantity),
+                parseItemPrice(form.price),
+                parseItemQuantity(form.quantity),
+                form.editingId,
+                form.barcode,
+              )
+            : await this.store.saveItem(
+                form.name,
+                parseItemPrice(form.price),
+                parseItemQuantity(form.quantity),
+                form.editingId,
+                form.barcode,
+              );
+      try {
+        if (form.photo) {
+          const target = {
+            barcode: form.photoBarcode ?? null,
+            itemId: form.photoBarcode ? null : savedId,
+            name: form.name.trim(),
+          };
+          if (form.photo.kind === 'SET') await this.photos.save(form.photo.photo, target);
+          else if (form.photo.kind === 'REMOVE') await this.photos.remove(target);
+          else await this.photos.restoreCatalog(target);
+        }
+      } catch {
+        this.actionError.set(
+          'Produto salvo. A foto não pôde ser salva; abra a edição para tentar novamente.',
         );
       }
-      this.modalOpen.set(false);
+      if (form.revision === this.formRevision) this.modalOpen.set(false);
     } catch (error) {
-      this.formError.set(
-        error instanceof Error && /Informe|Comece|Produto não/.test(error.message)
-          ? error.message
-          : 'Não foi possível salvar o produto. Tente novamente.',
-      );
+      if (form.revision === this.formRevision)
+        this.formError.set(
+          error instanceof Error && /Informe|Comece|Produto não/.test(error.message)
+            ? error.message
+            : 'Não foi possível salvar o produto. Tente novamente.',
+        );
     } finally {
       this.saving.set(false);
     }
   }
-
   quantityStep(item: ShoppingItem): number {
     return item.pricingType === 'BUNDLE' ? item.bundleQuantity! : 1;
   }
@@ -273,6 +328,7 @@ export class CartPage {
     this.catalogError.set('');
     this.previousPrice.set(null);
     this.catalogBarcode = product.barcode;
+    this.editingBarcode.set(product.barcode);
     this.name = product.name;
     this.price = '';
     this.quantity = '1';
@@ -299,6 +355,7 @@ export class CartPage {
   clearCatalogProduct(): void {
     ++this.catalogRequest;
     this.catalogBarcode = undefined;
+    this.editingBarcode.set(null);
     this.previousPrice.set(null);
     this.catalogResults.set([]);
     this.catalogLoading.set(false);

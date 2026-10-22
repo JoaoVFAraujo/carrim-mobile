@@ -2,7 +2,7 @@
 
 Guia operacional do aparelho. Resultado consolidado de testes/CI e prioridades ficam no [roadmap](https://github.com/JoaoVFAraujo/carrim-api/blob/main/docs/ROADMAP.md); configuração HTTPS e comandos web no [README](../README.md).
 
-APK debug foi compilado no Cloud/CI; execução física, câmera, Keystore, SQLite nativo e atualização ainda **pendentes**. Não presumir que SDK/dispositivo disponíveis no Cloud existem no PC. iOS exige validação própria.
+APK debug já foi instalado e aberto no Moto G73/Android14 no PC, com SQLite criado. Isso não conclui a validação física de câmera, galeria, Keystore, atualização e fluxo completo; conferir o roteiro abaixo. Não presumir que SDK/dispositivo disponíveis no Cloud existem no PC. iOS exige validação própria.
 
 ## Preparar e instalar
 
@@ -70,3 +70,17 @@ Atualizar esta tabela somente após execução real, indicando modelo, Android, 
 | Acessibilidade e compra real               | Pendente  | —         |
 
 Ao falhar, registrar esperado/obtido, corrigir em branch fix e repetir o trecho afetado. Produção e assinatura/distribuição release exigem o [guia de Segurança](https://github.com/JoaoVFAraujo/carrim-api/blob/main/docs/SEGURANCA.md).
+
+## Fotos e moderação no aparelho
+
+Primeira instalação de revisão em 21/10/2026: APK desta entrega compilado com JDK 21/Gradle 8.14.3, assinatura v2 verificada e instalado com atualização preservando dados no Moto G73 conectado. MainActivity iniciada e processo permaneceu ativo. A tela estava apagada durante a captura; isso não confirma layout, câmera, galeria ou aceitação do fluxo físico. Versão 0.0.2/code 2, sem API HTTPS nativa configurada. SHA-256 desse primeiro APK (anterior aos ajustes finais do review): `5E715EAE5CA25B69933ACBD31843ECA15A32CFD46062BEA91B028BF291766533`. PR da entrega: [mobile #32](https://github.com/JoaoVFAraujo/carrim-mobile/pull/32), com [API #22](https://github.com/JoaoVFAraujo/carrim-api/pull/22).
+
+- Fotografar e selecionar JPEG/PNG por ação explícita; cancelar/recusar sem perder produto ou foto anterior.
+- Conferir prévia alta/larga/quadrada, substituir uma foto externa, remover e restaurar explicitamente.
+- Modo avião: foto aparece no Carrinho, sobrevive ao fechamento/reabertura e aguarda envio; compra continua e pode finalizar.
+- Com API HTTPS configurada: reenviar sem duplicação após reconectar e depois da finalização; autor vê pendente e outro proprietário não consegue acessar antes da aprovação.
+- Administrador aprova pelo painel; outro cliente encontra a imagem/nome aprovado pelo EAN. Substituta pendente mantém a foto pública anterior. Rejeição/retirada é recebida ao reconectar.
+- Encerrar processo durante a atividade de câmera e retornar: recuperar rascunho para confirmação, sem envio ou vínculo automático.
+- Atualizar com mesma assinatura sem limpar dados; migration011 preserva compras/identidade e adiciona fotos, preferências e fila de mídia.
+
+Build/instalação não comprovam essas etapas. Sem endpoint HTTPS no APK, somente os fluxos locais/offline podem ser aceitos no aparelho; integração online pode ser conferida no navegador com API local isolada. Nenhuma chave administrativa deve ser incluída no build.

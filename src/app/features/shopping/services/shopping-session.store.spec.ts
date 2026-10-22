@@ -284,7 +284,8 @@ describe('shopping totals and item persistence', () => {
       budgetCents: null,
       startedAt: 0,
     });
-    await expect(store.saveItem('Coffee', 1749, 2)).resolves.toBeUndefined();
+    const savedId = await store.saveItem('Coffee', 1749, 2);
+    expect(savedId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(transaction).toHaveBeenCalledTimes(1);
     expect(store.error()).toContain('dados locais');
   });

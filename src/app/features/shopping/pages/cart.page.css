@@ -103,8 +103,11 @@
   box-shadow: 0 2px 5px #173d2f03;
 }
 .product-thumbnail {
-  align-self: stretch;
-  min-height: 76px;
+  align-self: start;
+  height: 88px;
+  min-height: 88px;
+  max-height: 88px;
+  overflow: hidden;
   display: grid;
   place-items: center;
   border-radius: 12px;

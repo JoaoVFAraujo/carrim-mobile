@@ -12,6 +12,7 @@ import { bundleItemsSchema } from '../src/app/core/database/migrations/007-bundl
 import { checkoutTotalSchema } from '../src/app/core/database/migrations/008-checkout-total.ts';
 import { syncRetrySchema } from '../src/app/core/database/migrations/009-sync-retry.ts';
 import { syncRequestSchema } from '../src/app/core/database/migrations/010-sync-request.ts';
+import { productPhotosSchema } from '../src/app/core/database/migrations/011-product-photos.ts';
 
 // A fresh, in-memory database: this verification never touches the user's app data.
 const SQL = await initSqlJs();
@@ -284,6 +285,12 @@ assert.equal(scalar("SELECT checkout_total_cents FROM shopping_sessions WHERE id
 apply(syncRetrySchema);
 assert.equal(scalar('SELECT MAX(version) FROM schema_migrations'), 9);
 apply(syncRequestSchema);
+const preservedItemsBeforePhotos = scalar('SELECT COUNT(*) FROM shopping_items');
+apply(productPhotosSchema);
+assert.equal(scalar('SELECT MAX(version) FROM schema_migrations'), 11);
+assert.equal(scalar('SELECT COUNT(*) FROM shopping_items'), preservedItemsBeforePhotos);
+assert.equal(scalar('SELECT COUNT(*) FROM product_photos'), 0);
+assert.equal(scalar('SELECT COUNT(*) FROM photo_outbox'), 0);
 assert.equal(scalar("SELECT COUNT(*) FROM shopping_items WHERE session_id = 'next'"), 1);
 db.run('DELETE FROM sync_queue');
 const queueSource = await readFile(
@@ -370,6 +377,7 @@ for (const schema of [
   checkoutTotalSchema,
   syncRetrySchema,
   syncRequestSchema,
+  productPhotosSchema,
 ])
   apply(schema);
 const marketId = 'a20e47cf-a002-4b01-a001-000000000001';
@@ -466,5 +474,5 @@ console.log(
   'Remote snapshots verified: bootstrap, completed items/history, repeated terminal events, no outbox echo.',
 );
 console.log(
-  'SQLite verified: migrations v1-v10, preservation, atomic catalog/item/outbox, repeated product grouping, weight and bundle constraints, exact mixed history, optional checkout including zero, rollback, completion replay, immutable history, leading zeros, price configuration isolation and reopen.',
+  'SQLite verified: migrations v1-v11 including photo tables preserving purchases, atomic catalog/item/outbox, repeated product grouping, weight and bundle constraints, exact mixed history, optional checkout including zero, rollback, completion replay, immutable history, leading zeros, price configuration isolation and reopen.',
 );

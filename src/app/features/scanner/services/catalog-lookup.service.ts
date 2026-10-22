@@ -7,7 +7,7 @@ import { parseBarcode } from '../models/catalog-product';
 
 export interface CatalogSuggestion {
   status: 'FOUND' | 'NOT_FOUND' | 'UNAVAILABLE' | 'RATE_LIMITED' | 'DISABLED';
-  source: 'PERSONAL' | 'OPEN_FOOD_FACTS' | null;
+  source: 'PERSONAL' | 'OPEN_FOOD_FACTS' | 'CARRIM_APPROVED' | null;
   barcode: string;
   name: string | null;
   brand: string | null;
@@ -111,7 +111,8 @@ function validatedSuggestion(value: unknown, barcode: string): CatalogSuggestion
       measurementType: null,
     };
   const source = data['source'];
-  if (source !== 'PERSONAL' && source !== 'OPEN_FOOD_FACTS') throw new Error('Invalid source');
+  if (source !== 'PERSONAL' && source !== 'OPEN_FOOD_FACTS' && source !== 'CARRIM_APPROVED')
+    throw new Error('Invalid source');
   const text = (key: string, max: number): string | null => {
     const item = data[key];
     if (item === null || item === undefined || item === '') return null;

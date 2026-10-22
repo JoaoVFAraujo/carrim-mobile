@@ -6,6 +6,59 @@ import { vi } from 'vitest';
 import { CartPage } from './cart.page';
 import { ShoppingSessionStore } from '../services/shopping-session.store';
 import { ProductCatalogService } from '../../scanner/services/product-catalog.service';
+import { ProductPhotoService } from '../../../core/photos/product-photo.service';
+
+beforeEach(() =>
+  TestBed.configureTestingModule({
+    providers: [
+      {
+        provide: ProductPhotoService,
+        useValue: {
+          save: vi.fn().mockResolvedValue(undefined),
+          remove: vi.fn().mockResolvedValue(undefined),
+          restoreCatalog: vi.fn().mockResolvedValue(undefined),
+          cacheCatalog: vi.fn().mockResolvedValue(undefined),
+        },
+      },
+    ],
+  }),
+);
+
+describe('photo target identity', () => {
+  it('uses the returned saved item id instead of looking in a new purchase after navigation', async () => {
+    const active = signal({ id: 'original-session' });
+    let resolve!: (id: string) => void;
+    const saveItem = vi.fn(() => new Promise<string>((done) => (resolve = done)));
+    TestBed.configureTestingModule({
+      providers: [
+        CartPage,
+        { provide: ShoppingSessionStore, useValue: { active, saveItem, items: signal([]) } },
+      ],
+    });
+    const page = TestBed.inject(CartPage);
+    page.openItem();
+    page.name = 'Foto manual';
+    page.price = '1,99';
+    const photo = {
+      imageBase64: '/9j/2Q==',
+      contentType: 'image/jpeg' as const,
+      width: 1,
+      height: 1,
+    };
+    page.photoEdit.set({ kind: 'SET', photo });
+    const pending = page.save();
+    page.ionViewWillLeave();
+    active.set({ id: 'new-session' });
+    page.name = 'Outro';
+    resolve('a0000000-0000-4000-8000-000000000001');
+    await pending;
+    expect(TestBed.inject(ProductPhotoService).save).toHaveBeenCalledWith(photo, {
+      barcode: null,
+      itemId: 'a0000000-0000-4000-8000-000000000001',
+      name: 'Foto manual',
+    });
+  });
+});
 
 describe('cart completion confirmation', () => {
   function setup() {
@@ -183,7 +236,10 @@ describe('cart weight form', () => {
     TestBed.configureTestingModule({
       providers: [
         CartPage,
-        { provide: ShoppingSessionStore, useValue: { saveWeightItem, saveItem, saveBundleItem } },
+        {
+          provide: ShoppingSessionStore,
+          useValue: { active: signal({ id: 's' }), saveWeightItem, saveItem, saveBundleItem },
+        },
         { provide: AlertController, useValue: {} },
         { provide: ToastController, useValue: {} },
         { provide: Router, useValue: {} },
@@ -292,4 +348,32 @@ describe('cart catalog reuse', () => {
     await page.save();
     expect(saveItem).toHaveBeenCalledWith('Coffee', 1800, 1, undefined, '0789600112233');
   });
+  it.each(['SET', 'REMOVE', 'RESTORE'] as const)(
+    'targets the saved manual item for %s after clearing a catalog selection',
+    async (kind) => {
+      const { page, saveItem } = setup();
+      const itemId = 'a0000000-0000-4000-8000-000000000002';
+      saveItem.mockResolvedValue(itemId);
+      page.openItem();
+      await page.selectCatalogProduct({ id: 'p', name: 'Coffee', barcode: '0789600112233' });
+      page.clearCatalogProduct();
+      page.name = 'Produto manual';
+      page.price = '2,99';
+      const photo = {
+        imageBase64: '/9j/2Q==',
+        contentType: 'image/jpeg' as const,
+        width: 1,
+        height: 1,
+      };
+      page.photoEdit.set(kind === 'SET' ? { kind, photo } : { kind });
+      await page.save();
+      const target = { barcode: null, itemId, name: 'Produto manual' };
+      const photos = TestBed.inject(ProductPhotoService);
+      expect(page.editingBarcode()).toBeNull();
+      expect(saveItem).toHaveBeenCalledWith('Produto manual', 299, 1, undefined, undefined);
+      if (kind === 'SET') expect(photos.save).toHaveBeenCalledWith(photo, target);
+      else if (kind === 'REMOVE') expect(photos.remove).toHaveBeenCalledWith(target);
+      else expect(photos.restoreCatalog).toHaveBeenCalledWith(target);
+    },
+  );
 });

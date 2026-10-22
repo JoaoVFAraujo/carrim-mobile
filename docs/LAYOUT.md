@@ -99,3 +99,13 @@ Asset local: [public/images/grocery-basket.png](../public/images/grocery-basket.
 > Use case: product-mockup. Asset type: small transparent hero illustration for Carrim grocery shopping mobile app. Create a single rich dark forest green plastic supermarket shopping basket filled with fresh lettuce, tomatoes, a few bananas, a baguette in kraft paper and a plain glass milk bottle with blue cap. No brands, no labels, no words. Realistic premium studio product render, three-quarter view, basket handle partly upright, compact tall composition, soft light upper left, natural textures, crisp silhouette, subtle grounded shadow. Entire basket and groceries fully inside image, centered filling canvas with minimal transparent padding. Background genuinely transparent. Intended to be displayed at 150px wide on a deep green card. No backdrop, no table, no border, no text, no watermark.
 
 </details>
+
+## Fotos persistentes e aprovação — 21/10/2026
+
+Miniaturas usam área limitada e imagem posicionada dentro do contêiner com object-fit:contain, preservando proporção de garrafas altas, imagens largas e quadradas. Foto e formulário não podem se sobrepor. O componente é compartilhado entre ficha e Carrinho; falha/ausência usa placeholder. Na ficha, controles da foto ficam sob a identificação, sem duplicar a prévia.
+
+Adicionar/Trocar foto abre câmera/galeria no nativo ou seleção JPEG/PNG no navegador. Mostrar prévia e permitir remover/restaurar explicitamente o catálogo antes de salvar. A foto removida não reaparece por fallback externo; a escolha pessoal tem preferência. Foto não enviada indica envio pendente; após confirmação do servidor indica aguardando aprovação. Foto rejeitada continua visível ao autor, com opção de substituir, e não é publicada.
+
+A contribuição é pública somente após aprovação administrativa; a interface explica essa condição antes de confirmar. O painel /admin/fotos é separado das quatro abas de compra e protegido por chave de operador. Permite filtrar pendentes/aprovadas/rejeitadas, ampliar a prévia para conferência, aprovar, rejeitar e retirar publicação. A chave é ocultada na entrada e não vai para URLs ou armazenamento do navegador. Créditos/licenças de imagens externas continuam visíveis; adaptação de tamanho/formato é indicada quando houver importação.
+
+Revisão inclui fotos altas/largas/quadradas, fonte ampliada, teclado, nomes longos, ausência de imagem, permissões/cancelamento e retorno da captura após encerramento do processo. Capturas e aprovação do usuário no aparelho são verificações separadas da revisão de código.

@@ -7,8 +7,37 @@ import { BarcodeScannerService } from '../services/barcode-scanner.service';
 import { ProductCatalogService } from '../services/product-catalog.service';
 import { ShoppingSessionStore } from '../../shopping/services/shopping-session.store';
 import { CatalogLookupService, CatalogSuggestion } from '../services/catalog-lookup.service';
+import { ProductPhotoService } from '../../../core/photos/product-photo.service';
 
 describe('scanner product confirmation', () => {
+  it('keeps the original photo target when navigation happens during the item write', async () => {
+    const { page, saveItem, find } = setup();
+    await page.lookup('0789600112233');
+    const photo = {
+      imageBase64: '/9j/2Q==',
+      contentType: 'image/jpeg' as const,
+      width: 1,
+      height: 1,
+    };
+    page.photoEdit.set({ kind: 'SET', photo });
+    page.price = '8,99';
+    let resolve!: (id: string) => void;
+    saveItem.mockImplementation(() => new Promise((done) => (resolve = done)));
+    const pending = page.save();
+    page.ionViewWillLeave();
+    page.productCode = '7891000100103';
+    page.name = 'Outro produto';
+    page.photoEdit.set(null);
+    await page.lookup('7891000100103');
+    expect(find).toHaveBeenCalledTimes(1);
+    resolve('saved-id');
+    await pending;
+    expect(TestBed.inject(ProductPhotoService).save).toHaveBeenCalledWith(photo, {
+      barcode: '0789600112233',
+      itemId: null,
+      name: 'Coffee',
+    });
+  });
   function setup() {
     const active = signal({ id: 's', supermarketId: 'm' });
     const saveItem = vi.fn().mockResolvedValue(undefined);
@@ -23,6 +52,15 @@ describe('scanner product confirmation', () => {
     TestBed.configureTestingModule({
       providers: [
         ScannerPage,
+        {
+          provide: ProductPhotoService,
+          useValue: {
+            save: vi.fn().mockResolvedValue(undefined),
+            remove: vi.fn().mockResolvedValue(undefined),
+            restoreCatalog: vi.fn().mockResolvedValue(undefined),
+            cacheCatalog: vi.fn().mockResolvedValue(undefined),
+          },
+        },
         { provide: ShoppingSessionStore, useValue: { active, saveItem } },
         { provide: ProductCatalogService, useValue: { find, lastPrice } },
         { provide: BarcodeScannerService, useValue: scanner },
