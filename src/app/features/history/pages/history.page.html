@@ -211,35 +211,50 @@
             <p role="alert">{{ detailError() }}</p>
             <ion-button (click)="open(shopping)">Tentar novamente</ion-button>
           } @else {
+            <p class="tw:text-sm tw:text-gray-600">Fotos atuais dos produtos.</p>
             @for (item of items(); track item.id) {
-              <article class="tw:mt-4 tw:border-b tw:border-gray-200 tw:pb-4">
-                <h2 class="tw:text-lg">{{ item.name }}</h2>
-                <p>
-                  @if (item.pricingType === 'BUNDLE') {
-                    {{ item.quantity }} unidades · {{ item.bundleQuantity }} por
-                  } @else if (item.measurementType === 'WEIGHT') {
-                    {{ item.weightGrams! / 1000 | number: '1.3-3' : 'pt-BR' }} kg ×
-                  } @else {
-                    {{ item.quantity }} ×
-                  }
-                  {{ item.unitPriceCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
-                  @if (item.measurementType === 'WEIGHT') {
-                    /kg
-                  }
-                </p>
-                @if (item.pricingType === 'BUNDLE') {
-                  <p class="tw:text-sm tw:text-gray-600">
-                    Equivale a aproximadamente
-                    {{
-                      item.unitPriceCents / item.bundleQuantity! / 100
-                        | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-                    }}
-                    por unidade.
+              <article
+                class="history-item tw:mt-4 tw:flex tw:items-start tw:gap-3 tw:border-b tw:border-gray-200 tw:pb-4"
+              >
+                <div
+                  class="tw:h-[88px] tw:w-20 tw:shrink-0 tw:overflow-hidden tw:rounded-2xl tw:bg-[#eef1e7]"
+                  aria-hidden="true"
+                >
+                  <app-product-photo
+                    [barcode]="item.barcode ?? null"
+                    [itemId]="item.id"
+                    [name]="item.name"
+                  />
+                </div>
+                <div class="tw:min-w-0 tw:flex-1 tw:break-words">
+                  <h2 class="tw:mt-0 tw:text-lg">{{ item.name }}</h2>
+                  <p>
+                    @if (item.pricingType === 'BUNDLE') {
+                      {{ item.quantity }} unidades · {{ item.bundleQuantity }} por
+                    } @else if (item.measurementType === 'WEIGHT') {
+                      {{ item.weightGrams! / 1000 | number: '1.3-3' : 'pt-BR' }} kg ×
+                    } @else {
+                      {{ item.quantity }} ×
+                    }
+                    {{ item.unitPriceCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+                    @if (item.measurementType === 'WEIGHT') {
+                      /kg
+                    }
                   </p>
-                }
-                <strong>{{
-                  subtotal(item) / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
-                }}</strong>
+                  @if (item.pricingType === 'BUNDLE') {
+                    <p class="tw:text-sm tw:text-gray-600">
+                      Equivale a aproximadamente
+                      {{
+                        item.unitPriceCents / item.bundleQuantity! / 100
+                          | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                      }}
+                      por unidade.
+                    </p>
+                  }
+                  <strong>{{
+                    subtotal(item) / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR'
+                  }}</strong>
+                </div>
               </article>
             }
           }

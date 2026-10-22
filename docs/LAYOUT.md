@@ -113,3 +113,5 @@ Revisão inclui fotos altas/largas/quadradas, fonte ampliada, teclado, nomes lon
 ## Continuidade do fluxo de compra
 
 Depois de salvar uma nova compra, fechar o modal Ionic antes de abrir o Carrinho. Ao alterar quantidades ou receber atualizações de sincronização, manter o conteúdo atual montado; o carregamento completo aparece apenas antes da primeira leitura bem-sucedida. Falhas de leitura continuam visíveis e permitem nova tentativa.
+
+Em Histórico > Ver itens, exibir miniaturas contidas de 80 × 88 px ao lado do nome e dos valores. Usar código de barras ou ID do item manual e o mesmo componente do Carrinho; ausência/remoção de foto mantém placeholder. A legenda informa que são fotos atuais dos produtos, sem congelar versões da imagem nem alterar nomes, quantidades ou preços registrados na compra finalizada.
