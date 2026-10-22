@@ -58,7 +58,7 @@ export class ShoppingSessionStore {
       const session = this.active()!;
       await this.repository.changeBudget(session.id, budgetCents);
       this.active.update((value) => (value?.id === session.id ? { ...value, budgetCents } : value));
-      await this.load();
+      await this.reloadAfterWrite();
     });
   }
 
@@ -68,7 +68,7 @@ export class ShoppingSessionStore {
       await this.repository.cancel(session.id);
       this.active.set(null);
       this.items.set([]);
-      await this.load();
+      await this.reloadAfterWrite();
     });
   }
 
@@ -88,7 +88,7 @@ export class ShoppingSessionStore {
     // The write succeeded: a subsequent read failure must not leave an editable cart.
     this.active.set(null);
     this.items.set([]);
-    await this.load();
+    await this.reloadAfterWrite();
   }
 
   completedItems(sessionId: string): Promise<ShoppingItem[]> {
@@ -261,7 +261,7 @@ export class ShoppingSessionStore {
       bundleQuantity,
     });
     // A committed item must not be offered for a duplicate retry if only the read fails.
-    await this.load();
+    await this.reloadAfterWrite();
     return savedId;
   }
 
@@ -295,6 +295,13 @@ export class ShoppingSessionStore {
         this.loadingPromise = undefined;
       });
     return this.loadingPromise;
+  }
+
+  private async reloadAfterWrite(): Promise<void> {
+    // A snapshot started before the commit may already contain stale items.
+    // Let it finish, then read again instead of joining that earlier snapshot.
+    await this.loadingPromise;
+    await this.load();
   }
 
   async create(supermarketId: string, newName: string, budgetCents: number | null): Promise<void> {

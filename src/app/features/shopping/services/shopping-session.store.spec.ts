@@ -72,7 +72,7 @@ describe('repeated products', () => {
     });
     const store = TestBed.inject(ShoppingSessionStore);
     store.active.set(session);
-    return { store, transaction };
+    return { store, transaction, query };
   }
 
   it('preserves scanner identity without rewriting the catalog on quantity changes', async () => {
@@ -117,6 +117,42 @@ describe('repeated products', () => {
     expect(loading).not.toHaveBeenCalledWith(true);
     expect(store.items()[0].quantity).toBe(2);
     expect(store.totalCents()).toBe(1598);
+  });
+
+  it('rereads quantities after a write that overtakes an already-running snapshot', async () => {
+    const { store, query, transaction } = setup();
+    await store.saveItem('Rice', 799, 1);
+    const id = store.items()[0].id;
+    const normalQuery = query.getMockImplementation()!;
+    let releaseHistory!: () => void;
+    let historyReached!: () => void;
+    const reached = new Promise<void>((resolve) => {
+      historyReached = resolve;
+    });
+    const release = new Promise<void>((resolve) => {
+      releaseHistory = resolve;
+    });
+    let hold = true;
+    query.mockImplementation(async (sql: string, values: unknown[]) => {
+      const result = await normalQuery(sql, values);
+      if (hold && sql.includes("WHERE s.status = 'COMPLETED'")) {
+        hold = false;
+        historyReached();
+        await release;
+      }
+      return result;
+    });
+    const background = store.load();
+    await reached; // The background snapshot has captured quantity 1.
+    const updating = store.changeQuantity(id, 1);
+    await vi.waitFor(() => expect(transaction).toHaveBeenCalledTimes(2));
+    releaseHistory();
+    await Promise.all([background, updating]);
+    expect(store.items()[0].quantity).toBe(2);
+    expect(store.totalCents()).toBe(1598);
+    await store.changeQuantity(id, 1);
+    expect(store.items()[0].quantity).toBe(3);
+    expect(store.totalCents()).toBe(2397);
   });
 
   it('preserves quantities on write failure and rejects weight or out-of-range changes', async () => {
