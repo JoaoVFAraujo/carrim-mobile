@@ -84,3 +84,9 @@ Primeira instalação de revisão em 21/10/2026: APK desta entrega compilado com
 - Atualizar com mesma assinatura sem limpar dados; migration011 preserva compras/identidade e adiciona fotos, preferências e fila de mídia.
 
 Build/instalação não comprovam essas etapas. Sem endpoint HTTPS no APK, somente os fluxos locais/offline podem ser aceitos no aparelho; integração online pode ser conferida no navegador com API local isolada. Nenhuma chave administrativa deve ser incluída no build.
+
+## Homologação online — 22/10/2026
+
+Endpoint público: `https://carrim-api.onrender.com/api/v1`. Gerar a configuração não secreta com `CARRIM_API_URL` e `npm run configure:api` antes de build/cap sync/assembleDebug. O endpoint gerado permanece fora do Git; não incluir credenciais nesse arquivo.
+
+Backend Render + PostgreSQL Supabase validados por HTTPS: identidade nativa, isolamento de dois usuários, compra, cálculo, finalização, replay idempotente, sync pull e preflight restrito. Isso não comprova execução física do APK: ainda conferir no aparelho envio das pendências, modo avião/reconexão, fotos e câmera/galeria. Não apagar identidade nem reinstalar do zero se houver divergência de proprietário; interromper e revisar o vínculo. Aprovação administrativa na nuvem está fechada até configurar uma chave de operador própria. Planos gratuitos podem dormir/pausar; a primeira resposta pode demorar.

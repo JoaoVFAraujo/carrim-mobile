@@ -67,7 +67,7 @@ Remove-Item Env:CARRIM_API_URL
 
 O domínio acima é ilustrativo. configure:api gera public/api-config.json, ignorado pelo Git e incluído no build. Não guardar token/prova/senha nesse arquivo. O arquivo gerado pode persistir após remover a variável: conferir configuração antes de cada build; para gerar app sem endpoint, remover somente esse arquivo gerado, sem tocar nos dados do app.
 
-Não existe domínio/HTTPS público configurado nesta retomada. Homologação deve validar TLS e CORS/origens WebView conforme o guia de Segurança. Em produção web, o proxy deve encaminhar /api/v1 à API preservando a origem pública e informando HTTPS por uma configuração confiável. A API recusa bootstrap web sem HTTPS no perfil prod. Não usar CORS amplo nem endpoint web de outra origem.
+API de homologação publicada em 22/10/2026: `https://carrim-api.onrender.com/api/v1`, no Render Free, com PostgreSQL Supabase Free. O APK precisa ser recompilado com `CARRIM_API_URL` apontando para esse endereço. Credenciais do banco permanecem somente no backend. O perfil Render aceita a origem Android `https://localhost`, sem cookies, para as rotas nativas Bearer; validar o fluxo físico conforme o guia Android. Em produção web, o proxy deve encaminhar /api/v1 à API preservando a origem pública e informando HTTPS por uma configuração confiável. A API recusa bootstrap web sem HTTPS no perfil prod. Não usar CORS amplo nem endpoint web de outra origem.
 
 JDK **21 completo** para Android (API usa JDK 25); SDK/plataformas 35 e 36, Build Tools 35/36, Gradle 8.14.3 e plugin 8.13.0. APK debug, instalação e roteiro no [guia Android](docs/VALIDACAO-ANDROID.md). iOS não foi gerado/validado; exige macOS/Xcode.
 
