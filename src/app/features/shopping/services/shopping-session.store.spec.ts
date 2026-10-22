@@ -107,6 +107,18 @@ describe('repeated products', () => {
     expect(store.items()[1].quantity).toBe(3);
   });
 
+  it('keeps the loaded cart visible during quantity changes and subsequent refreshes', async () => {
+    const { store } = setup();
+    await store.saveItem('Rice', 799, 1);
+    const id = store.items()[0].id;
+    const loading = vi.spyOn(store.loading, 'set');
+    await store.changeQuantity(id, 1);
+    await store.load(); // A sync refresh or tab entry must not tear down the cart either.
+    expect(loading).not.toHaveBeenCalledWith(true);
+    expect(store.items()[0].quantity).toBe(2);
+    expect(store.totalCents()).toBe(1598);
+  });
+
   it('preserves quantities on write failure and rejects weight or out-of-range changes', async () => {
     const { store, transaction } = setup();
     await store.saveItem('Rice', 799, 1);

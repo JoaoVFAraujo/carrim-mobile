@@ -14,6 +14,7 @@ export class ShoppingSessionStore {
   readonly loading = signal(true);
   readonly error = signal('');
   private loadingPromise?: Promise<void>;
+  private initialized = false;
   readonly items = signal<ShoppingItem[]>([]);
   readonly history = signal<CompletedShopping[]>([]);
   private completing?: Promise<void>;
@@ -274,9 +275,14 @@ export class ShoppingSessionStore {
 
   load(): Promise<void> {
     if (this.loadingPromise) return this.loadingPromise;
-    this.loading.set(true);
+    // Keep the current view mounted during quantity edits, sync and tab refreshes.
+    // The full loading state is only needed before the first successful read.
+    this.loading.set(!this.initialized);
     this.error.set('');
     this.loadingPromise = this.refresh()
+      .then(() => {
+        this.initialized = true;
+      })
       .catch((error) =>
         this.error.set(
           error instanceof LocalDatabaseInUse
