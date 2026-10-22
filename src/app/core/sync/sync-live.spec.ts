@@ -355,7 +355,32 @@ describe.skipIf(env['CARRIM_LIVE_SYNC'] !== '1')('live offline/online sync', () 
       await store.changeBudget(12000);
       await store.changeBudget(null);
       await store.saveItem('Remove me', 100, 1);
+      const removedTarget = { barcode: null, itemId: store.items()[0].id, name: 'Remove me' };
+      await processor.run();
+      await photos.save(preparedPhoto, removedTarget);
+      await photos.flush();
+      expect(photos.pendingCount()).toBe(0);
+      const removedManualPhotoId = (await photos.get(removedTarget))!.id;
       await store.removeItem(store.items()[0].id);
+      online = false;
+      await photos.flush();
+      expect(
+        query('SELECT image_base64 FROM product_photos WHERE id=?', [removedManualPhotoId])
+          .values[0]?.['image_base64'],
+      ).toBeNull();
+      online = true;
+      await processor.run();
+      await photos.flush();
+      expect(photos.pendingCount()).toBe(0);
+      const deletedManual = await fetch(
+        liveBase + '/api/v1/products/photos/' + removedManualPhotoId,
+        {
+          headers: { Authorization: 'Bearer ' + accessToken },
+        },
+      ).then((r) => r.json());
+      expect(deletedManual.status).toBe('DELETED');
+      await photos.refresh(undefined, true);
+      expect(await photos.get(removedTarget)).toBeNull();
       await store.cancel();
       await processor.run();
       expect(processor.state()).toBe('READY');

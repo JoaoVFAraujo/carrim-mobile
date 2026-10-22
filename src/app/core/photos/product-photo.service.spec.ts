@@ -103,6 +103,7 @@ describe('offline product photos and separate media queue', () => {
       );
     return {
       service,
+      db,
       repo,
       transport,
       request,
@@ -473,6 +474,114 @@ describe('offline product photos and separate media queue', () => {
     expect(await service.hidden(manual)).toBe(true);
     expect(request.mock.calls.every((call) => call[0] === 'DELETE')).toBe(true);
     expect(raw("SELECT * FROM photo_outbox WHERE status!='SUPERSEDED'")).toEqual([]);
+  });
+
+  it.each(['hidden', 'personal'])(
+    'imports the remote %s choice before a thumbnail selects a catalog default',
+    async (choice) => {
+      const { service, repo, photo, request, raw } = await setup(true);
+      const personal = photo(crypto.randomUUID());
+      request.mockImplementation(async (method: string, path: string) => {
+        if (method === 'GET' && path === '/products/photos/preferences/barcode-' + target.barcode)
+          return {
+            key: photoKey(target),
+            barcode: target.barcode,
+            itemId: null,
+            photoId: choice === 'personal' ? personal.id : null,
+            hidden: choice === 'hidden',
+            version: 3,
+          };
+        if (method === 'GET' && path === '/products/photos/' + personal.id) return personal;
+        throw new Error('Unexpected automatic catalog request');
+      });
+      await service.refresh(target, true);
+      expect((await repo.preference(target))?.remote_version).toBe(3);
+      if (choice === 'hidden') expect(await service.hidden(target)).toBe(true);
+      else expect((await service.get(target))?.id).toBe(personal.id);
+      expect(
+        request.mock.calls.some((call) => call[1].includes('/approved/') || call[0] === 'PUT'),
+      ).toBe(false);
+      expect(raw("SELECT * FROM photo_outbox WHERE status!='SUPERSEDED'")).toEqual([]);
+    },
+  );
+
+  it('reconciles an automatic selection conflict without blocking a newer remote personal choice', async () => {
+    const { service, photo, request, raw } = await setup(true);
+    const catalog = photo(crypto.randomUUID(), { own: false, status: 'APPROVED' });
+    const personal = photo(crypto.randomUUID());
+    let reads = 0;
+    request.mockImplementation(async (method: string, path: string) => {
+      if (method === 'GET' && path.includes('/preferences/')) {
+        if (++reads === 1) throw new PhotoTransportError(404);
+        return {
+          key: photoKey(target),
+          barcode: target.barcode,
+          itemId: null,
+          photoId: personal.id,
+          hidden: false,
+          version: 1,
+        };
+      }
+      if (method === 'GET' && path.includes('/approved/')) return catalog;
+      if (method === 'GET' && path === '/products/photos/' + personal.id) return personal;
+      if (method === 'PUT') throw new PhotoTransportError(409);
+      throw new PhotoTransportError(404);
+    });
+    await service.refresh(target, true);
+    await service.flush();
+    expect((await service.get(target))?.id).toBe(personal.id);
+    expect(reads).toBe(2);
+    expect(raw("SELECT * FROM photo_outbox WHERE status!='SUPERSEDED'")).toEqual([]);
+  });
+
+  it('reclaims completed manual photos after deletion even offline with an initially empty media queue', async () => {
+    const { service, repo, db, transport, request, photo, raw, run } = await setup();
+    const manual = { barcode: null, itemId: crypto.randomUUID(), name: 'Manual item' };
+    run("INSERT INTO shopping_items(id) VALUES ('" + manual.itemId + "')");
+    const stored = photo(crypto.randomUUID(), { barcode: null, itemId: manual.itemId });
+    await repo.save(stored, prepared, manual);
+    await repo.applied((await repo.next())!);
+    await repo.applied((await repo.next())!);
+    service.start();
+    await service.flush();
+    await db.transaction([
+      { statement: 'DELETE FROM shopping_items WHERE id=?', values: [manual.itemId] },
+      { statement: 'INSERT INTO sync_queue(id) VALUES (?)', values: [crypto.randomUUID()] },
+    ]);
+    await service.flush();
+    expect(await repo.photo(stored.id)).toBeNull();
+    expect(await service.hidden(manual)).toBe(true);
+    expect(raw("SELECT kind FROM photo_outbox WHERE status!='SUPERSEDED'")).toEqual([
+      { kind: 'DELETE' },
+    ]);
+    expect(request).not.toHaveBeenCalled();
+    transport.enabled = true;
+    request.mockResolvedValue([
+      { key: photoKey(manual), ...manual, photoId: stored.id, hidden: false, version: 0 },
+    ]);
+    await service.refresh(undefined, true);
+    expect(await service.get(manual)).toBeNull();
+    expect(await service.hidden(manual)).toBe(true);
+    expect(raw('SELECT id FROM product_photos WHERE image_base64 IS NOT NULL')).toEqual([]);
+  });
+
+  it('frees the full image quota occupied by removed manual items before another save', async () => {
+    const { service, repo, photo, run, raw } = await setup();
+    for (let index = 0; index < 100; index++) {
+      const manual = { barcode: null, itemId: crypto.randomUUID() };
+      run("INSERT INTO shopping_items(id) VALUES ('" + manual.itemId + "')");
+      await repo.save(
+        photo(crypto.randomUUID(), { barcode: null, itemId: manual.itemId }),
+        prepared,
+        manual,
+      );
+      await repo.applied((await repo.next())!);
+      await repo.applied((await repo.next())!);
+    }
+    run('DELETE FROM shopping_items');
+    await service.save(prepared, target);
+    expect(raw('SELECT id FROM product_photos WHERE image_base64 IS NOT NULL')).toHaveLength(1);
+    expect((await service.get(target))?.imageUrl).toContain(prepared.imageBase64);
   });
   it('does not hide the private photo when an administrator rejects its public candidacy', async () => {
     const { service, success, request, photo } = await setup(true);

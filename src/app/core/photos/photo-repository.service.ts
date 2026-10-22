@@ -76,12 +76,24 @@ export class PhotoRepositoryService {
     ]);
   }
 
+  async pruneMissingItems(): Promise<void> {
+    const missing = await this.db.query<{
+      item_id: string;
+    }>(`SELECT item_id FROM photo_preferences p
+      WHERE item_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM shopping_items i WHERE i.id=p.item_id)
+      AND (photo_id IS NOT NULL OR EXISTS (SELECT 1 FROM photo_outbox q WHERE q.target_key=p.target_key
+        AND q.kind!='DELETE' AND q.status!='SUPERSEDED'))`);
+    for (const row of missing)
+      await this.discardMissingTarget({ barcode: null, itemId: row.item_id });
+  }
+
   async get(target: PhotoTarget): Promise<StoredPhoto | null> {
     const pref = await this.preference(target);
     return pref?.hidden || !pref?.photo_id ? null : this.photo(pref.photo_id);
   }
 
   async save(photo: PhotoView, prepared: PreparedPhoto, target: PhotoTarget): Promise<void> {
+    await this.pruneMissingItems();
     const key = photoKey(target);
     await this.db.transaction([
       ...this.supersede(key),
@@ -208,6 +220,7 @@ export class PhotoRepositoryService {
     return {
       statement: `INSERT INTO photo_preferences(target_key,barcode,item_id,photo_id,hidden,remote_version,updated_at_ms)
         SELECT ?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM photo_outbox WHERE target_key=? AND status!='SUPERSEDED')
+        AND (? IS NULL OR EXISTS (SELECT 1 FROM shopping_items WHERE id=?))
         ON CONFLICT(target_key) DO UPDATE SET photo_id=excluded.photo_id,hidden=excluded.hidden,remote_version=excluded.remote_version,updated_at_ms=excluded.updated_at_ms
         WHERE NOT EXISTS (SELECT 1 FROM photo_outbox WHERE target_key=excluded.target_key AND status!='SUPERSEDED')`,
       values: [
@@ -219,6 +232,8 @@ export class PhotoRepositoryService {
         p.version,
         Date.now(),
         p.key,
+        p.itemId,
+        p.itemId,
       ],
     };
   }
@@ -289,6 +304,17 @@ export class PhotoRepositoryService {
         statement: "DELETE FROM photo_outbox WHERE id=? AND status!='SUPERSEDED'",
         values: [job.id],
       },
+      this.cleanup(),
+    ]);
+  }
+
+  async discardAutomatic(job: PhotoJob): Promise<void> {
+    await this.db.transaction([
+      {
+        statement:
+          "UPDATE photo_outbox SET status='SUPERSEDED' WHERE id=? AND kind='PREFERENCE' AND status='PENDING'",
+        values: [job.id],
+      },
     ]);
   }
   async failed(job: PhotoJob, transient: boolean): Promise<void> {
@@ -357,7 +383,7 @@ export class PhotoRepositoryService {
     return {
       statement: `UPDATE product_photos SET image_base64=NULL WHERE image_base64 IS NOT NULL
       AND id NOT IN (SELECT photo_id FROM photo_preferences WHERE photo_id IS NOT NULL)
-      AND id NOT IN (SELECT COALESCE(json_extract(payload_json,'$.id'),json_extract(payload_json,'$.photoId')) FROM photo_outbox WHERE status!='SUPERSEDED' AND COALESCE(json_extract(payload_json,'$.id'),json_extract(payload_json,'$.photoId')) IS NOT NULL)`,
+      AND id NOT IN (SELECT COALESCE(json_extract(payload_json,'$.id'),json_extract(payload_json,'$.photoId')) FROM photo_outbox WHERE kind!='DELETE' AND status!='SUPERSEDED' AND COALESCE(json_extract(payload_json,'$.id'),json_extract(payload_json,'$.photoId')) IS NOT NULL)`,
       values: [],
     };
   }

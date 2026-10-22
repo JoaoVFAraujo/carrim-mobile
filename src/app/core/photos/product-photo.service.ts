@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { SyncSchedulerService } from '../sync/sync-scheduler.service';
 import { SyncStatusService } from '../sync/sync-status.service';
+import { DatabaseService } from '../database/database.service';
 import { PhotoRepositoryService } from './photo-repository.service';
 import { PhotoTransportError, PhotoTransportService } from './photo-transport.service';
 import { PHOTO_PREPARER } from './prepare-photo';
@@ -23,6 +24,7 @@ export type { PhotoTarget, PreparedPhoto, StoredPhoto } from './photo-models';
 @Injectable({ providedIn: 'root' })
 export class ProductPhotoService {
   private readonly repository = inject(PhotoRepositoryService);
+  private readonly database = inject(DatabaseService);
   private readonly transport = inject(PhotoTransportService);
   private readonly prepareImage = inject(PHOTO_PREPARER);
   private readonly scheduler = inject(SyncSchedulerService);
@@ -64,6 +66,14 @@ export class ProductPhotoService {
   start(): void {
     if (this.started) return;
     this.started = true;
+    const unsubscribe = this.database.onLocalWrite(() => {
+      // A deletion during an in-flight upload still needs its own cleanup turn.
+      void this.serial(() => this.repository.pruneMissingItems())
+        .then(() => this.changed())
+        .then(() => this.flush())
+        .catch(() => this.error.set('Não foi possível atualizar as fotos locais agora.'));
+    });
+    this.destroy.onDestroy(unsubscribe);
     const wake = () => {
       if (this.ready()) {
         void this.flush();
@@ -147,8 +157,8 @@ export class ProductPhotoService {
     const key = photoKey(target);
     if (!this.ready()) return;
     if (Date.now() - (this.lastCatalogRefresh.get(key) ?? 0) < 60000) return;
-    const pref = await this.repository.preference(target);
-    const existing = await this.repository.get(target);
+    let pref = await this.repository.preference(target);
+    let existing = await this.repository.get(target);
     if (
       pref?.hidden ||
       (await this.repository.pending(target)) ||
@@ -157,6 +167,21 @@ export class ProductPhotoService {
       return;
     if (!target.barcode) return;
     this.lastCatalogRefresh.set(key, Date.now());
+    // Thumbnails may refresh before the global import reaches this product.
+    // Learn its authoritative choice before creating any automatic write.
+    try {
+      await this.reconcilePreference(target);
+    } catch {
+      return;
+    }
+    pref = await this.repository.preference(target);
+    existing = await this.repository.get(target);
+    if (
+      pref?.hidden ||
+      (await this.repository.pending(target)) ||
+      (existing?.own && existing.source === 'USER')
+    )
+      return;
     try {
       const approved = validatePhoto(
         await this.transport.request(
@@ -260,6 +285,8 @@ export class ProductPhotoService {
   }
 
   private async process(): Promise<void> {
+    // Local deletion must reclaim bytes even offline or with an empty media queue.
+    await this.serial(() => this.repository.pruneMissingItems());
     this.pendingCount.set(await this.repository.count());
     if (!this.ready()) return;
     if (this.timer) {
@@ -403,6 +430,12 @@ export class ProductPhotoService {
           ),
         );
       } catch (error) {
+        if (!explicit && error instanceof PhotoTransportError && error.status === 409) {
+          await this.repository.discardAutomatic(job);
+          await this.reconcilePreference(target);
+          await this.changed();
+          return;
+        }
         if (
           error instanceof PhotoTransportError &&
           error.status === 404 &&
@@ -486,6 +519,7 @@ export class ProductPhotoService {
           const p = validatePreference(item);
           if (seen.has(p.key)) break pages;
           seen.add(p.key);
+          if (!(await this.repository.targetExists(p))) continue;
           if (await this.repository.pending(p)) continue;
           // A server preference can outlive public approval. Keep its version
           // without restoring the revoked image or blocking later preferences.
@@ -514,6 +548,28 @@ export class ProductPhotoService {
     } catch {
       /* A missing or unavailable image uses the local copy/placeholder. */
     }
+  }
+
+  private async reconcilePreference(target: PhotoTarget): Promise<void> {
+    let p: PhotoPreference;
+    try {
+      p = validatePreference(
+        await this.transport.request(
+          'GET',
+          '/products/photos/preferences/' + photoKey(target).replace(':', '-'),
+          undefined,
+          () => this.ready(),
+        ),
+      );
+    } catch (error) {
+      if (error instanceof PhotoTransportError && error.status === 404) return;
+      throw error;
+    }
+    if (p.key !== photoKey(target)) throw new PhotoTransportError(422);
+    if (!(await this.repository.targetExists(p)) || (await this.repository.pending(p))) return;
+    if (!p.photoId) await this.repository.importPreference(p);
+    else if (!(await this.hydrate(p.photoId, p)))
+      await this.repository.importPreference({ ...p, photoId: null });
   }
 
   private async hydrate(id: string, preference?: PhotoPreference): Promise<boolean> {
