@@ -152,6 +152,8 @@ export class PhotoRepositoryService {
   async selectCatalog(photo: PhotoView, image: string | null, target: PhotoTarget): Promise<void> {
     // The conditional preference write cannot replace a personal decision made during download.
     await this.db.transaction([
+      this.cleanup(),
+      this.releaseCatalogBytes(target, photo.id),
       this.file(photo, image),
       {
         statement: `INSERT INTO photo_preferences(target_key,barcode,item_id,photo_id,hidden,remote_version,updated_at_ms)
@@ -178,6 +180,7 @@ export class PhotoRepositoryService {
           photoKey(target),
         ],
       },
+      this.cleanup(),
     ]);
   }
 
@@ -336,7 +339,7 @@ export class PhotoRepositoryService {
     return {
       statement: `UPDATE product_photos SET image_base64=NULL WHERE image_base64 IS NOT NULL
       AND id NOT IN (SELECT photo_id FROM photo_preferences WHERE photo_id IS NOT NULL)
-      AND id NOT IN (SELECT json_extract(payload_json,'$.id') FROM photo_outbox WHERE status!='SUPERSEDED' AND json_extract(payload_json,'$.id') IS NOT NULL)`,
+      AND id NOT IN (SELECT COALESCE(json_extract(payload_json,'$.id'),json_extract(payload_json,'$.photoId')) FROM photo_outbox WHERE status!='SUPERSEDED' AND COALESCE(json_extract(payload_json,'$.id'),json_extract(payload_json,'$.photoId')) IS NOT NULL)`,
       values: [],
     };
   }
@@ -345,8 +348,19 @@ export class PhotoRepositoryService {
     return {
       statement: `UPDATE product_photos SET image_base64=NULL WHERE id=(SELECT photo_id FROM photo_preferences WHERE target_key=?)
       AND (SELECT COUNT(*) FROM photo_preferences WHERE photo_id=product_photos.id)=1
-      AND NOT EXISTS (SELECT 1 FROM photo_outbox WHERE status!='SUPERSEDED' AND json_extract(payload_json,'$.id')=product_photos.id)`,
+      AND NOT EXISTS (SELECT 1 FROM photo_outbox WHERE status!='SUPERSEDED' AND COALESCE(json_extract(payload_json,'$.id'),json_extract(payload_json,'$.photoId'))=product_photos.id)`,
       values: [photoKey(target)],
+    };
+  }
+
+  private releaseCatalogBytes(target: PhotoTarget, replacementId: string): capSQLiteSet {
+    const release = this.releaseTargetBytes(target);
+    return {
+      statement: `${release.statement}
+        AND id<>? AND (json_extract(metadata_json,'$.own')=0 OR json_extract(metadata_json,'$.source')='OPEN_FOOD_FACTS')
+        AND EXISTS (SELECT 1 FROM photo_preferences WHERE target_key=? AND hidden=0)
+        AND NOT EXISTS (SELECT 1 FROM photo_outbox WHERE target_key=? AND status!='SUPERSEDED')`,
+      values: [...(release.values ?? []), replacementId, photoKey(target), photoKey(target)],
     };
   }
 

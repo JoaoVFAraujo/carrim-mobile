@@ -498,6 +498,104 @@ describe('offline product photos and separate media queue', () => {
     expect(image).not.toHaveBeenCalled();
     expect(service.pendingCount()).toBe(0);
   });
+  it('reclaims obsolete images across repeated catalog replacements', async () => {
+    const { repo, photo, raw } = await setup();
+    let latest = '';
+    for (let index = 0; index < 105; index++) {
+      latest = crypto.randomUUID();
+      await repo.selectCatalog(
+        photo(latest, { own: false, status: 'APPROVED' }),
+        prepared.imageBase64,
+        target,
+      );
+      await repo.applied((await repo.next())!);
+    }
+    expect((await repo.get(target))?.id).toBe(latest);
+    expect(raw('SELECT id FROM product_photos WHERE image_base64 IS NOT NULL')).toHaveLength(1);
+  });
+
+  it('replaces a catalog photo at the image quota while preserving other products', async () => {
+    const { repo, photo, raw } = await setup();
+    const entries = Array.from({ length: 100 }, (_, index) => ({
+      target: { barcode: String(10000000 + index), itemId: null },
+      id: crypto.randomUUID(),
+    }));
+    for (const entry of entries) {
+      await repo.selectCatalog(
+        photo(entry.id, { barcode: entry.target.barcode, own: false, status: 'APPROVED' }),
+        prepared.imageBase64,
+        entry.target,
+      );
+      await repo.applied((await repo.next())!);
+    }
+    const replacement = photo(crypto.randomUUID(), {
+      barcode: entries[0].target.barcode,
+      own: false,
+      status: 'APPROVED',
+    });
+    await repo.selectCatalog(replacement, prepared.imageBase64, entries[0].target);
+    expect((await repo.get(entries[0].target))?.id).toBe(replacement.id);
+    expect(await repo.photo(entries[0].id)).toBeNull();
+    expect((await repo.get(entries[99].target))?.id).toBe(entries[99].id);
+    expect(raw('SELECT id FROM product_photos WHERE image_base64 IS NOT NULL')).toHaveLength(100);
+  });
+
+  it.each(['UPLOAD', 'PREFERENCE'])(
+    'preserves shared images and bytes needed by an active %s job',
+    async (kind) => {
+      const { repo, photo, run } = await setup();
+      const prior = photo(crypto.randomUUID(), { own: false, status: 'APPROVED' });
+      await repo.selectCatalog(prior, prepared.imageBase64, target);
+      await repo.applied((await repo.next())!);
+      const other = { barcode: '10000000', itemId: null };
+      await repo.importPreference({
+        key: photoKey(other),
+        barcode: other.barcode,
+        itemId: null,
+        photoId: prior.id,
+        hidden: false,
+        version: 0,
+      });
+      await repo.selectCatalog(
+        photo(crypto.randomUUID(), { own: false, status: 'APPROVED' }),
+        prepared.imageBase64,
+        target,
+      );
+      await repo.applied((await repo.next())!);
+      expect((await repo.get(other))?.id).toBe(prior.id);
+      run("DELETE FROM photo_preferences WHERE target_key='" + photoKey(other) + "'");
+      const payload = JSON.stringify(kind === 'UPLOAD' ? { id: prior.id } : { photoId: prior.id });
+      run(
+        "INSERT INTO photo_outbox(id,kind,target_key,payload_json) VALUES ('" +
+          crypto.randomUUID() +
+          "','" +
+          kind +
+          "','" +
+          photoKey(other) +
+          "','" +
+          payload +
+          "')",
+      );
+      await repo.selectCatalog(
+        photo(crypto.randomUUID(), { own: false, status: 'APPROVED' }),
+        prepared.imageBase64,
+        target,
+      );
+      expect((await repo.photo(prior.id))?.imageUrl).toContain(prepared.imageBase64);
+    },
+  );
+
+  it('keeps a personal choice and discards an automatic image downloaded before that choice', async () => {
+    const { service, repo, photo, raw } = await setup();
+    await service.save(prepared, target);
+    const personal = (await repo.get(target))!;
+    const incoming = photo(crypto.randomUUID(), { own: false, status: 'APPROVED' });
+    await repo.selectCatalog(incoming, prepared.imageBase64, target);
+    expect((await repo.get(target))?.id).toBe(personal.id);
+    expect(await repo.photo(incoming.id)).toBeNull();
+    expect(raw("SELECT kind FROM photo_outbox WHERE status!='SUPERSEDED'")).toHaveLength(2);
+  });
+
   it('invalidates a previously approved public image after online access is revoked', async () => {
     const { service, repo, photo, request } = await setup(true);
     const approved = photo(crypto.randomUUID(), { status: 'APPROVED', own: false });
