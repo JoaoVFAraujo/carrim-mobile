@@ -238,7 +238,7 @@
               mode="md"
               type="search"
               label="Buscar no catálogo local"
-              labelPlacement="stacked"
+              labelPlacement="floating"
               fill="outline"
               placeholder="Nome ou código cadastrado"
               [debounce]="250"
@@ -255,20 +255,32 @@
             @if (catalogError()) {
               <p role="status">{{ catalogError() }}</p>
             }
-            <ion-list>
-              @for (product of catalogResults(); track product.id) {
-                <ion-item
-                  [button]="true"
-                  [disabled]="saving()"
-                  (click)="selectCatalogProduct(product)"
-                >
-                  <ion-label class="ion-text-wrap"
-                    >{{ product.name }}
-                    <p>{{ product.barcode }}</p></ion-label
-                  >
-                </ion-item>
-              }
-            </ion-list>
+            @if (catalogResults().length) {
+              <div
+                class="catalog-suggestions"
+                role="region"
+                aria-label="Sugestões do catálogo"
+                tabindex="0"
+              >
+                <p class="catalog-result-count" role="status">
+                  {{ catalogResults().length }} sugestões · selecione um produto
+                </p>
+                <ion-list>
+                  @for (product of catalogResults(); track product.id) {
+                    <ion-item
+                      [button]="true"
+                      [disabled]="saving()"
+                      (click)="selectCatalogProduct(product)"
+                    >
+                      <ion-label class="ion-text-wrap"
+                        >{{ product.name }}
+                        <p>{{ product.barcode }}</p></ion-label
+                      >
+                    </ion-item>
+                  }
+                </ion-list>
+              </div>
+            }
             @if (catalogBarcode) {
               <p class="tw:text-sm">Código {{ catalogBarcode }}</p>
               <ion-button
@@ -296,7 +308,7 @@
         <ion-input
           mode="md"
           label="Nome do produto"
-          labelPlacement="stacked"
+          labelPlacement="floating"
           fill="outline"
           name="name"
           [(ngModel)]="name"
@@ -307,7 +319,7 @@
           mode="md"
           fill="outline"
           label="Vendido por"
-          labelPlacement="stacked"
+          labelPlacement="floating"
           interface="popover"
           name="measurement"
           [(ngModel)]="measurementType"
@@ -321,7 +333,7 @@
             mode="md"
             fill="outline"
             label="Preço"
-            labelPlacement="stacked"
+            labelPlacement="floating"
             interface="popover"
             name="pricing"
             [(ngModel)]="pricingType"
@@ -334,7 +346,7 @@
             <ion-input
               mode="md"
               label="Unidades na promoção"
-              labelPlacement="stacked"
+              labelPlacement="floating"
               fill="outline"
               inputmode="numeric"
               name="bundleQuantity"
@@ -356,7 +368,7 @@
                 ? 'Preço da promoção'
                 : 'Preço por unidade'
           "
-          labelPlacement="stacked"
+          labelPlacement="floating"
           fill="outline"
           placeholder="Ex.: 12,99"
           inputmode="numeric"
@@ -369,7 +381,7 @@
           <ion-input
             mode="md"
             label="Peso (kg)"
-            labelPlacement="stacked"
+            labelPlacement="floating"
             fill="outline"
             placeholder="Ex.: 0,824"
             inputmode="decimal"
@@ -383,7 +395,7 @@
           <ion-input
             mode="md"
             [label]="pricingType === 'BUNDLE' ? 'Quantidade total de unidades' : 'Quantidade'"
-            labelPlacement="stacked"
+            labelPlacement="floating"
             fill="outline"
             inputmode="numeric"
             name="quantity"

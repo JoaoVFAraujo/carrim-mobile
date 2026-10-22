@@ -75,12 +75,18 @@ describe('BRL currency fields', () => {
     const alert = document.createElement('div');
     const input = document.createElement('input');
     input.id = 'checkout';
+    input.setAttribute('aria-label', 'Total do caixa (opcional)');
     input.value = '24,09';
     alert.append(input);
     document.body.append(alert);
     const release = attachBrlMask(alert, 'checkout');
     try {
       expect(input.value).toBe('R$ 24,09');
+      const label = alert.querySelector('label');
+      expect(label?.htmlFor).toBe(input.id);
+      expect(label?.textContent).toBe('Total do caixa (opcional)');
+      expect(input.placeholder).toBe(' ');
+      expect(input.closest('.carrim-floating-field')).not.toBeNull();
       expect(parseCheckoutTotal(input.value)).toBe(2409);
       release();
       input.value = '7';

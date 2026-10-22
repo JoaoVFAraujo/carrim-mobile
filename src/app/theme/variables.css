@@ -230,3 +230,61 @@ summary:focus-visible {
     transition: none;
   }
 }
+
+/* Ionic alerts expose native inputs rather than ion-input components. */
+.carrim-floating-field {
+  position: relative;
+  margin-block: 16px 8px;
+}
+.carrim-floating-field input.carrim-outline-input {
+  margin: 0;
+  width: 100%;
+}
+.carrim-floating-field label {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding-inline: 4px;
+  max-width: calc(100% - 24px);
+  pointer-events: none;
+  background: var(--ion-background-color);
+  color: var(--ion-text-color);
+  transition:
+    top 160ms ease,
+    font-size 160ms ease;
+}
+.carrim-floating-field:focus-within label,
+.carrim-floating-field input:not(:placeholder-shown) + label {
+  top: 0;
+  font-size: 12px;
+}
+.carrim-floating-field:focus-within label {
+  color: var(--ion-color-primary);
+}
+@media (prefers-reduced-motion: reduce) {
+  .carrim-floating-field label {
+    transition: none;
+  }
+}
+
+/* One continuous outline avoids subpixel seams between Ionic's notch fragments. */
+ion-input[mode='md'][fill='outline'],
+ion-input[mode='md'][fill='outline']:focus-within,
+ion-select[mode='md'][fill='outline'],
+ion-select[mode='md'][fill='outline']:focus-within {
+  --border-width: 0px;
+}
+ion-input[mode='md'][fill='outline'] .input-wrapper,
+ion-select[mode='md'][fill='outline']::part(wrapper) {
+  border-radius: var(--border-radius);
+  box-shadow: inset 0 0 0 1px var(--border-color);
+}
+ion-input[mode='md'][fill='outline']:focus-within .input-wrapper,
+ion-select[mode='md'][fill='outline']:focus-within::part(wrapper) {
+  box-shadow: inset 0 0 0 2px var(--ion-color-primary);
+}
+ion-input[mode='md'][fill='outline'].label-floating .label-text-wrapper,
+ion-select[mode='md'][fill='outline'].label-floating::part(label) {
+  background: var(--ion-background-color);
+}

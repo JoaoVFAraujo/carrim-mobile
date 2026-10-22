@@ -383,7 +383,7 @@ export class CartPage {
       const alert: HTMLIonAlertElement = await this.alerts.create({
         header: 'Finalizar compra?',
         message:
-          'A compra será salva neste aparelho, enviada ao servidor quando houver conexão e ficará disponível no Histórico. Seus itens não poderão mais ser alterados. O total do caixa é opcional e serve apenas para comparação.',
+          'Sua compra ficará no Histórico e não poderá mais ser editada. Informe quanto pagou no caixa para comparar com o total do app.',
         inputs: [
           {
             name: 'checkoutTotal',
@@ -395,9 +395,9 @@ export class CartPage {
           },
         ],
         buttons: [
-          { text: 'Continuar comprando', role: 'cancel' },
+          { text: 'Voltar', role: 'cancel' },
           {
-            text: 'Finalizar',
+            text: 'Finalizar compra',
             role: 'confirm',
             handler: (data: { checkoutTotal?: string }) => {
               try {

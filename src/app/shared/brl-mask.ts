@@ -84,6 +84,16 @@ export const ionInputElement: MaskitoElementPredicate = (element) =>
 /** Native alert inputs are outside Angular's template tree. */
 export function attachBrlMask(alert: HTMLElement, id: string): () => void {
   const input = alert.querySelector<HTMLInputElement>(`input#${id}`);
+  if (input && !input.closest('.carrim-floating-field')) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'carrim-floating-field';
+    const label = document.createElement('label');
+    label.htmlFor = id;
+    label.textContent = input.getAttribute('aria-label') ?? input.placeholder;
+    input.placeholder = ' ';
+    input.before(wrapper);
+    wrapper.append(input, label);
+  }
   const mask = input ? new Maskito(input, brlMask) : null;
   return () => mask?.destroy();
 }
