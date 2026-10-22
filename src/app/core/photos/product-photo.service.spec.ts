@@ -514,31 +514,53 @@ describe('offline product photos and separate media queue', () => {
     expect(raw('SELECT id FROM product_photos WHERE image_base64 IS NOT NULL')).toHaveLength(1);
   });
 
-  it('replaces a catalog photo at the image quota while preserving other products', async () => {
-    const { repo, photo, raw } = await setup();
-    const entries = Array.from({ length: 100 }, (_, index) => ({
-      target: { barcode: String(10000000 + index), itemId: null },
-      id: crypto.randomUUID(),
-    }));
-    for (const entry of entries) {
-      await repo.selectCatalog(
-        photo(entry.id, { barcode: entry.target.barcode, own: false, status: 'APPROVED' }),
-        prepared.imageBase64,
-        entry.target,
-      );
-      await repo.applied((await repo.next())!);
-    }
-    const replacement = photo(crypto.randomUUID(), {
-      barcode: entries[0].target.barcode,
-      own: false,
-      status: 'APPROVED',
-    });
-    await repo.selectCatalog(replacement, prepared.imageBase64, entries[0].target);
-    expect((await repo.get(entries[0].target))?.id).toBe(replacement.id);
-    expect(await repo.photo(entries[0].id)).toBeNull();
-    expect((await repo.get(entries[99].target))?.id).toBe(entries[99].id);
-    expect(raw('SELECT id FROM product_photos WHERE image_base64 IS NOT NULL')).toHaveLength(100);
-  });
+  it.each(['catalog', 'remote'])(
+    'replaces a %s photo at the image quota while preserving other products',
+    async (source) => {
+      const { service, repo, photo, raw, transport, request } = await setup();
+      const entries = Array.from({ length: 100 }, (_, index) => ({
+        target: { barcode: String(10000000 + index), itemId: null },
+        id: crypto.randomUUID(),
+      }));
+      for (const entry of entries) {
+        await repo.selectCatalog(
+          photo(entry.id, { barcode: entry.target.barcode, own: false, status: 'APPROVED' }),
+          prepared.imageBase64,
+          entry.target,
+        );
+        await repo.applied((await repo.next())!);
+      }
+      const replacement = photo(crypto.randomUUID(), {
+        barcode: entries[0].target.barcode,
+        own: false,
+        status: 'APPROVED',
+      });
+      if (source === 'catalog') {
+        await repo.selectCatalog(replacement, prepared.imageBase64, entries[0].target);
+      } else {
+        transport.enabled = true;
+        request.mockImplementation(async (method: string, path: string) => {
+          if (method === 'GET' && path === '/products/photos/preferences')
+            return [
+              {
+                key: photoKey(entries[0].target),
+                ...entries[0].target,
+                photoId: replacement.id,
+                hidden: false,
+                version: 1,
+              },
+            ];
+          if (method === 'GET' && path === '/products/photos/' + replacement.id) return replacement;
+          throw new PhotoTransportError(404);
+        });
+        await service.refresh(undefined, true);
+      }
+      expect((await repo.get(entries[0].target))?.id).toBe(replacement.id);
+      expect(await repo.photo(entries[0].id)).toBeNull();
+      expect((await repo.get(entries[99].target))?.id).toBe(entries[99].id);
+      expect(raw('SELECT id FROM product_photos WHERE image_base64 IS NOT NULL')).toHaveLength(100);
+    },
+  );
 
   it.each(['UPLOAD', 'PREFERENCE'])(
     'preserves shared images and bytes needed by an active %s job',
@@ -585,16 +607,32 @@ describe('offline product photos and separate media queue', () => {
     },
   );
 
-  it('keeps a personal choice and discards an automatic image downloaded before that choice', async () => {
-    const { service, repo, photo, raw } = await setup();
-    await service.save(prepared, target);
-    const personal = (await repo.get(target))!;
-    const incoming = photo(crypto.randomUUID(), { own: false, status: 'APPROVED' });
-    await repo.selectCatalog(incoming, prepared.imageBase64, target);
-    expect((await repo.get(target))?.id).toBe(personal.id);
-    expect(await repo.photo(incoming.id)).toBeNull();
-    expect(raw("SELECT kind FROM photo_outbox WHERE status!='SUPERSEDED'")).toHaveLength(2);
-  });
+  it.each(['catalog', 'remote'])(
+    'keeps a personal choice and discards a %s image downloaded before that choice',
+    async (source) => {
+      const { service, repo, photo, raw } = await setup();
+      await service.save(prepared, target);
+      const personal = (await repo.get(target))!;
+      const incoming = photo(crypto.randomUUID(), { own: false, status: 'APPROVED' });
+      if (source === 'catalog') await repo.selectCatalog(incoming, prepared.imageBase64, target);
+      else
+        await repo.importPhotoPreference(
+          {
+            key: photoKey(target),
+            barcode: target.barcode,
+            itemId: null,
+            photoId: incoming.id,
+            hidden: false,
+            version: 1,
+          },
+          incoming,
+          prepared.imageBase64,
+        );
+      expect((await repo.get(target))?.id).toBe(personal.id);
+      expect(await repo.photo(incoming.id)).toBeNull();
+      expect(raw("SELECT kind FROM photo_outbox WHERE status!='SUPERSEDED'")).toHaveLength(2);
+    },
+  );
 
   it('invalidates a previously approved public image after online access is revoked', async () => {
     const { service, repo, photo, request } = await setup(true);

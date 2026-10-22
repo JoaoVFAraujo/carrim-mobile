@@ -7,6 +7,7 @@ import { PhotoTransportError, PhotoTransportService } from './photo-transport.se
 import { PHOTO_PREPARER } from './prepare-photo';
 import {
   type PhotoJob,
+  type PhotoPreference,
   type PhotoTarget,
   type PhotoView,
   type PreparedPhoto,
@@ -486,10 +487,11 @@ export class ProductPhotoService {
           if (seen.has(p.key)) break pages;
           seen.add(p.key);
           if (await this.repository.pending(p)) continue;
-          const available = !p.photoId || (await this.hydrate(p.photoId));
           // A server preference can outlive public approval. Keep its version
           // without restoring the revoked image or blocking later preferences.
-          await this.repository.importPreference(available ? p : { ...p, photoId: null });
+          if (!p.photoId) await this.repository.importPreference(p);
+          else if (!(await this.hydrate(p.photoId, p)))
+            await this.repository.importPreference({ ...p, photoId: null });
         }
         if (raw.length < 100) break;
       }
@@ -514,7 +516,7 @@ export class ProductPhotoService {
     }
   }
 
-  private async hydrate(id: string): Promise<boolean> {
+  private async hydrate(id: string, preference?: PhotoPreference): Promise<boolean> {
     const local = await this.repository.photo(id);
     const metadata = await this.repository.metadata(id);
     let photo: PhotoView;
@@ -537,14 +539,15 @@ export class ProductPhotoService {
       throw error;
     }
     if (photo.id !== id) throw new PhotoTransportError(422);
-    await this.repository.cache(
-      photo,
+    const image =
       photo.status === 'DELETED'
         ? null
         : local?.contentHash === photo.contentHash
           ? null
-          : await this.transport.image(id, () => this.ready()),
-    );
+          : await this.transport.image(id, () => this.ready());
+    if (preference && photo.status !== 'DELETED')
+      await this.repository.importPhotoPreference(preference, photo, image);
+    else await this.repository.cache(photo, image);
     return photo.status !== 'DELETED';
   }
   private async changed(): Promise<void> {

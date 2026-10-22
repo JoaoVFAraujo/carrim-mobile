@@ -185,24 +185,42 @@ export class PhotoRepositoryService {
   }
 
   async importPreference(p: PhotoPreference): Promise<void> {
+    await this.db.transaction([this.importedPreference(p), this.cleanup()]);
+  }
+
+  async importPhotoPreference(
+    p: PhotoPreference,
+    photo: PhotoView,
+    image: string | null,
+  ): Promise<void> {
+    // Bind validated metadata before allocating image bytes. Replacing the
+    // preference and reclaiming its old unreferenced image is one transaction.
     await this.db.transaction([
-      {
-        statement: `INSERT INTO photo_preferences(target_key,barcode,item_id,photo_id,hidden,remote_version,updated_at_ms)
+      this.file(photo, null),
+      this.importedPreference(p),
+      this.cleanup(),
+      this.file(photo, image),
+      this.cleanup(),
+    ]);
+  }
+
+  private importedPreference(p: PhotoPreference): capSQLiteSet {
+    return {
+      statement: `INSERT INTO photo_preferences(target_key,barcode,item_id,photo_id,hidden,remote_version,updated_at_ms)
         SELECT ?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM photo_outbox WHERE target_key=? AND status!='SUPERSEDED')
         ON CONFLICT(target_key) DO UPDATE SET photo_id=excluded.photo_id,hidden=excluded.hidden,remote_version=excluded.remote_version,updated_at_ms=excluded.updated_at_ms
         WHERE NOT EXISTS (SELECT 1 FROM photo_outbox WHERE target_key=excluded.target_key AND status!='SUPERSEDED')`,
-        values: [
-          p.key,
-          p.barcode,
-          p.itemId,
-          p.photoId,
-          Number(p.hidden),
-          p.version,
-          Date.now(),
-          p.key,
-        ],
-      },
-    ]);
+      values: [
+        p.key,
+        p.barcode,
+        p.itemId,
+        p.photoId,
+        Number(p.hidden),
+        p.version,
+        Date.now(),
+        p.key,
+      ],
+    };
   }
 
   async next(): Promise<PhotoJob | null> {
