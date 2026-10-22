@@ -21,6 +21,7 @@ import {
   checkmarkOutline,
 } from 'ionicons/icons';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ProductPhotoComponent } from '../../../shared/components/product-photo/product-photo.component';
 import { ShoppingSessionStore } from '../../shopping/services/shopping-session.store';
 import { CompletedShopping } from '../../shopping/models/completed-shopping';
 import { ShoppingItem, itemSubtotalCents } from '../../shopping/models/shopping-item';
@@ -45,6 +46,7 @@ import { groupHistory, HistoryPeriod } from '../models/history-groups';
     DatePipe,
     DecimalPipe,
     EmptyStateComponent,
+    ProductPhotoComponent,
   ],
   templateUrl: './history.page.html',
   styleUrl: './history.page.css',

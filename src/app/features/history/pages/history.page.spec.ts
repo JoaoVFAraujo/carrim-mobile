@@ -4,9 +4,11 @@ import { provideRouter } from '@angular/router';
 import { provideIonicAngular } from '@ionic/angular';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { HistoryPage } from './history.page';
 import { ShoppingSessionStore } from '../../shopping/services/shopping-session.store';
+import { ProductPhotoService } from '../../../core/photos/product-photo.service';
 
 describe('history resume', () => {
   it('distinguishes an unreported checkout from zero and opens read-only items from the summary', async () => {
@@ -19,7 +21,7 @@ describe('history resume', () => {
         finishedAt,
         totalCents: 100,
         checkoutTotalCents: null,
-        itemCount: 1,
+        itemCount: 3,
         budgetCents: null,
       },
       {
@@ -32,12 +34,50 @@ describe('history resume', () => {
         budgetCents: null,
       },
     ];
-    const completedItems = vi.fn().mockResolvedValue([]);
+    const manualId = '2d6cba49-3a44-42ce-bf91-1db447a2703d';
+    const completedItems = vi.fn().mockResolvedValue([
+      {
+        id: 'coded',
+        sessionId: 'missing',
+        name: 'Coffee',
+        barcode: '7891000100103',
+        unitPriceCents: 10,
+        quantity: 1,
+      },
+      {
+        id: manualId,
+        sessionId: 'missing',
+        name: 'Banana',
+        barcode: null,
+        unitPriceCents: 20,
+        quantity: 1,
+      },
+      {
+        id: 'unknown',
+        sessionId: 'missing',
+        name: 'Unknown',
+        barcode: '7894900011517',
+        unitPriceCents: 70,
+        quantity: 1,
+      },
+    ]);
+    const image = 'data:image/jpeg;base64,/9j/2Q==';
+    const photos = {
+      revision: signal(0),
+      refresh: vi.fn().mockResolvedValue(undefined),
+      hidden: vi.fn().mockResolvedValue(false),
+      get: vi
+        .fn()
+        .mockImplementation(async (target) =>
+          target.barcode === '7894900011517' ? null : { imageUrl: image },
+        ),
+    };
     await TestBed.configureTestingModule({
       imports: [HistoryPage],
       providers: [
         provideRouter([]),
         provideIonicAngular(),
+        { provide: ProductPhotoService, useValue: photos },
         {
           provide: ShoppingSessionStore,
           useValue: {
@@ -66,6 +106,20 @@ describe('history resume', () => {
     await fixture.whenStable();
     expect(completedItems).toHaveBeenCalledWith('missing');
     expect(fixture.componentInstance.selected()?.id).toBe('missing');
+    // The unit runner does not mount native Ionic overlays automatically.
+    fixture.nativeElement.querySelector('ion-modal').dispatchEvent(new Event('ionMount'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const rows = fixture.debugElement.queryAll(By.css('.history-item'));
+    expect(rows).toHaveLength(3);
+    expect(rows[0].nativeElement.querySelector('img')?.getAttribute('src')).toBe(image);
+    expect(rows[1].nativeElement.querySelector('img')?.getAttribute('src')).toBe(image);
+    expect(rows[2].nativeElement.querySelector('img')).toBeNull();
+    expect(rows[2].nativeElement.querySelector('ion-icon')).not.toBeNull();
+    expect(photos.get).toHaveBeenCalledWith({ barcode: '7891000100103', itemId: null });
+    expect(photos.get).toHaveBeenCalledWith({ barcode: null, itemId: manualId });
+    expect(rows[0].nativeElement.textContent).toMatch(/R\$\s*0,10/);
     fixture.componentInstance.close();
     fixture.detectChanges();
     fixture.destroy();
