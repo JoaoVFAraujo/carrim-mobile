@@ -89,3 +89,435 @@ form {
 p[role='alert'] {
   color: var(--ion-color-danger);
 }
+
+.web-panel {
+  --ink: #122e29;
+  --pine: #123c32;
+  --paper: #f7faf6;
+  --mint: #d6ecda;
+  --lime: #d7ef92;
+}
+
+.web-header ion-toolbar {
+  --background: #f7faf6;
+  --border-color: #dce7de;
+  --border-width: 0 0 1px;
+  --min-height: 66px;
+}
+
+.brand {
+  color: #123c32;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.brand small {
+  border-left: 1px solid #cbdad0;
+  margin-left: 10px;
+  padding-left: 12px;
+  color: #456059;
+  font-size: 0.67em;
+  font-weight: 600;
+  letter-spacing: normal;
+}
+
+.web-panel {
+  max-width: 1120px;
+  color: var(--ink);
+  padding: clamp(12px, 4vw, 54px) 0 32px;
+}
+
+.web-panel .login-layout {
+  display: grid;
+  grid-template-columns: 1.08fr 1fr;
+  border: 1px solid #dce7de;
+  border-radius: 24px;
+  overflow: hidden;
+  background: white;
+  min-height: 490px;
+}
+
+.panel-story {
+  display: none;
+}
+
+.web-panel .panel-story {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 26px;
+  background: var(--pine);
+  color: var(--mint);
+  padding: clamp(24px, 4vw, 48px);
+}
+
+.panel-story svg {
+  width: min(100%, 290px);
+  height: auto;
+  align-self: center;
+}
+
+.panel-story p {
+  max-width: 28ch;
+  margin: 0;
+  font-size: clamp(19px, 2.4vw, 27px);
+  line-height: 1.24;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.web-panel .login-content {
+  align-self: center;
+  min-width: 0;
+  padding: clamp(24px, 4vw, 56px);
+}
+
+.web-panel .admin-intro h1,
+.queue-title h1 {
+  margin: 0 0 14px;
+  font-size: clamp(32px, 5vw, 55px);
+  line-height: 0.99;
+  letter-spacing: -0.065em;
+  font-weight: 780;
+  text-wrap: balance;
+}
+
+.web-panel .admin-intro p,
+.queue-title p {
+  margin: 0;
+  color: #456059;
+  line-height: 1.55;
+}
+
+.web-panel form {
+  margin: 27px 0 0;
+}
+
+.web-panel form ion-button {
+  --border-radius: 9px;
+  --background: #246b50;
+  min-height: 48px;
+  margin: 16px 0 0;
+}
+
+.queue-title {
+  border-bottom: 1px solid #d6e1d8;
+  padding-bottom: 22px;
+}
+
+.web-panel .admin-tools {
+  align-items: center;
+  gap: 8px;
+}
+
+.web-panel .admin-tools ion-select {
+  flex: 0 1 320px;
+}
+
+.web-panel .review-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
+}
+
+.web-panel .review-card {
+  background: white;
+  border-radius: 14px;
+}
+
+.web-panel .review-image {
+  background: #eef4ed;
+  border-radius: 8px;
+}
+
+.web-panel .empty-queue {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 32px 20px;
+  border: 1px dashed #a5bdae;
+  border-radius: 12px;
+  color: #456059;
+}
+
+.web-panel ion-button:focus-within {
+  outline: 2px solid #246b50;
+  outline-offset: 3px;
+  border-radius: 9px;
+}
+
+@media (max-width: 690px) {
+  .web-panel .login-layout {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .web-panel .panel-story {
+    flex-direction: row;
+    align-items: center;
+    padding: 20px;
+    gap: 12px;
+  }
+
+  .panel-story svg {
+    width: 100px;
+    flex: 0 0 auto;
+  }
+
+  .panel-story p {
+    font-size: 17px;
+  }
+
+  .web-panel .admin-tools ion-select {
+    flex-basis: 100%;
+  }
+}
+
+/* Motions tell the same story as the review: frame, scan, confirm. */
+.scan-beam {
+  opacity: 0;
+}
+
+.web-panel .panel-story svg {
+  overflow: visible;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .web-panel .login-layout {
+    animation: review-arrive 380ms cubic-bezier(0.2, 0.75, 0.3, 1) both;
+  }
+
+  .web-panel .scan-beam {
+    animation: review-scan 1.8s linear infinite alternate;
+  }
+
+  .web-panel .art-stamp {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: review-stamp 1.8s ease-in-out infinite alternate;
+  }
+
+  .web-panel :is(.queue-title, .empty-queue, .review-image img, .decision-notice) {
+    animation: review-arrive 240ms ease-out both;
+  }
+
+  .web-panel .review-card {
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .web-panel ion-button::part(native) {
+    transition: transform 140ms ease;
+  }
+
+  .web-panel ion-button:not([disabled]):active::part(native) {
+    transform: scale(0.97);
+  }
+}
+
+.web-panel .review-card:is(:hover, :focus-within) {
+  border-color: #91b6a3;
+  box-shadow: 0 6px 20px #123c3212;
+}
+
+.web-panel .decision-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid #b5d2bd;
+  border-radius: 10px;
+  background: #e4f2e5;
+  color: #153d31;
+}
+
+@keyframes review-arrive {
+  from {
+    opacity: 0.55;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes review-scan {
+  from {
+    opacity: 0.85;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0.85;
+    transform: translateY(90px);
+  }
+}
+
+@keyframes review-stamp {
+  from {
+    transform: scale(0.92) rotate(-5deg);
+  }
+  to {
+    transform: scale(1.05);
+  }
+}
+
+@media (max-width: 690px) {
+  .web-panel .panel-story {
+    flex-wrap: wrap;
+  }
+  .web-panel .panel-story p {
+    flex: 1;
+    min-width: 12ch;
+  }
+}
+
+.batch-bar,
+.batch-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+  padding: 12px;
+  background: #eaf3eb;
+  border: 1px solid #bed3c4;
+  border-radius: 12px;
+}
+.batch-confirm p {
+  margin: 0;
+}
+.batch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.batch-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.batch-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: #246b50;
+}
+.batch-check input:focus-visible {
+  outline: 2px solid #246b50;
+  outline-offset: 3px;
+}
+.card-check {
+  margin-bottom: 4px;
+}
+.web-panel .review-card.review-selected {
+  border-color: #246b50;
+  box-shadow: inset 0 0 0 1px #246b50;
+  background: #f2faf3;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .web-panel :is(.batch-confirm, .review-card) {
+    animation: review-arrive 240ms ease-out both;
+  }
+  .web-panel .review-card {
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+}
+
+.web-panel .review-card {
+  position: relative;
+}
+.web-panel .card-check:has(input:enabled)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: 1;
+}
+.web-panel .review-card :is(.review-zoom, ion-input, .review-actions) {
+  position: relative;
+  z-index: 2;
+}
+.review-zoom {
+  position: relative;
+  padding: 0;
+  border: 0;
+  cursor: zoom-in;
+}
+.review-zoom:disabled {
+  cursor: default;
+}
+.review-zoom:focus-visible {
+  outline: 2px solid #246b50;
+  outline-offset: 3px;
+}
+.zoom-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #123c32;
+  color: white;
+}
+
+.web-header ion-title {
+  text-align: start;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  vertical-align: middle;
+}
+.brand svg {
+  flex: 0 0 auto;
+}
+.brand small {
+  margin-left: 2px;
+}
+.web-panel .queue-title {
+  background: linear-gradient(110deg, #123c32, #226047);
+  color: #fff;
+  border: 0;
+  border-radius: 20px;
+  padding: clamp(20px, 4vw, 42px);
+}
+.web-panel .queue-title p {
+  color: #d6ecda;
+}
+.web-panel .review-card {
+  border-top: 3px solid #a8c8b0;
+}
+.web-panel .review-card.review-selected {
+  border-top-color: #246b50;
+}
+.review-status {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #e4f2e5;
+  color: #195740;
+  font-size: 13px;
+}
+.review-status.pending {
+  background: #f4e9c8;
+  color: #614814;
+}
+.review-status.rejected {
+  background: #f6e3e4;
+  color: #792e38;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .web-panel .review-card {
+    animation-delay: calc(var(--review-index, 0) * 22ms);
+  }
+  .review-zoom .zoom-icon {
+    transition: transform 160ms ease;
+  }
+  .review-zoom:is(:hover, :focus-visible) .zoom-icon {
+    transform: scale(1.12);
+  }
+}

@@ -54,6 +54,19 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "photo-admin": {
+              "browser": "src/main.photo-admin.ts",
+              "outputPath": "dist/carrim-photo-admin",
+              "assets": [],
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                }
+              },
+              "outputHashing": "all"
             }
           },
           "defaultConfiguration": "production"

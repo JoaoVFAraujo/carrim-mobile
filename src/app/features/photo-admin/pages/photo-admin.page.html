@@ -1,34 +1,115 @@
-<ion-header class="ion-no-border page-header"
-  ><ion-toolbar><ion-title>Revisão de fotos</ion-title></ion-toolbar></ion-header
->
+<ion-header class="ion-no-border page-header" [class.web-header]="standalonePanel">
+  <ion-toolbar>
+    <ion-title>
+      @if (standalonePanel) {
+        <span class="brand">
+          <svg viewBox="0 0 44 44" width="42" height="42" aria-hidden="true">
+            <rect width="44" height="44" rx="12" fill="#195740" />
+            <path
+              d="M9 15h4l3 13h14l4-10H14m3 14h13"
+              fill="none"
+              stroke="white"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle cx="18" cy="35" r="1.6" fill="white" />
+            <circle cx="29" cy="35" r="1.6" fill="white" />
+            <path d="M21 15c-1-6 5-9 11-8-1 6-5 9-11 8Z" fill="#d7ef92" />
+          </svg>
+          <span>Carrim</span><small>Painel de catálogo</small>
+        </span>
+      } @else {
+        Revisão de fotos
+      }
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
 <ion-content class="ion-padding">
-  <main>
-    <ion-button fill="clear" routerLink="/tabs/home">Voltar ao Carrim</ion-button>
+  <main [class.web-panel]="standalonePanel">
+    @if (!standalonePanel) {
+      <ion-button fill="clear" routerLink="/tabs/home">Voltar ao Carrim</ion-button>
+    }
     @if (!signedIn()) {
-      <section class="admin-intro">
-        <h1>Aprovar antes de publicar</h1>
-        <p>Somente fotos aprovadas por você ficam disponíveis para os demais clientes.</p>
-      </section>
-      <form (ngSubmit)="login()">
-        <ion-input
-          mode="md"
-          fill="outline"
-          label="Chave de administração"
-          labelPlacement="floating"
-          type="password"
-          name="adminKey"
-          autocomplete="off"
-          [(ngModel)]="key"
-          [disabled]="busy()"
-        />
-        <p class="help">
-          A chave é configurada no servidor e fica somente na memória desta sessão.
-        </p>
-        <ion-button type="submit" expand="block" [disabled]="busy() || !key">{{
-          busy() ? 'Entrando…' : 'Entrar'
-        }}</ion-button>
-      </form>
+      <div class="login-layout">
+        @if (standalonePanel) {
+          <aside class="panel-story">
+            <svg viewBox="0 0 280 212" fill="none" aria-hidden="true">
+              <path
+                d="M42 45h164v135H42z"
+                fill="#245649"
+                stroke="#7FAD95"
+                stroke-width="2"
+                transform="rotate(-9 42 45)"
+              />
+              <rect x="56" y="29" width="166" height="140" rx="11" fill="#E2F2E2" />
+              <rect x="70" y="43" width="138" height="112" rx="6" fill="#B4D5BB" />
+              <path
+                d="M78 67V51h16m90 0h16v16m0 64v16h-16m-90 0H78v-16"
+                stroke="#326957"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <path d="M110 82h56l-6 51h-44l-6-51Z" fill="#246B50" />
+              <path
+                d="M123 87v-9a15 15 0 1 1 30 0v9"
+                stroke="#246B50"
+                stroke-width="4"
+                stroke-linecap="round"
+              />
+              <path
+                d="M137 113c-2-12 3-18 14-19-1 10-6 16-14 19Zm-2 3c-8-1-12-6-12-13 8 1 12 5 12 13Z"
+                fill="#D7EF92"
+              />
+              <path class="scan-beam" d="M73 53h132" stroke="#f4ffd4" stroke-width="2" />
+              <g class="art-stamp">
+                <circle cx="215" cy="155" r="28" fill="#D7EF92" stroke="#123C32" stroke-width="4" />
+                <path
+                  d="m204 155 8 8 14-16"
+                  stroke="#123C32"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </g>
+            </svg>
+            <p>Uma boa foto ajuda todo mundo a encontrar o produto certo.</p>
+          </aside>
+        }
+        <div class="login-content">
+          <section class="admin-intro">
+            <h1>{{ standalonePanel ? 'Revisão de fotos' : 'Aprovar antes de publicar' }}</h1>
+            <p>Somente fotos aprovadas por você ficam disponíveis para os demais clientes.</p>
+          </section>
+          <form (ngSubmit)="login()">
+            <ion-input
+              mode="md"
+              fill="outline"
+              label="Chave de administração"
+              labelPlacement="floating"
+              type="password"
+              name="adminKey"
+              autocomplete="off"
+              [(ngModel)]="key"
+              [disabled]="busy()"
+            />
+            <p class="help">Use sua chave para abrir a fila de revisão.</p>
+            <ion-button type="submit" expand="block" [disabled]="busy() || !key">{{
+              busy() ? 'Entrando…' : 'Entrar'
+            }}</ion-button>
+          </form>
+          @if (error()) {
+            <p role="alert">{{ error() }}</p>
+          }
+        </div>
+      </div>
     } @else {
+      @if (standalonePanel) {
+        <section class="queue-title">
+          <h1>Fila de revisão</h1>
+          <p>Confira se a foto mostra o produto correto antes de publicar.</p>
+        </section>
+      }
       <div class="admin-tools">
         <ion-select
           mode="md"
@@ -47,22 +128,109 @@
         ><ion-button fill="clear" (click)="logout()">Sair</ion-button>
       </div>
       @if (busy()) {
-        <p role="status">Carregando revisão…</p>
+        <p role="status">{{ batchProgress() || 'Carregando revisão…' }}</p>
+      }
+      @if (standalonePanel && status === 'PENDING' && (selectable().length || selectedIds().size)) {
+        <section class="batch-bar" aria-label="Seleção de fotos">
+          <label class="batch-check">
+            <input
+              type="checkbox"
+              [checked]="selectedIds().size > 0 && selectedIds().size === selectable().length"
+              [indeterminate]="selectedIds().size > 0 && selectedIds().size < selectable().length"
+              [disabled]="busy() || !!batchAction()"
+              (change)="selectPage()"
+            />
+            Selecionar página
+          </label>
+          <span aria-live="polite">{{ selectedIds().size }} selecionada(s)</span>
+          <div class="batch-actions">
+            <ion-button
+              [disabled]="busy() || !selectedIds().size || !!batchAction()"
+              (click)="batchAction.set('APPROVE')"
+              >Aprovar selecionadas</ion-button
+            >
+            <ion-button
+              fill="outline"
+              color="danger"
+              [disabled]="busy() || !selectedIds().size || !!batchAction()"
+              (click)="batchAction.set('REJECT')"
+              >Rejeitar selecionadas</ion-button
+            >
+          </div>
+        </section>
+        @if (batchAction()) {
+          <section class="batch-confirm" aria-label="Confirmar revisão em lote">
+            <p>
+              {{ batchAction() === 'APPROVE' ? 'Publicar' : 'Rejeitar' }}
+              {{ selectedIds().size }} foto(s)?
+            </p>
+            <ion-button fill="clear" (click)="batchAction.set(null)">Cancelar</ion-button>
+            <ion-button (click)="confirmBatch()">Confirmar</ion-button>
+          </section>
+        }
       }
       <section class="review-grid" aria-label="Fotos para revisão">
         @for (row of rows(); track row.id) {
-          <article class="review-card">
-            <div class="review-image">
-              @if (row.imageUrl) {
-                <img [src]="row.imageUrl" [alt]="row.name" width="240" height="180" />
-              } @else {
-                <p>Prévia indisponível</p>
-              }
-            </div>
-            <ion-button fill="clear" [disabled]="busy() || !row.imageUrl" (click)="preview.set(row)"
-              >Ampliar foto</ion-button
-            >
+          <article
+            class="review-card"
+            [class.review-selected]="selectedIds().has(row.id)"
+            [style.--review-index]="$index"
+          >
+            @if (standalonePanel && row.status === 'PENDING') {
+              <label class="batch-check card-check">
+                <input
+                  type="checkbox"
+                  [checked]="selectedIds().has(row.id)"
+                  [disabled]="busy() || !row.imageUrl || !!batchAction()"
+                  [attr.aria-label]="'Selecionar foto: ' + row.name"
+                  (change)="toggleSelection(row.id)"
+                />
+                Selecionar
+              </label>
+            }
+            @if (row.imageUrl) {
+              <button
+                class="review-image review-zoom"
+                type="button"
+                [attr.aria-label]="'Ampliar foto: ' + row.name"
+                [disabled]="busy() || !!batchAction()"
+                (click)="preview.set(row)"
+              >
+                <img [src]="row.imageUrl" alt="" width="240" height="180" />
+                <span class="zoom-icon" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  >
+                    <circle cx="10.5" cy="10.5" r="5.5" />
+                    <path d="m15 15 4 4" />
+                  </svg>
+                </span>
+              </button>
+            } @else {
+              <div class="review-image"><p>Prévia indisponível</p></div>
+            }
             <h2>{{ row.name }}</h2>
+            @if (standalonePanel) {
+              <span
+                class="review-status"
+                [class.pending]="row.status === 'PENDING'"
+                [class.rejected]="row.status === 'REJECTED'"
+              >
+                {{
+                  row.status === 'PENDING'
+                    ? 'Pendente'
+                    : row.status === 'APPROVED'
+                      ? 'Aprovada'
+                      : 'Rejeitada'
+                }}
+              </span>
+            }
             <p>{{ row.barcode ? 'Código ' + row.barcode : 'Item sem código de barras' }}</p>
             <p class="help">
               {{
@@ -86,14 +254,16 @@
               />
               <div class="review-actions">
                 @if (row.status === 'PENDING') {
-                  <ion-button [disabled]="busy() || !row.imageUrl" (click)="decide(row, 'APPROVE')"
+                  <ion-button
+                    [disabled]="busy() || !row.imageUrl || !!batchAction()"
+                    (click)="decide(row, 'APPROVE')"
                     >Aprovar</ion-button
                   >
                 }
                 <ion-button
                   fill="outline"
                   color="danger"
-                  [disabled]="busy() || !row.imageUrl"
+                  [disabled]="busy() || !row.imageUrl || !!batchAction()"
                   (click)="decide(row, 'REJECT')"
                   >{{ row.status === 'APPROVED' ? 'Retirar publicação' : 'Rejeitar' }}</ion-button
                 >
@@ -102,7 +272,7 @@
           </article>
         } @empty {
           @if (!busy()) {
-            <p>Nenhuma foto nesta situação.</p>
+            <p class="empty-queue">Nenhuma foto nesta situação.</p>
           }
         }
       </section>
@@ -115,11 +285,21 @@
         >
       </nav>
     }
-    @if (error()) {
+    @if (signedIn() && error()) {
       <p role="alert">{{ error() }}</p>
     }
     @if (notice()) {
-      <p role="status">{{ notice() }}</p>
+      <p class="decision-notice" role="status">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="m5 12 4 4L19 6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          /></svg
+        >{{ notice() }}
+      </p>
     }
   </main>
 </ion-content>

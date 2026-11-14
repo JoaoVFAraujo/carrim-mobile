@@ -99,3 +99,17 @@ Validação em 21/10/2026: 305 testes passaram com HTTP/PostgreSQL/SQLite isolad
 CI em [.github/workflows/verify.yml](.github/workflows/verify.yml) executa testes, lint, formatação, SQLite, build, cap sync e assembleDebug; live opt-in não roda por padrão. Não publica nem assina release. Build mantém aviso inicial acima de 1 MB; evidências e limites no roadmap.
 
 Preservar mudanças locais. Fluxo autorizado: branch feature/fix da main, PR com comentário exato `@codex review`, correções, merge commit e exclusão da branch concluída. AGENTS.md e autorização do usuário regem publicação/deploy.
+
+### Painel web de revisão de fotos
+
+O build separado reutiliza a tela /admin/fotos e não inicia SQLite, sincronização ou câmera.
+Execute npm ci, npm exec ng -- build --configuration photo-admin e node scripts/serve-photo-admin.mjs.
+Abra http://localhost:4210/admin/fotos para homologação local. A API de destino é a do Carrim no Render.
+
+Render: serviço Web Node, build npm ci --include=dev && npm exec ng -- build --configuration photo-admin,
+start node scripts/serve-photo-admin.mjs, Node 24 e health /healthz. Porta via PORT.
+O proxy só permite lista, imagem e decisão de moderação, sem cookies, CORS ou cache.
+Configure na API (separadamente) CARRIM_PHOTO_ADMIN_TOKEN_SHA256. Guarde a chave original
+de 32 bytes aleatórios em Base64URL sem padding no seu gerenciador de senhas.
+Digite a chave somente no painel HTTPS; ela fica na memória da sessão.
+Se a API gratuita estiver adormecida, aguarde o health responder antes de entrar.
