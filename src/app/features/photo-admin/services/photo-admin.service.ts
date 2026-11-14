@@ -36,7 +36,7 @@ export class PhotoAdminService {
       credentials: 'omit' as const,
       redirect: 'error' as const,
       cache: 'no-store' as const,
-      timeout: 15000,
+      timeout: 130000,
     };
   }
   async list(status: string, offset: number): Promise<ReviewPhoto[]> {
@@ -112,6 +112,11 @@ export class PhotoAdminService {
     }
     if (error instanceof HttpErrorResponse && error.status === 409)
       return new Error('A foto mudou durante a revisão. Atualize a lista antes de decidir.');
+    if (error instanceof HttpErrorResponse && (error.status === 0 || error.status >= 500)) {
+      return new Error(
+        'O servidor demorou ou está indisponível. Aguarde um pouco e tente novamente.',
+      );
+    }
     return new Error('Não foi possível concluir a revisão. Tente novamente.');
   }
 }
